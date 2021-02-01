@@ -1,0 +1,14 @@
+
+.b-tooltip.is-multiline {
+    .tooltip-content {
+        text-align: left !important;
+
+        strong {
+            color: white;
+        }
+
+        ul {
+            padding-left: 1rem;
+        }
+    }
+}

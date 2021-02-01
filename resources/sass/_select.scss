@@ -1,0 +1,50 @@
+// select
+$vs-colors: (
+    lightest: #dbdbdb,
+    light: $primary,
+    dark: #333,
+    darkest: rgba(0, 0, 0, .15),
+);
+$vs-component-line-height: 1.7;
+@import "~vue-select/src/scss/vue-select.scss";
+.is-danger {
+    color: $danger;
+}
+.v-select {
+    &.is-danger {
+        .vs__dropdown-toggle {
+            border-color: $danger;
+        }
+    }
+}
+.vs--single .vs__selected {
+    height: 2rem;
+    position: absolute;
+    white-space: nowrap;
+}
+
+.vs__selected-options {
+    width: 75%;
+    overflow: hidden;
+}
+
+.vs__open-indicator {
+    width: 1rem;
+
+    &::after {
+        border: 3px solid $primary;
+        border-radius: 2px;
+        border-right: 0;
+        border-top: 0;
+        content: " ";
+        display: block;
+        height: 0.625em;
+        margin-top: -0.4375em;
+        pointer-events: none;
+        position: absolute;
+        top: 50%;
+        transform: rotate(-45deg);
+        transform-origin: center;
+        width: 0.625em;
+    }
+}

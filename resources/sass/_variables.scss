@@ -1,0 +1,26 @@
+
+$gap: 32px;
+$tablet: 768px;
+$desktop: 960px + (2 * $gap);
+$widescreen: 1440px + (2 * $gap);
+
+$navbar-height: 3.25rem;
+$navbar-breakpoint: 0px;
+
+// colors
+$light-grey: rgb(242, 242, 242);
+$grey: #7f7f7f;
+$red: red;
+$yellow: yellow;
+$black: #555555;
+
+$primary: $black;
+$danger: $red; //color: hsl(348, 100%, 61%)
+$orange: #F78500;
+
+$text: #363636;
+$label-color: $black;
+
+$radius: .3rem;
+$breadcrumb-height: calc(1.6rem + 1rem + 1.5rem);
+$shadow: 0 0.5em 1em -0.125em rgba(10,10,10,.1), 0 0 0 1px rgba(10,10,10,.02);

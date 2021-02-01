@@ -1,0 +1,140 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Resources\MyNamespaceCollection;
+use App\MyNamespace;
+use App\MyNamespaceUsage;
+use App\Reference;
+use App\ReferenceUsage;
+use Illuminate\Http\Request;
+use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\DB;
+
+class MyNamespaceController extends Controller
+{
+    public function index(Request $request)
+    {
+        $currentPage = Paginator::resolveCurrentPage('page');
+        $perPage = 20;
+
+        $namespaces = $request->user()
+            ->namespaces()
+            ->orderBy('id', 'desc')
+            ->forPage($currentPage, $perPage)
+            ->get();
+
+        return response([
+            'data' => MyNamespaceCollection::collection($namespaces),
+        ]);
+    }
+
+    public function show(Request $request, $id)
+    {
+        $namespace = MyNamespace::with([
+            'usages.taxonName.nomenclature',
+            'usages.taxonName.rank',
+            'usages.taxonName.authors',
+            'usages.taxonName.exAuthors',
+            'usages.taxonName.originalTaxonName.authors',
+            'usages.taxonName.originalTaxonName.exAuthors',
+        ])->find($id);
+
+        if (!$namespace) {
+            return response()->json([], 404);
+        }
+
+        if ($namespace->user_id !== $request->user()->id) {
+            return response()->json([], 401);
+        }
+
+        return response()->json(MyNamespaceCollection::collection([$namespace])->first());
+    }
+
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'title' => 'required',
+        ]);
+
+        $namespace = MyNamespace::find($id);
+
+        if ($namespace->user_id !== $request->user()->id) {
+            return response()->json([], 401);
+        }
+
+        $namespace->title = $request->get('title');
+        $namespace->save();
+
+        return response([
+            'data' => $namespace,
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'title' => 'required',
+        ]);
+
+        $namespace = new MyNamespace();
+        $namespace->title = $request->get('title');
+
+        $request->user()->namespaces()->save($namespace);
+
+        return response([
+            'data' => MyNamespaceCollection::collection([$namespace])->first(),
+        ]);
+    }
+
+    public function destroy(Request $request, $id)
+    {
+        $namespace = MyNamespace::find($id);
+        $namespace->delete();
+    }
+
+    public function import(Request $request, $referenceId)
+    {
+        $namespaceIds = $request->get('ids');
+
+        $importUsages = MyNamespaceUsage::whereIn('namespace_id', $namespaceIds)->get();
+
+        $reference = Reference::with('usages')->find($referenceId);
+
+        try {
+            DB::beginTransaction();
+
+            $latestUsage = ReferenceUsage::where('reference_id', $referenceId)
+                ->orderBy('order')
+                ->orderBy('group', 'desc')->first();
+
+            $groupLast = $latestUsage ? $latestUsage->group : 0;
+            foreach ($importUsages as $usage) {
+                $referenceUsage = new ReferenceUsage();
+                $referenceUsage->parent_taxon_name_id = $usage->parent_taxon_name_id;
+                $referenceUsage->is_for_publish = false;
+                $referenceUsage->status = $usage->status;
+                $referenceUsage->type_specimens = $usage->type_specimens;
+                $referenceUsage->name_remark = $usage->name_remark;
+                $referenceUsage->custom_name_remark = $usage->custom_name_remark;
+                $referenceUsage->properties = $usage->properties;
+                $referenceUsage->per_usages = $usage->per_usages;
+                $referenceUsage->taxon_name_id = (int) $usage->taxon_name_id;
+                $referenceUsage->group = $usage->group + $groupLast;
+                $referenceUsage->order = $usage->order;
+
+                $referenceUsage->is_title = $usage->is_title;
+                $referenceUsage->is_indent = (bool) $usage->is_indent;
+                $reference->usages()->save($referenceUsage);
+            }
+            DB::commit();
+
+            return response()->json([
+                'usages' => $reference->usages
+            ]);
+        } catch (\Exception $e) {
+            DB::rollback();
+            dd($e->getMessage());
+        }
+    }
+}

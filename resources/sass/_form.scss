@@ -1,0 +1,111 @@
+@import "select";
+
+.round-form {
+    .input {
+        color: black;
+        border-color: transparent;
+        border-radius: 2rem;
+
+        ul {
+            border-radius: 2rem;
+        }
+
+        &.is-large {
+            height: 3.75rem;
+            padding: 0 2rem;
+            font-size: 1rem;
+        }
+    }
+}
+
+.form {
+    label {
+        font-weight: normal;
+        &.is-marked {
+            &::before {
+                content: '*';
+                color: $danger;
+            }
+        }
+    }
+
+    .column {
+        padding: 0.75rem 1.5rem;
+    }
+
+    .form-header {
+        height: 2.5rem;
+    }
+
+    .form-body {
+        height: calc(100vh - #{$navbar-height} - #{$breadcrumb-height} - 4rem);
+        overflow-y: auto;
+        overflow-x: hidden;
+
+        &.box {
+            padding: 1rem 2.5rem;
+        }
+    }
+
+    .form-footer {
+
+    }
+}
+
+
+.close-button {
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+    width: 2rem;
+    height: 2rem;
+    opacity: 0.3;
+    z-index: 100;
+
+    &:hover {
+        opacity: 1;
+    }
+
+    &:before, &:after {
+        position: absolute;
+        left: 1rem;
+        content: ' ';
+        height: 2rem;
+        width: 2px;
+        background-color: #333;
+    }
+
+    &:before {
+        transform: rotate(45deg);
+    }
+    &:after {
+        transform: rotate(-45deg);
+    }
+
+    &.is-small {
+        width: 1.3rem;
+        height: 1.3rem;
+        right: 2rem;
+
+        &:before, &:after {
+            content: ' ';
+            height: 1.3rem;
+        }
+    }
+}
+
+.upload {
+    cursor: pointer;
+    &.control {
+        width: 100%;
+        .uploader {
+            width: 100%;
+            text-align: center;
+            border: 1px dashed #dbdbdb;
+            p {
+                line-height: 2.5rem;
+            }
+        }
+    }
+}
+

@@ -1,0 +1,108 @@
+@import 'variables';
+@import '~bulma';
+@import "~buefy/src/scss/buefy";
+@import 'form';
+@import 'layer';
+@import 'table';
+@import 'tooltip';
+
+html {
+    font-size: 14px;
+    overflow: auto;
+
+    @media (min-width: $widescreen) {
+        font-size: 16px;
+    }
+
+    @media (max-width: $tablet) {
+        font-size: 13px;
+    }
+
+    @media (max-width: 374px) {
+        font-size: 12px;
+    }
+
+    * {
+        font-family: 'Noto Sans TC', sans-serif;
+        position: relative;
+        line-height: 1.7;
+    }
+
+    color: #555555;
+
+    #app {
+        &.is-grey {
+            background-color: $light-grey;
+        }
+
+        z-index: 1;
+    }
+
+    .container {
+        max-width: 85%;
+    }
+
+    .my-link {
+        color: $black;
+        &:hover {
+            text-decoration: underline;
+            &::after {
+                font-family: "Font Awesome 5 Free";
+                content: "  ";
+                font-weight: 900;
+            }
+        }
+    }
+}
+
+.page-container {
+    width: 100%;
+    min-height: calc(100vh - #{$navbar-height});
+    margin-top: $navbar-height;
+}
+
+.search-options {
+    .checkbox {
+        margin-left: .5rem;
+    }
+
+    .clear {
+        display: inline-block;
+        text-decoration: underline;
+        top: -.2rem;
+        left: .8rem;
+    }
+}
+
+.breadcrumb-container {
+    margin-left: 1rem;
+}
+
+.b-tooltip .tooltip-content {
+    z-index: 1200;
+}
+
+.box {
+    border-radius: 0;
+}
+
+.has-text-orange {
+    color: $orange;
+}
+
+.taxon-name {
+    color: $orange;
+    font-style: italic;
+}
+
+.is-orange {
+    color: $orange;
+}
+
+.notices {
+    z-index: 100;
+}
+
+thead {
+    z-index: 80;
+}
