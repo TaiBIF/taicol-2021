@@ -1,11 +1,13 @@
+import { TYPE_BOOK, TYPE_BOOK_ARTICLE, TYPE_JOURNAL } from '../consts/reference';
+
 export default [
     {
-        'value': 1,
+        'value': TYPE_JOURNAL,
     },
     {
-        'value': 2,
+        'value': TYPE_BOOK_ARTICLE,
     },
     {
-        'value': 3,
+        'value': TYPE_BOOK,
     },
 ];

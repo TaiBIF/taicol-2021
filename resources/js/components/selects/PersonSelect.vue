@@ -12,11 +12,13 @@
               v-on:typing="fetchFilteredPersons"
     >
         <template v-slot:option="{ option }">
-            <span v-if="group" v-text="`${renderFormatName(option, group)} (${renderFormatFullName(option)})`"/>
+            <span v-if="group" v-text="`${option.lastName}, ${option.firstName}`"/>
             <span v-else v-text="`${option.fullName}`"/>
+            <span v-if="option.abbreviationName">({{ option.abbreviationName }})</span>
 
             <span class="help has-text-grey-light">
-                {{ option.originalFullName }} {{ option.yearLife }} {{ option.biologyDepartments.map(d => $t(`forms.person.biologyDepartmentOptions.${d}`)).join(', ') }}
+                {{ option.originalFullName }} {{ option.yearLife || yearOfPublication }}
+                {{ option.biologyDepartments.map(d => $t(`forms.person.biologyDepartmentOptions.${d}`)).join(', ') }}:{{ option.biologicalGroup.replace('、', ',') }}
             </span>
         </template>
         <template v-slot:selected-option="{ option }">
@@ -85,15 +87,13 @@
             },
             onAddPersonFormLayer() {
                 this.$refs.mySelect.$refs.mySelect.onEscape();
-                this.$store.state.layers.push(
-                    {
-                        template: () => import('./../layers/PersonLayer'),
-                        defaultText: this.localValue,
-                        events: {
-                            onAfterSubmit: this.onAfterCreate,
-                        },
+                this.$store.commit('layer/ADD', {
+                    template: () => import('./../layers/PersonLayer'),
+                    defaultText: this.localValue,
+                    events: {
+                        onAfterSubmit: this.onAfterCreate,
                     },
-                )
+                })
             },
             fetchFilteredPersons: debounce(function ({ value, keyword }) {
                 this.isLoading = true;

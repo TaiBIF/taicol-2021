@@ -6,8 +6,8 @@
                     <label class="label is-marked"
                            v-text="$t('forms.typeSpecimen.use')"/>
                     <div class="control">
-                        <use-type-select :errors="errors[`typeSpecimens${index}Use`]"
-                                         v-model="form.use"/>
+                        <use-type-select v-model="form.use"
+                                         :errors="errors[`typeSpecimens${index}Use`]"/>
                     </div>
                 </div>
             </div>
@@ -16,8 +16,10 @@
                     <label class="label is-marked"
                            v-text="$t('forms.typeSpecimen.kind')"/>
                     <div class="control">
-                        <kind-type-select :errors="errors[`typeSpecimens${index}Kind`]"
-                                          v-model="form.kind"/>
+                        <kind-type-select v-model="form.kind"
+                                          :errors="errors[`typeSpecimens${index}Kind`]"
+                                          v-on:input="onUpdateKind"
+                        />
                     </div>
                 </div>
             </div>
@@ -28,21 +30,21 @@
                     <div class="field">
                         <label class="label"
                                v-text="$t('forms.typeSpecimen.sex')"/>
-                        <sex-type v-model="form.sex" />
+                        <sex-type v-model="form.sex"/>
                     </div>
                 </div>
                 <div class="column is-4">
                     <div class="field">
                         <label class="label is-marked"
                                v-text="$t('forms.typeSpecimen.country')"/>
-                        <country-select :errors="errors[`typeSpecimens${index}Country`]"
-                                        v-model="form.country"/>
+                        <country-select v-model="form.country"
+                                        :errors="errors[`typeSpecimens${index}Country`]"/>
                     </div>
                 </div>
                 <div class="column is-4">
                     <div class="field">
                         <label class="label" v-text="$t('forms.typeSpecimen.locality')"/>
-                        <input class="input" type="text" v-model="form.locality"/>
+                        <input v-model="form.locality" class="input" type="text"/>
                     </div>
                 </div>
             </div>
@@ -52,7 +54,7 @@
                         <label class="label"
                                v-text="$t('forms.typeSpecimen.localityVerbatim')"/>
                         <div class="control">
-                            <input class="input" type="text" v-model="form.localityVerbatim"/>
+                            <input v-model="form.localityVerbatim" class="input" type="text"/>
                         </div>
                     </div>
                 </div>
@@ -60,9 +62,9 @@
                     <div class="field">
                         <label class="label" v-text="$t('forms.typeSpecimen.collectDate')"/>
                         <div class="control is-flex" style="line-height: 2.5rem">
-                            <input class="input" type="text" v-model="form.collectionYear"/>&nbsp;&nbsp;/&nbsp;&nbsp;
-                            <input class="input" type="text" v-model="form.collectionMonth"/>&nbsp;&nbsp;/&nbsp;&nbsp;
-                            <input class="input" type="text" v-model="form.collectionDay"/>&nbsp;&nbsp;/&nbsp;&nbsp;
+                            <input v-model="form.collectionYear" class="input" placeholder="YYYY" type="text"/>&nbsp;
+                            <month-select v-model="form.collectionMonth" style="flex:0 0; flex-basis:80px"/>&nbsp;
+                            <input v-model="form.collectionDay" class="input" placeholder="DD" type="text"/>
                         </div>
                     </div>
                 </div>
@@ -71,40 +73,40 @@
                 <div class="column is-9">
                     <div class="field">
                         <label class="label is-marked" v-text="$t('forms.typeSpecimen.collector')"/>
-                        <person-select :errors="errors[`typeSpecimens${index}Collectors`]"
-                                       v-model="form.collectors"/>
+                        <person-select v-model="form.collectors"
+                                       :errors="errors[`typeSpecimens${index}Collectors`]"/>
                     </div>
                 </div>
                 <div class="column is-3">
                     <div class="field">
                         <label class="label" v-text="$t('forms.typeSpecimen.collectorNumber')"/>
-                        <input class="input" type="text" v-model="form.collectorNumber"/>
+                        <input v-model="form.collectorNumber" class="input" type="text"/>
                     </div>
                 </div>
             </div>
-            <div class="columns" v-if="form.use === 'lectotype'">
+            <div v-if="form.use === 'lectotype'" class="columns">
                 <div class="column is-9">
                     <div class="field">
                         <label class="label is-marked">
                             選定模式文獻
-                            <span class="is-pulled-right">
-                                <label for="ispointed">
-                                    <input class="checkbox" id="ispointed" type="checkbox"/>&nbsp;
+                            <span class="is-pulled-right" v-if="isShowIsPointed">
+                                <label :for="`ispointed_${index}`">
+                                    <input :id="`ispointed_${index}`" v-model="form.isDesignated" class="checkbox" type="checkbox"/>&nbsp;
                                     在此被指定
                                 </label>
                             </span>
                         </label>
 
-                        <reference-select :on-after-create="onAfterCreateReference"
-                                          v-model="form.lectoDesignatedReference"/>
+                        <reference-select v-model="form.lectoDesignatedReference"
+                                          :on-after-create="onAfterCreateReference"/>
                     </div>
                 </div>
                 <div class="column is-3">
                     <div class="field">
                         <label class="label"
                                v-text="$t('forms.typeSpecimen.lectoCitePage')"/>
-                        <general-input :errors="errors[`typeSpecimens${index}lectoCitePage`]"
-                                       v-model="form.lectoCitePage"/>
+                        <general-input v-model="form.lectoCitePage"
+                                       :errors="errors[`typeSpecimens${index}lectoCitePage`]"/>
                     </div>
                 </div>
             </div>
@@ -113,8 +115,8 @@
                     <div class="field">
                         <label class="label is-marked"
                                v-text="$t('forms.typeSpecimen.herbarium')"/>
-                        <general-input :errors="errors[`typeSpecimens0Specimens0Herbarium`]"
-                                       v-model="form.specimens[0].herbarium"/>
+                        <general-input v-model="form.specimens[0].herbarium"
+                                       :errors="errors[`typeSpecimens0Specimens0Herbarium`]"/>
                     </div>
                 </div>
                 <div class="column is-4">
@@ -129,14 +131,17 @@
                 <div class="column is-12">
                     <div class="field">
                         <label class="label" v-text="$t('forms.typeSpecimen.url')"/>
-                        <input class="input" type="text" v-model="form.url"/>
+                        <input v-model="form.url" class="input" type="text"/>
                     </div>
                 </div>
             </div>
             <div class="columns">
                 <div class="column is-12">
-                    <section class="iso-section"
-                             v-for="(isotype, isotypeIndex) in extraSpecimens"
+                    <div class="columns" v-if="extraSpecimens.length">
+                        <p class="is-size-5 title" style="margin-top: 1rem;margin-bottom: 1rem;">同模式</p>
+                    </div>
+                    <section v-for="(isotype, isotypeIndex) in extraSpecimens"
+                             class="iso-section"
                     >
                         <div class="columns has-background-light">
                             <div class="column is-6">
@@ -144,8 +149,8 @@
                                     <label class="label is-marked"
                                            v-text="$t('forms.typeSpecimen.herbarium')"/>
                                     <general-input
-                                        :errors="errors[`typeSpecimens${index}Specimens${isotypeIndex + 1}Herbarium`]"
-                                        v-model="isotype.herbarium"/>
+                                        v-model="isotype.herbarium"
+                                        :errors="errors[`typeSpecimens${index}Specimens${isotypeIndex + 1}Herbarium`]"/>
                                 </div>
                             </div>
                             <div class="column is-4">
@@ -154,9 +159,11 @@
                                     <general-input v-model="isotype.accessionNumber"/>
                                 </div>
                             </div>
-                            <a class="close-button"
-                               v-on:click="() => onDeleteIsotype(isotypeIndex + 1)">
-                            </a>
+                            <div class="column">
+                                <a class="close-button is-pulled-right"
+                                   v-on:click="() => onDeleteIsotype(isotypeIndex + 1)">
+                                </a>
+                            </div>
                         </div>
                         <div class="columns has-background-light">
                             <div class="column is-12">
@@ -182,36 +189,35 @@
         </template>
         <template v-else>
             <div class="columns">
-                <div class="column is-6">
+                <div class="column is-12">
                     <div class="field">
                         <label class="label"
                                v-text="$t('forms.typeSpecimen.citationNoteNumber')"/>
-                        <general-input :errors="errors[`typeSpecimens${index}CitationNoteNumber`]"
-                                       v-model="form.citationNoteNumber"/>
-                    </div>
-                </div>
-                <div class="column is-6">
-                    <div class="field">
-                        <label class="label is-marked"
-                               v-text="$t('forms.typeSpecimen.herbarium')"/>
-                        <general-input :errors="errors[`typeSpecimens${index}Specimens0Herbarium`]"
-                                       v-model="form.specimens[0].herbarium"/>
+                        <general-input v-model="form.citationNoteNumber"
+                                       :errors="errors[`typeSpecimens${index}CitationNoteNumber`]"/>
                     </div>
                 </div>
             </div>
-            <div class="columns" v-if="form.use === 'lectotype'">
+            <div v-if="form.use === 'lectotype'" class="columns">
                 <div class="column is-9">
                     <div class="field">
-                        <label class="label is-marked"
-                               v-text="$t('forms.typeSpecimen.lectoDesignatedReference')"/>
-                        <reference-select v-model="form.lectoDesignatedReference"/>
+                        <label class="label is-marked">
+                            {{ $t('forms.typeSpecimen.lectoDesignatedReference') }}
+                            <span class="is-pulled-right" v-if="isShowIsPointed">
+                                <label :for="`ispointed_${index}`">
+                                    <input :id="`ispointed_${index}`" v-model="form.isDesignated" class="checkbox" type="checkbox"/>&nbsp;
+                                    在此被指定
+                                </label>
+                            </span>
+                        </label>
+                        <reference-select v-model="form.lectoDesignatedReference" :errors="errors[`typeSpecimens${index}LectoDesignatedReference`]"/>
                     </div>
                 </div>
                 <div class="column is-3">
                     <div class="field">
                         <label class="label"
                                v-text="$t('forms.typeSpecimen.lectoCitePage')"/>
-                        <input class="input" type="text" v-model="form.lectoCitePage"/>
+                        <input v-model="form.lectoCitePage" class="input" type="text"/>
                     </div>
                 </div>
             </div>
@@ -219,7 +225,7 @@
                 <div class="column is-12">
                     <div class="field">
                         <label class="label" v-text="$t('forms.typeSpecimen.url')"/>
-                        <input class="input" type="text" v-model="form.url"/>
+                        <input v-model="form.url" class="input" type="text"/>
                     </div>
                 </div>
             </div>
@@ -234,9 +240,11 @@
     import CountrySelect from '../selects/CountrySelect';
     import ReferenceSelect from '../selects/ReferenceSelect';
     import GeneralInput from '../GeneralInput';
+    import MonthSelect from '../selects/MonthSelect';
 
     export default {
         components: {
+            MonthSelect,
             GeneralInput,
             ReferenceSelect,
             CountrySelect,
@@ -259,6 +267,10 @@
                     return {};
                 },
             },
+            isShowIsPointed: {
+                type: Boolean,
+                default: true,
+            }
         },
         data() {
             return {
@@ -275,14 +287,9 @@
                     collectionDay: this.value.collectionDay || '',
                     collectors: this.value?.collectors || [],
                     collectorNumber: this.value?.collectorNumber || '',
-                    specimens: this.value?.specimens || [
-                        {
-                            herbarium: '',
-                            accessionNumber: '',
-                            url: '',
-                        },
-                    ],
-                    lectoDesignatedReference: this.value?.lectoDesignatedReference || '',
+                    specimens: this.value?.specimens || [],
+                    isDesignated: this.value?.isDesignated || false,
+                    lectoDesignatedReference: this.value?.lectoDesignatedReference || null,
                     lectoCitePage: this.value?.lectoCitePage || '',
                     citationNoteNumber: this.value?.citationNoteNumber || '',
                 },
@@ -310,7 +317,7 @@
                 this.form.specimens.push({
                     herbarium: '',
                     accessionNumber: '',
-                    url: ''
+                    url: '',
                 });
             },
             onDeleteIsotype(index) {
@@ -320,6 +327,17 @@
             },
             onAddNewPerson(data) {
                 this.form.collectors.push(data);
+            },
+            onUpdateKind(value) {
+                if (value === 1) {
+                    this.form.specimens.push({
+                        herbarium: '',
+                        accessionNumber: '',
+                        url: '',
+                    });
+                } else {
+                    this.form.specimens = [];
+                }
             },
             onAfterCreateReference() {
 

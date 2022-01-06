@@ -13,12 +13,15 @@ $grey: #7f7f7f;
 $red: red;
 $yellow: yellow;
 $black: #555555;
+$dark: $black;
+$grey-darker: $black;
 
 $primary: $black;
 $danger: $red; //color: hsl(348, 100%, 61%)
 $orange: #F78500;
 
-$text: #363636;
+$text: $black;
+
 $label-color: $black;
 
 $radius: .3rem;

@@ -41,6 +41,7 @@ class CreateReferenceUsagesTable extends Migration
 
             $table->foreign('reference_id')->references('id')->on('references');
             $table->foreign('taxon_name_id')->references('id')->on('taxon_names');
+            $table->foreign('parent_taxon_name_id')->references('id')->on('taxon_names');
         });
     }
 

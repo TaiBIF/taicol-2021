@@ -1,7 +1,7 @@
 <template>
     <div class="container">
-        <div class="form">
-            <div class="form-body box">
+        <div class="page-h-limit pt-8 relative">
+            <div class="box h-full content-h-limit overflow-y-auto">
                 <not-found-view v-if="formStatus === $c.PAGE_IS_NOTFOUND"/>
                 <reference-form :errors="errors"
                                 :on-after-submit="onAfterFormSubmit"
@@ -13,6 +13,7 @@
             <div class="form-footer">
                 <div class="buttons is-right">
                     <button class="button"
+                            :class="{'is-loading': isLoading}"
                             v-on:click="() => submit(true)"
                             v-text="$t('forms.actions.publish')"/>
                 </div>
@@ -21,6 +22,7 @@
     </div>
 </template>
 <script>
+    import { debounce } from 'lodash';
     import ReferenceForm from '../components/forms/ReferenceForm';
     import Breadcrumb from '../components/Breadcrumb';
     import Loading from '../components/LoadingSection';
@@ -38,6 +40,7 @@
             return {
                 errors: {},
                 presetData: null,
+                isLoading: false,
                 formStatus: this.$c.PAGE_IS_INITIAL,
             }
         },
@@ -47,11 +50,11 @@
                 this.fetchReference().then(() => {
                     if (this.presetData) {
                         this.$store.commit('breadcrumb/SET_ITEMS', [{
-                            url: '',
-                            name: this.$t('functions.editReference'),
+                            url: `/references/${this.presetData.id}`,
+                            name: this.presetData ? title(this.presetData) : '',
                         }, {
-                            url: this.$route.url,
-                            name: title(this.presetData),
+                            url: '#',
+                            name: this.$t('functions.editReference'),
                         }]);
                     }
                 });
@@ -62,6 +65,9 @@
                     name: this.$t('functions.createReference'),
                 }]);
             }
+        },
+        destroyed() {
+            this.$store.commit('breadcrumb/CLEAR_ITEMS');
         },
         methods: {
             fetchReference() {
@@ -81,18 +87,26 @@
                         }
                     });
             },
-            openPreviewModal() {
-                this.$store.commit('openModal', {
-                    component: () => import('./../components/views/ReferenceView'),
-                    props: this.$refs.form.previewData,
-                })
-            },
-            submit(isPublish) {
-                this.$refs.form.submit(isPublish);
-            },
+            submit: debounce(function (isPublish) {
+                this.isLoading = true;
+                this.$refs.form
+                    .submit(isPublish)
+                    .catch(() => {
+                        this.isLoading = false;
+                    });
+            }),
             onAfterFormSubmit(data) {
                 this.$router.push(`/references/${data.id}`);
             },
         },
     }
 </script>
+<style lang="scss" scoped>
+.page-h-limit {
+    min-height: calc(100vh - #{$navbar-height});
+}
+.content-h-limit {
+    height: calc(100vh - #{$navbar-height} - 7rem);
+    max-height: calc(100vh - #{$navbar-height} - 7rem);
+}
+</style>

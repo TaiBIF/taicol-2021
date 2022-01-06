@@ -1,122 +1,104 @@
 <template>
     <div class="container">
-
-        <table class="table is-fullwidth is-hoverable has-text-left">
-            <thead>
+        <searchbar v-if="$route.meta.searchbar" v-on:on-search="fetchData" />
+        <div style="padding-top: 4rem">
             <!-- 筆數結果顯示 -->
-            <tr>
-                <th class="has-text-centered" colspan="10">
-                    <span v-if="total" class="caption">共計 {{ total }} 筆資料</span>
-                    <span v-else-if="pageStatus === $c.PAGE_IS_SUCCESS" class="is-danger">查無結果</span>
-                </th>
-            </tr>
-            <tr>
-                <th>所屬類群</th>
-                <th>
-                    <sort-button :id="'rank'" :direction="direction" :on-click="onSortBy" :sortby="sortby">
-                        {{ $t('forms.taxonName.rank') }}
-                    </sort-button>
-                </th>
-                <th>
-                    接受學名
-                    <b-tooltip multilined position="is-bottom" size="is-large">
-                        <i class="fas fa-info-circle"></i>
-                        <template v-slot:content>
-                            <strong>國際藻類、真菌、植物命名法規(ICN)：</strong>
-                            <br/>&nbsp;「正確學名(correct name)」<br/>
-                            <strong>國際動物命名法規(ICZN)：</strong>
-                            <br/>&nbsp;「有效學名(valid name)」
-                        </template>
-                    </b-tooltip>
-                </th>
-                <th v-on:click="onSortBy('status')">
-                    {{ $t('forms.taxonName.status') }}
-                    <b-tooltip multilined position="is-bottom" size="is-large">
-                        <i class="fas fa-info-circle"></i>
-                        <template v-slot:content>
-                            <strong>國際藻類、真菌、植物命名法規(ICN)：</strong><br/>
-                            <ul>
-                                <li>nom. cons. = 保留名</li>
-                                <li>nom. illeg. = 不合法名</li>
-                                <li>nom. inval. = 不正當名</li>
-                                <li>nom. rej. = 廢棄名</li>
-                                <li>syn. = 異名</li>
-                            </ul>
-                            <strong>國際動物命名法規(ICZN)：</strong><br/>
-                            <ul>
-                                <li>nom. prot. = 受保護名</li>
-                                <li>nom. obl. = 被遺忘名</li>
-                                <li>unavailable = 不適用</li>
-                                <li>syn. = 異名</li>
-                            </ul>
-                        </template>
-                    </b-tooltip>
-                </th>
-                <th>
-                    <sort-button :id="'name'" :on-click="onSortBy" :sortby="sortby">
-                        {{ $t('models.taxonName') }}
-                    </sort-button>
-                </th>
+            <div class="help has-text-centered">
+                <template v-if="total">共計 {{ total }} 筆資料 · 第 {{ currentPage }} 頁</template>
+                <span v-else-if="pageStatus === $c.PAGE_IS_SUCCESS" class="is-danger">查無結果</span>
+            </div>
+            <table class="table is-fullwidth is-hoverable has-text-left">
+                <thead>
 
-                <th>命名者</th>
-                <th>中文俗名</th>
-                <th v-text="$t('forms.taxonName.reference')"/>
-                <th>
-                    <sort-button :id="'publish_year'" :on-click="onSortBy" :sortby="sortby">
-                        {{ $t('forms.reference.publishYear') }}
-                    </sort-button>
-                </th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr v-for="taxonName in taxonNames">
-                <td></td>
+                <tr>
+                    <th>界</th>
+                    <th style="white-space: nowrap">所屬類群</th>
+                    <th style="white-space: nowrap">
+                        <sort-button :id="'rank'" :direction="direction" :on-click="onSortBy" :sortby="sortby">
+                            {{ $t('forms.taxonName.rank') }}
+                        </sort-button>
+                    </th>
+                    <th>
+                        <sort-button :id="'name'" :direction="direction" :on-click="onSortBy" :sortby="sortby">
+                            {{ $t('models.taxonName') }}
+                        </sort-button>
+                    </th>
 
-                <!-- 階層 -->
-                <td v-text="taxonName.rank.display[$i18n.locale()]"></td>
-                <td></td>
-                <td></td>
-                <!-- 學名 -->
-                <td>
-                    <router-link :to="`/taxon-names/${taxonName.id}?keyword=${$route.query.keyword}`" target="_blank">
-                        <!-- 屬以上的學名不斜體 -->
-                        <template v-if="taxonName.rank.order >= 30">
-                            <i>{{ taxonName.name }}</i>
-                        </template>
-                        <template v-else>
-                            {{ taxonName.name }}
-                        </template>
-                    </router-link>
-                </td>
+                    <th>命名者</th>
+                    <th style="white-space: nowrap">中文俗名</th>
+                    <th v-text="$t('forms.taxonName.reference')"/>
+                    <th style="white-space: nowrap">
+                        <sort-button :id="'publish_year'" :direction="direction" :on-click="onSortBy" :sortby="sortby">
+                            {{ $t('forms.reference.publishYear') }}
+                        </sort-button>
+                    </th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr v-for="taxonName in taxonNames">
+                    <!-- 階層 -->
+                    <td>
+                    <span v-if="taxonName.root"
+                          v-text="taxonName.root.name"/>
+                    </td>
 
-                <!-- 命名者 -->
-                <td>
-                    <author-name v-bind="{
+                    <!-- 所屬類群 -->
+                    <td>
+                        <taxon-name-label v-if="taxonName.parentGroup" :taxon-name="taxonName.parentGroup"/>
+                    </td>
+
+                    <!-- 階層 -->
+                    <td v-text="taxonName.rank.display[$i18n.locale()]"></td>
+
+                    <!-- 學名 -->
+                    <td>
+                        <router-link :to="`/taxon-names/${taxonName.id}`" class="my-link">
+                            <taxon-name-label :taxon-name="taxonName"/>
+                        </router-link>
+                    </td>
+
+                    <!-- 命名者 -->
+                    <td>
+                        <author-name v-bind="{
                         authors: taxonName.authors,
                         exAuthors: taxonName.exAuthors,
                         type: taxonName.nomenclature.group,
                         originalTaxonName: taxonName.originalTaxonName,
                         publishYear: taxonName.publishYear,
+                        taxonName: taxonName,
                     }"></author-name>
-                </td>
-                <td></td>
-                <!-- 發表文獻 -->
-                <td>
+                    </td>
+                    <td>
+                        {{ taxonName.commonNameTw }}
+                    </td>
+
+                    <!-- 發表文獻 -->
+                    <td>
                     <span v-if="taxonName.reference">
                         {{ rName(taxonName.reference, taxonName.properties.usage.showPage) }}
                     </span>
-                    <span v-else>{{ taxonName.properties.referenceName }}</span>
-                </td>
-                <td v-text="taxonName.publishYear"></td>
-            </tr>
-            <tr>
-                <td class="has-text-centered has-text-weight-bold has-text-grey" colspan="10">
-                    <span class="caption">共計 {{ total }} 筆資料</span>
-                    <loading v-if="pageStatus === $c.PAGE_IS_LOADING"/>
-                </td>
-            </tr>
-            </tbody>
-        </table>
+                        <span v-else>{{ taxonName.properties.referenceName }}</span>
+                    </td>
+                    <td v-text="taxonName.publishYear"></td>
+                    <td>
+                        <favorite-button :type="2" :id="taxonName.id" />
+                    </td>
+                </tr>
+                <tr>
+                    <td class="has-text-centered has-text-weight-bold has-text-grey" colspan="10">
+                        <pagination :current-page="currentPage"
+                                    :per-page="perPage"
+                                    :total="total"
+                                    v-on:change="onChangePage"
+                        />
+                        <span class="caption">共計 {{ total }} 筆資料</span>
+                        <loading v-if="pageStatus === $c.PAGE_IS_LOADING"/>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 </template>
 <script>
@@ -126,16 +108,21 @@
     import SortButton from '../components/SortButton';
     import AuthorName from '../components/AuthorName';
     import { taxonNameInReference, title } from '../utils/preview/reference';
+    import TaxonNameLabel from '../components/views/TaxonNameLabel';
+    import Pagination from '../components/Pagination';
+    import Searchbar from '../components/Searchbar';
+    import FavoriteButton from "../components/FavoriteButton";
 
     export default {
         data() {
             return {
                 pageStatus: this.$c.PAGE_IS_INITIAL,
-                currentPage: 1,
+                currentPage: parseInt(this.$route.query?.page) || 1,
                 lastPage: 1,
+                perPage: 20,
                 total: 0,
-                sortby: '',
-                direction: 1,
+                sortby: this.$route.query?.sortby || '',
+                direction: this.$route.query?.direction || '',
                 columns: [
                     {
                         label: '所屬類群',
@@ -155,40 +142,37 @@
                 return this.$route.query;
             },
         },
-        watch: {
-            route() {
-                this.currentPage = 1;
-                this.lastPage = 1;
-                this.total = 0;
-                this.taxonNames = [];
-                this.fetchData();
-                this.setBreadcrumb();
-            },
-        },
         mounted() {
-            const app = this;
-            app.intersectionObserver = new IntersectionObserver(function (entries) {
-                if (entries[0].intersectionRatio > 0 && app.currentPage <= app.lastPage) {
-                    app.fetchData();
-                }
-            });
-            app.intersectionObserver.observe(document.querySelector('.caption'));
-
-            app.setBreadcrumb();
+            this.fetchData();
         },
         methods: {
-            onSortBy(column, direction) {
-                this.sortby = column;
-                this.direction = direction;
-                this.taxonNames = [];
-                this.currentPage = 1;
-                this.fetchData();
+            onChangePage(page) {
+                const p = parseInt(page);
+                if (p !== this.currentPage) {
+                    this.$router.replace({ query: { ...this.$route.query, page: p } });
+                    this.currentPage = p;
+                    this.fetchData();
+                    window.scrollTo({
+                        top: 0,
+                        behavior: 'smooth',
+                    });
+                }
             },
-            setBreadcrumb() {
-                this.$store.commit('breadcrumb/SET_ITEMS', [{
-                    url: '#',
-                    name: `搜尋: ${this.$route.query.keyword}`,
-                }]);
+            onSortBy(column, newDirection) {
+                const { sortby, direction } = this.$route.query;
+                if (sortby === column && direction === newDirection) {
+                    return;
+                }
+
+                this.$router.replace({ query: { ...this.$route.query, sortby: column, direction: newDirection } });
+                this.sortby = column;
+                this.direction = newDirection;
+
+                this.fetchData();
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth',
+                });
             },
             fetchData() {
                 if (this.pageStatus === this.$c.PAGE_IS_LOADING) {
@@ -196,17 +180,18 @@
                 }
 
                 this.pageStatus = this.$c.PAGE_IS_LOADING;
-                this.axios.get(`/taxon-names`, {
+                this.axios.get(`/search-taxon-names`, {
                     params: {
-                        keyword: this.$route.query.keyword,
+                        keywords: decodeURI(this.$route.query.keywords ?? ''),
+                        strict: 0,
                         page: this.currentPage,
                         direction: this.direction,
                         sortby: this.sortby,
+                        perPage: this.perPage,
                     },
                 })
                     .then(({ data: { data, total, lastPage } }) => {
-                        this.taxonNames = this.taxonNames.concat(data);
-                        this.currentPage += 1;
+                        this.taxonNames = data;
                         this.lastPage = lastPage;
                         this.total = total;
                         this.pageStatus = this.$c.PAGE_IS_SUCCESS;
@@ -215,18 +200,19 @@
             rName(reference, showPage) {
                 return [
                     reference.properties.bookTitleAbbreviation ? taxonNameInReference(reference) : title(reference),
-                    showPage
+                    showPage,
                 ].filter(Boolean).join(': ');
-            }
-        },
-        destroyed() {
-            this.intersectionObserver.disconnect();
+            },
         },
         components: {
+            FavoriteButton,
+            Pagination,
+            TaxonNameLabel,
             AuthorName,
             SortButton,
             Breadcrumb,
             Loading,
+            Searchbar,
         },
     }
 </script>
@@ -242,22 +228,9 @@
                 background-color: white;
                 z-index: 60;
                 position: sticky;
-                top: calc(#{$navbar-height} + 1.5rem + 3rem);
+                top: calc(#{$navbar-height} + 3.5rem);
                 padding-top: 1.2rem;
                 color: $grey;
-            }
-        }
-    }
-
-    a {
-        color: $black;
-        &:hover {
-            text-decoration: underline;
-
-            &::after {
-                font-family: "Font Awesome 5 Free";
-                content: "  ";
-                font-weight: 900;
             }
         }
     }

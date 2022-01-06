@@ -14,6 +14,10 @@
 
                 <router-link class="navbar-item" to="/namespaces" v-text="$t('functions.myNamespaces')"/>
 
+                <router-link class="navbar-item" to="/favorite-folders" v-text="'我的收藏夾'"/>
+
+                <router-link class="navbar-item" to="/admin/users" v-if="user.roleId === 1" v-text="'管理使用者'"/>
+
                 <div class="navbar-item" v-text="user ? user.name : ''"></div>
 
                 <a class="navbar-item" v-on:click="onLogout" v-text="$t('functions.logout')"/>

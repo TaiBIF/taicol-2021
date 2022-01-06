@@ -10,19 +10,9 @@
                                 <label class="label is-marked" v-text="$t('forms.person.name')"/>
                                 <div class="field-body">
                                     <div class="field">
-                                        <general-input :errors="errors['lastName']"
-                                                       :placeholder="$t('forms.person.lastName')"
-                                                       v-model="lastName"/>
-                                    </div>
-                                    <div class="field">
-                                        <general-input :errors="errors['middleName']"
-                                                       :placeholder="$t('forms.person.middleName')"
-                                                       v-model="middleName"/>
-                                    </div>
-                                    <div class="field">
-                                        <general-input :errors="errors['firstName']"
-                                                       :placeholder="$t('forms.person.firstName')"
-                                                       v-model="firstName"/>
+                                        <general-input :errors="errors['name']"
+                                                       :placeholder="$t('forms.person.name')"
+                                                       v-model="name"/>
                                     </div>
                                 </div>
                             </div>
@@ -53,23 +43,9 @@
                         </div>
                     </div>
                     <div class="columns">
-                        <div class="column is-6">
-                            <div class="field">
-                                <label class="label" v-text="$t('forms.person.yearOfBirth')"/>
-                                <general-input :errors="errors['yearOfBirth']" v-model="yearOfBirth"/>
-                            </div>
-                        </div>
-                        <div class="column is-6">
-                            <div class="field">
-                                <label class="label" v-text="$t('forms.person.nationality')"/>
-                                <country-select v-model="nationality"/>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="columns">
                         <div class="column is-12">
                             <div class="field">
-                                <label class="label is-marked" v-text="$t('forms.person.biologyDepartment')"/>
+                                <label class="label" v-text="$t('forms.person.biologyDepartment')"/>
                                 <div class="control">
                                     <label :for="`o_${department}`" class="checkbox"
                                            v-for="department in biologyDepartmentOptions">
@@ -80,14 +56,6 @@
                                     </label>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                    <div class="columns">
-                        <div class="column is-12">
-                            <label class="label" for="addToPerson">
-                                <input class="checkbox" id="addToPerson" type="checkbox" v-model="isExpert">
-                                {{ $t('forms.person.isExpert') }}
-                            </label>
                         </div>
                     </div>
                     <div class="columns">
@@ -117,30 +85,21 @@
             return {
                 biologyDepartmentOptions,
                 errors: {},
-                lastName: '',
-                firstName: '',
-                middleName: '',
-                yearOfBirth: '',
-                nationality: null,
+                name: '',
                 email: '',
                 password: '',
                 passwordConfirm: '',
                 biologyDepartments: [],
-                isExpert: false,
             }
         },
         computed: {
             formData() {
                 return {
-                    lastName: this.lastName,
-                    firstName: this.firstName,
-                    middleName: this.middleName,
-                    yearOfBirth: this.yearOfBirth,
-                    nationality: this.nationality?.id,
+                    name: this.name,
                     email: this.email,
                     password: this.password,
-                    biologyDepartments: [],
-                    isExpert: this.isExpert,
+                    passwordConfirm: this.passwordConfirm,
+                    biologyDepartments: this.biologyDepartments,
                 }
             },
         },

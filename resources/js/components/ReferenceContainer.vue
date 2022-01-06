@@ -1,10 +1,11 @@
 <template>
     <div>
+        <p class="subtitle mb-3"> • 連結文獻</p>
         <div class="box">
             <div class="columns">
                 <div class="column is-6">
                     <div class="field">
-                        <label class="label is-marked">{{ $t('forms.taxonName.reference') }}</label>
+                        <label class="label">{{ $t('forms.taxonName.reference') }}</label>
                         <reference-select
                             v-model="reference"
                             :after-create="onAddNewReference"
@@ -25,7 +26,7 @@
             <div class="columns">
                 <div class="column is-4">
                     <div class="field">
-                        <label class="label is-marked">{{ $t('forms.taxonName.showPage') }}</label>
+                        <label class="label" :class="{'is-marked': !!reference}">{{ $t('forms.taxonName.showPage') }}</label>
                         <general-input v-model="usage.showPage" :errors="errors['usageShowPage']"/>
                     </div>
                 </div>
@@ -37,11 +38,12 @@
                 </div>
             </div>
         </div>
+        <p class="subtitle mb-3"> • 存入文字</p>
         <div class="box">
             <div class="columns">
                 <div class="column is-6">
                     <div class="field">
-                        <label class="label is-marked">{{ $t('forms.taxonName.reference') }}
+                        <label class="label">{{ $t('forms.taxonName.reference') }}
                             <small>(若文獻尚未歸檔，請將文獻以「純文字」填於此欄)</small>
                         </label>
                         <general-input v-model="referenceCustomName"
@@ -61,6 +63,7 @@
     import { factory } from '../utils/preview/reference';
 
     export default {
+        name: 'reference-container',
         props: {
             usage: {
                 type: Object,

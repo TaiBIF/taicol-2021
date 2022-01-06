@@ -18,7 +18,6 @@ class MyNamespaceCollection extends JsonResource
         return [
             'id' => $this->id,
             'title' => $this->title,
-            'usages' => UsageCollection::collection($this->usages),
             'updated_at' => $this->updated_at->format('Y-m-d H:i:s'),
         ];
     }

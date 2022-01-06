@@ -19,7 +19,7 @@ class BookArticleReferenceEntity implements ReferenceOtherProperties
         $this->edition = $data['edition'] ?? '';
         $this->volume = $data['volume'] ?? '';
         $this->chapter = $data['chapter'] ?? '';
-        $this->pagesRange = $data['pages_range'] ?? '';
+        $this->pagesRange = str_replace('-', '–', $data['pages_range'] ?? '');
         $this->url = $data['url'] ?? '';
         $this->copyright = $data['copyright'] ?? '';
 

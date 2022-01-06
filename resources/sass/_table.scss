@@ -5,5 +5,9 @@
                 text-shadow: -0.02ex 0 $primary, 0.02ex 0 $primary;
             }
         }
+
+        th,td {
+            vertical-align: middle;
+        }
     }
 }

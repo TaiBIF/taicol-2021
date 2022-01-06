@@ -53,4 +53,9 @@
     .is-right {
         text-align: right;
     }
+    input[disabled] {
+        background-color: #f8f8f887;
+        border-color: #dbdbdb;
+        color: #b6b2b2;
+    }
 </style>

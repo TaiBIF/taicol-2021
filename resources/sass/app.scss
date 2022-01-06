@@ -5,10 +5,18 @@
 @import 'layer';
 @import 'table';
 @import 'tooltip';
+@import 'draggable';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 html {
     font-size: 14px;
-    overflow: auto;
+
+    body {
+        height: 100%;
+    }
 
     @media (min-width: $widescreen) {
         font-size: 16px;
@@ -28,7 +36,7 @@ html {
         line-height: 1.7;
     }
 
-    color: #555555;
+    overflow-y: auto;
 
     #app {
         &.is-grey {
@@ -36,10 +44,15 @@ html {
         }
 
         z-index: 1;
+        height: 100%;
     }
 
     .container {
         max-width: 85%;
+
+        &.is-wide {
+            max-width: 95%;
+        }
     }
 
     .my-link {
@@ -57,8 +70,12 @@ html {
 
 .page-container {
     width: 100%;
-    min-height: calc(100vh - #{$navbar-height});
+    height: calc(100vh - #{$navbar-height});
     margin-top: $navbar-height;
+}
+
+.no-wrap {
+    white-space: nowrap;
 }
 
 .search-options {
@@ -72,10 +89,6 @@ html {
         top: -.2rem;
         left: .8rem;
     }
-}
-
-.breadcrumb-container {
-    margin-left: 1rem;
 }
 
 .b-tooltip .tooltip-content {
@@ -105,4 +118,22 @@ html {
 
 thead {
     z-index: 80;
+}
+
+
+.table {
+    &.in-tab-content {
+        th {
+            position: sticky;
+            background-color: white;
+            z-index: 60;
+            top: 0;
+        }
+
+        th, td {
+            line-height: 2rem;
+            padding-left: 2rem;
+            padding-right: 2rem;
+        }
+    }
 }

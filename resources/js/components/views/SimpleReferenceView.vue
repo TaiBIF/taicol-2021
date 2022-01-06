@@ -1,8 +1,8 @@
 <template>
     <article class="media">
         <figure class="media-left">
-            <p class="image is-64x64">
-                <img :src="coverPath"/>
+            <p class="image is-64x64 cover">
+                <img :src="coverPath || '/images/no-image.jpg'"/>
             </p>
         </figure>
         <div class="media-content">
@@ -23,7 +23,7 @@
                         <label class="label" v-text="$t('forms.reference.author')"/>
                     </div>
                     <div class="field-body">
-                        <small v-html="authors.map(a => fullNameAbbreviation(a)).join('<br/>')" />
+                        <small v-html="authors.map(a => fullNameAbbreviation(a)).join(', ')" />
                     </div>
                 </div>
             </div>
@@ -90,6 +90,17 @@
             .field-body {
                 padding-top: 0.375rem;
             }
+        }
+    }
+
+    .cover {
+        box-shadow: $shadow;
+
+        img {
+            object-fit: cover;
+            position: absolute;
+            width: 100%;
+            height: 100%;
         }
     }
 </style>

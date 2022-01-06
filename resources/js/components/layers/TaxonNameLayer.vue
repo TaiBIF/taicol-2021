@@ -4,11 +4,12 @@
             <button class="button is-text is-inline" v-on:click="close">
                 <i class="fas fa-times"></i>
             </button>
-            <p class="title is-inline" v-text="$t('forms.taxonName.create')"/>
+            <p class="title is-inline" v-text="title"/>
         </div>
         <div class="layer-content box">
             <taxon-name-form
                 :errors="errors"
+                :preset-data="presetData"
                 :on-after-submit="onAfterFormSubmit"
                 ref="form"/>
         </div>
@@ -32,6 +33,16 @@
             TaxonNameForm,
         },
         props: {
+            title: {
+                type: String,
+                default() {
+                    return this.$t('forms.taxonName.create');
+                },
+            },
+            presetData: {
+                type: Object,
+                default: null
+            },
             onAfterSubmit: {
                 type: Function,
                 required: true,

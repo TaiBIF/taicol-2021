@@ -13,11 +13,20 @@ class CreateAllModelView extends Migration
      */
     public function up()
     {
+        // 要特別設定 person collate
         DB::statement("
-            create view `all_model` as
-            SELECT id, title, 'reference' as n FROM `references`
-            UNION
-            SELECT id, last_name as title, 'person' as n from `persons`;
+            CREATE ALGORITHM=UNDEFINED SQL SECURITY DEFINER VIEW `all_models`
+            AS SELECT
+               `references`.`id` AS `id`,
+               `references`.`title` AS `title`,
+               'reference' AS `n`
+            FROM `references`
+                UNION
+                    select `persons`.`id` AS `id`,
+                            concat(`persons`.`last_name`,', ',`persons`.`first_name`,' ',`persons`.`middle_name`) AS `title`,
+                            'person' COLLATE 'utf8mb4_unicode_ci' AS `n`
+                    from `persons`
+                UNION select `taxon_names`.`id` AS `id`,`taxon_names`.`name` AS `title`,'taxon_name' AS `n` from `taxon_names`;
         ");
     }
 

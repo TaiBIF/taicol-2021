@@ -1,11 +1,11 @@
 <template>
-    <div v-if="$route.meta.searchbar" class="searchbar">
+    <div class="searchbar">
         <div class="columns">
-            <div class="column is-3-desktop round-form">
-                <auto-complete v-model="keyword"
+            <div class="column is-6-desktop round-form">
+                <auto-complete v-model="keywords"
                                :isSmall="true"
                                :search-type="searchType"
-                               v-on:go-search="onSearch"/>
+                               v-on:go-search="onGoSearch"/>
             </div>
             <div class="column search-options">
                 {{ $t('search.options') }}
@@ -27,48 +27,41 @@
 
     export default {
         data() {
-            let searchType = '';
-            switch (this.$route.name) {
-                case 'taxon-name-list':
-                    searchType = 'taxon-names';
-                    break;
-                case 'reference-list':
-                    searchType = 'references';
-                    break;
-                default:
-                    searchType = '';
-            }
+            let searchType = this.getSearchType(this.$route.name);
+
+            const keywords = this.$route.query.keywords ? this.$route.query.keywords?.split('@').map(k => {
+                const [type, name] = k.split(': ');
+                return {
+                    type,
+                    name,
+                }
+            }) || [] : [];
 
             return {
                 searchType,
-                keyword: this.$route.query.keyword,
+                keywords,
             }
         },
-        computed: {
-            route() {
-                return this.$route.query;
-            },
-        },
-        watch: {
-            route() {
-                let searchType = '';
-                switch (this.$route.name) {
-                    case 'taxon-name-list':
-                        searchType = 'taxon-names';
-                        break;
-                    case 'reference-list':
-                        searchType = 'references';
-                        break;
-                    default:
-                        searchType = '';
-                }
-                this.searchType = searchType;
-                this.keyword = this.$route.query.keyword;
-            },
-        },
         methods: {
-            onSearch() {
-                this.$router.push(`/${this.searchType}?keyword=${this.keyword}`);
+            getSearchType(value) {
+                switch (value) {
+                    case 'taxon-name-list':
+                        return 'taxon-names';
+                    case 'reference-list':
+                        return 'references';
+                    default:
+                        return '';
+                }
+            },
+            onGoSearch() {
+                const keywordsString = this.keywords.map(k => `${k.type}: ${k.name}`).join('@');
+                if (
+                    this.getSearchType(this.$route.name) !== this.searchType ||
+                    keywordsString !== this.$route.query.keywords
+                ) {
+                    this.$router.push(`/${this.searchType}?keywords=${keywordsString}`);
+                    this.$emit('on-search');
+                }
             },
         },
         components: {
@@ -77,15 +70,20 @@
     }
 </script>
 <style lang="scss" scoped>
+    /deep/ .control {
+        .select-input {
+            padding: 0 2rem;
+        }
+    }
+
     .searchbar {
         padding: 0 1rem;
         background-color: $grey;
-        color: white;
-        padding-bottom: .5rem;
-        position: sticky;
+        position: fixed;
         top: $navbar-height;
         width: 100%;
         z-index: 50;
+        left: 0;
 
         .columns {
             margin-bottom: 0;
@@ -93,6 +91,8 @@
         }
 
         .search-options {
+            color: white;
+
             &:after {
                 content: "";
                 display: inline-block;

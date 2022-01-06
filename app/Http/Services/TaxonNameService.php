@@ -33,8 +33,7 @@ class TaxonNameService
         $this->nomenclatureId = $data['nomenclature_id'];
         $this->rankId = $data['rank_id'];
         $this->rank = Rank::find($this->rankId);
-        $this->name = $data['name'];
-        $this->formattedName = $data['formatted_name'];
+        $this->name = trim(preg_replace('!\s+!', ' ', str_replace("\n", '', $data['name'])));
         $this->usage = $data['usage'];
         $this->publishYear = $data['publish_year'];
         $this->note = $data['note'];
@@ -46,38 +45,55 @@ class TaxonNameService
         $this->exAuthors = Person::whereIn('id', $data['ex_authors'])->get();
         $this->originalTaxonName = TaxonName::find($data['original_taxon_name_id']);
         $this->formattedAuthors = $data['formatted_authors'];
-        $this->setTypeSpecimens($data['type_specimens']);
 
-        if ($data['is_hybrid_formula'] || $this->rank->key == 'hybrid-formula') {
-            $this->hybridParents = TaxonName::whereIn('id', array_map(function ($parent) {
-                return $parent['id'];
-            }, $data['hybrid_parents']))->pluck('id');
+        $isHybridFormula = $data['is_hybrid_formula'] ?? false;
+
+        if ($isHybridFormula || $this->rank->key == 'hybrid-formula') {
+            $hybridParents = TaxonName::whereIn('id', array_map(function ($parent) {
+                return $parent['id'] ?? null;
+            }, $data['hybrid_parents']))
+                ->get()
+                ->keyBy('id');
+
+            if ($hybridParents[$data['hybrid_parents'][0]['id']] ?? null) {
+                $this->hybridParents[$data['hybrid_parents'][0]['id']] = ['order' => 0];
+            }
+
+            if ($hybridParents[$data['hybrid_parents'][1]['id']] ?? null) {
+                $this->hybridParents[$data['hybrid_parents'][1]['id']] = ['order' => 1];
+            }
         }
 
         $this->reference = isset($data['usage']['reference_id']) ? Reference::find($data['usage']['reference_id']) : null;
 
         $this->properties = [];
 
-        if ($data['latin_genus']) {
+        $ranks = Rank::select(['id', 'order', 'abbreviation'])->get()->keyBy('abbreviation');
+
+        $rankGenus = $ranks[RANK::KEY_GENUS];
+        $rankSpecies = $ranks[RANK::KEY_SPECIES];
+
+        // 屬以下(模式標本)
+        if ($this->rank->order > $rankGenus->order) {
+            $this->setTypeSpecimens($data['type_specimens']);
+        } else { // 屬(含)以上(模式學名)
+            $this->properties['type_name'] = $data['type_name'] ?? '';
+            $this->setTypeSpecimens([]);
+        }
+
+        // 種(包含)以下
+        if ($this->rank->order >= $rankSpecies->order) {
             $this->properties['latin_genus'] = $data['latin_genus'];
+            $this->properties['latin_s1'] = $data['latin_s1'] ?? '';
+        } else {
+            $this->properties['latin_name'] = $data['latin_name'];
         }
 
         $this->properties['reference_name'] = $data['reference_name'];
         $this->properties['usage'] = $data['usage'];
-
-        $ranks = Rank::whereIn('abbreviation', array_map(function ($layer) {
-            return $layer['rank_abbreviation'];
-        }, $data['species_layers']))->get()->keyBy('abbreviation');
-
-        $this->speciesLayers = array_map(function ($layer) use ($ranks) {
-            return [
-                'rank_abbreviation' => $ranks[$layer['rank_abbreviation']],
-                'latin_name' => $layer['latin_name'],
-            ];
-        }, $data['species_layers']);
+        $this->properties['is_hybrid_formula'] = (bool) $isHybridFormula;
 
         $this->properties['species_id'] = $data['species_id'] ?? null;
-        $this->properties['latin_s1'] = $data['latin_s1'] ?? '';
         $this->properties['species_layers'] = $data['species_layers'];
 
         return $this;
@@ -111,7 +127,6 @@ class TaxonNameService
         $taxonName->nomenclature_id = $this->nomenclatureId;
         $taxonName->rank_id = $this->rankId;
         $taxonName->name = $this->name;
-        $taxonName->formatted_name = $this->formattedName;
         $taxonName->formatted_authors = $this->formattedAuthors ?? '';
         $taxonName->original_taxon_name_id = $this->originalTaxonName->id ?? null;
         $taxonName->type_specimens = $this->typeSpecimens ?? [];
@@ -146,7 +161,6 @@ class TaxonNameService
 
         foreach ($relatedTaxonNames as $name) {
             $name->name = sprintf('%s x %s', $name->hybridParents[0]->name, $name->hybridParents[1]->name);
-            $name->formatted_name = sprintf('%s x %s', $name->hybridParents[0]->formatted_name, $name->hybridParents[1]->formatted_name);
             $name->save();
         }
 

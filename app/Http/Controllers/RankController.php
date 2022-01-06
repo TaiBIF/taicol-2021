@@ -2,15 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Nomenclature;
-use Illuminate\Http\Request;
+use App\Rank;
 
 class RankController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
-        $nomenclatureId = $request->get('nomenclature_id');
-        $ranks = Nomenclature::where('id', $nomenclatureId)->get();
+        $ranks = Rank::select('key', 'abbreviation', 'display', 'order')->get();
         return response($ranks);
     }
 }

@@ -1,12 +1,12 @@
 <template>
-    <t-select :errors="errors"
-              :loading="isLoading"
+    <t-select v-model="localValue"
+              :errors="errors"
               :options="options"
               :searchable="false"
               :selectable="v => !v.isDisabled"
               label="name"
-              v-model="localValue"
               v-on:input="onUpdateValue"
+              :disabled="disabled"
     >
         <template v-slot:selected-option="{ option }">
             {{ option.display['zh-tw'] }}
@@ -27,10 +27,13 @@
             errors: {
                 type: Array,
             },
+            disabled: {
+                type: Boolean,
+                default: false,
+            }
         },
         data() {
             return {
-                isLoading: true,
                 options: [],
                 localValue: this.value || null,
                 rootSelectValue: null,
@@ -39,18 +42,8 @@
         components: {
             tSelect: Select,
         },
-        watch: {
-            options(data) {
-                this.$emit('after-load-options', data);
-            },
-        },
         mounted() {
-            this.axios
-                .get('/nomenclatures')
-                .then(({ data }) => {
-                    this.options = data;
-                    this.isLoading = false;
-                });
+            this.options = this.$store.state.nomenclature.items;
         },
         methods: {
             onUpdateValue(value) {

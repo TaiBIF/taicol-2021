@@ -20,7 +20,6 @@ class CreateTaxonNamesTable extends Migration
             $table->unsignedTinyInteger('reference_id')->nullable();
             $table->unsignedInteger('original_taxon_name_id')->nullable();
             $table->string('name');
-            $table->string('formatted_name');
             $table->string('formatted_authors')->comment('命名者');
             $table->json('type_specimens')->comment('模型標本');
             $table->char('publish_year', 4)->nullable();

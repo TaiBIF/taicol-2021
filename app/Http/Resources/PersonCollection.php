@@ -2,11 +2,15 @@
 
 namespace App\Http\Resources;
 
+use App\Country;
+use App\Person;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class PersonCollection extends JsonResource
 {
+    public $collects = Person::class;
+
     /**
      * Transform the resource into an array.
      *
@@ -23,8 +27,14 @@ class PersonCollection extends JsonResource
             'middle_name' => $this->middle_name,
             'abbreviation_name' => $this->abbreviation_name,
             'original_full_name' => $this->original_full_name ?? '',
+            'other_names' => $this->other_names,
+            'nationality' => $this->country,
             'year_life' => $this->getYearLife(),
+            'year_of_birth' => $this->year_birth,
+            'year_of_death' => $this->year_death,
+            'year_of_publication' => $this->year_publication,
             'biology_departments' => explode(',', $this->biology_departments),
+            'biological_group' => $this->biological_group,
         ];
     }
 

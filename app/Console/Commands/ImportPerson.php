@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Country;
 use App\Person;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ImportPerson extends Command
@@ -40,7 +41,7 @@ class ImportPerson extends Command
      */
     public function handle()
     {
-        $spreadsheet = IOFactory::load(storage_path('person.xlsx'));
+        $spreadsheet = IOFactory::load(storage_path('person_dataset_add_20210401.xlsx'));
         $sheets = $spreadsheet->getAllSheets();
 
         /**
@@ -57,47 +58,69 @@ class ImportPerson extends Command
          * J: 國籍(用中文)
          * K: 研究類群
          */
-        foreach ($sheets as $sheet) {
-            for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
-                $lastName = $sheet->getCell('A' . $row)->getValue();
-                $firstName = $sheet->getCell('B' . $row)->getValue();
-                $middleName = $sheet->getCell('C' . $row)->getValue();
-                $originalFullName = $sheet->getCell('D' . $row)->getValue();
-                $abbreviationName = $sheet->getCell('E' . $row)->getValue();
-                $otherNames = $sheet->getCell('F' . $row)->getValue();
-                $yearBirth = $sheet->getCell('G' . $row)->getValue();
-                $yearDeath = $sheet->getCell('H' . $row)->getValue();
-                $yearPublication = $sheet->getCell('I' . $row)->getValue();
-                $countryName = trim($sheet->getCell('J' . $row)->getValue());
-                $depart = trim($sheet->getCell('K' . $row)->getValue());
+        DB::beginTransaction();
 
-                if (trim($lastName) === '' && trim($firstName) === '') {
-                    echo "空的\n";
-                    continue;
-                }
+        try {
+            foreach ($sheets as $sheet) {
+                for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
+                    $lastName = $sheet->getCell('A' . $row)->getValue();
+                    $firstName = $sheet->getCell('B' . $row)->getValue();
+                    $middleName = $sheet->getCell('C' . $row)->getValue();
+                    $originalFullName = $sheet->getCell('D' . $row)->getValue();
+                    $abbreviationName = $sheet->getCell('E' . $row)->getValue();
+                    $otherNames = $sheet->getCell('F' . $row)->getValue();
+                    $yearBirth = $sheet->getCell('G' . $row)->getValue();
+                    $yearDeath = $sheet->getCell('H' . $row)->getValue();
+                    $yearPublication = $sheet->getCell('I' . $row)->getValue();
+                    $countryName = trim($sheet->getCell('J' . $row)->getValue());
+                    $depart = trim($sheet->getCell('K' . $row)->getValue());
 
-                $person = new Person();
-                $person->last_name = $lastName ?? '';
-                $person->middle_name = $middleName ?? '';
-                $person->first_name = $firstName ?? '';
-                $person->original_full_name = $originalFullName ?? '';
-                $person->abbreviation_name = $abbreviationName ?? '';
-                $person->other_names = $otherNames ?? '';
-                $person->year_birth = $yearBirth;
-                $person->year_death = $yearDeath;
-                $person->year_publication = $yearPublication ?? '';
-                $person->biology_departments = $depart;
-
-                if ($countryName) {
-                    $c = Country::query()->whereJsonContains('display', ['zh-tw' => $countryName])->first();
-                    if (!$c) {
-                        dd('error', $countryName);
+                    if (trim($lastName) === '' && trim($firstName) === '') {
+                        echo "空的\n";
+                        continue;
                     }
-                    $person->country_numeric_code = $c->numeric_code;
-                }
 
-                $person->save();
+                    $departConvert = array_map(function ($d) {
+                        switch ($d) {
+                            case '植物':
+                                return 'plantae';
+                            default:
+                                throw new \Exception("Department Error: $d\n");
+                        }
+
+                    }, explode(',', $depart));
+                    $departments = implode('', $departConvert);
+
+
+                    echo "$lastName\t$firstName\t$middleName\t$originalFullName\t$abbreviationName\t$otherNames\t$yearBirth\t$yearDeath\t$yearPublication\t$countryName\t$departments\n";
+
+                    $person = new Person();
+                    $person->last_name = $lastName ?? '';
+                    $person->middle_name = $middleName ?? '';
+                    $person->first_name = $firstName ?? '';
+                    $person->original_full_name = $originalFullName ?? '';
+                    $person->abbreviation_name = $abbreviationName ?? '';
+                    $person->other_names = $otherNames ?? '';
+                    $person->year_birth = $yearBirth;
+                    $person->year_death = $yearDeath;
+                    $person->year_publication = $yearPublication ?? '';
+                    $person->biology_departments = $departments;
+
+                    if ($countryName) {
+                        $c = Country::query()->whereJsonContains('display', ['zh-tw' => $countryName])->first();
+                        if (!$c) {
+                            throw new \Exception("Country not found $countryName");
+                        }
+                        $person->country_numeric_code = $c->numeric_code;
+                    }
+
+                    $person->save();
+                }
             }
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            dd($e->getMessage());
         }
 
         return 0;

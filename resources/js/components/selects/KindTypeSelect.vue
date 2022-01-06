@@ -1,6 +1,5 @@
 <template>
-    <t-select :clearable="true"
-              :errors="errors"
+    <t-select :errors="errors"
               :options="options"
               :searchable="false"
               label="name"
@@ -10,11 +9,9 @@
 </template>
 <script>
     import Select from '../Select';
+    import typeSpecimenKind from '../../utils/options/typeSpecimenKind';
 
     export default {
-        components: {
-            tSelect: Select,
-        },
         props: {
             value: {
                 type: Number,
@@ -24,24 +21,7 @@
             },
         },
         data() {
-            const options = [
-                {
-                    id: 1,
-                    name: '標本',
-                },
-                {
-                    id: 2,
-                    name: '手繪圖',
-                },
-                {
-                    id: 3,
-                    name: '生物照片',
-                },
-                {
-                    id: 4,
-                    name: 'DNA',
-                },
-            ];
+            const options = typeSpecimenKind;
 
             return {
                 localValue: options.find(o => o.id === this.value) ?? null,
@@ -52,6 +32,9 @@
             onUpdateValue(type) {
                 this.$emit('input', type.id);
             },
+        },
+        components: {
+            tSelect: Select,
         },
     }
 </script>

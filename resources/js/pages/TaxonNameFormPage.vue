@@ -1,13 +1,10 @@
 <template>
-    <div class="container">
+    <page :preload="onPreload">
         <div class="form">
             <div class="form-body box">
-                <not-found-view v-if="formStatus === $c.PAGE_IS_NOTFOUND"/>
                 <taxon-name-form :on-after-submit="onAfterSubmitForm"
                                  :preset-data="presetData"
-                                 ref="form"
-                                 v-if="formStatus === $c.PAGE_IS_SUCCESS"/>
-                <loading v-else/>
+                                 ref="form"/>
             </div>
             <div class="form-footer">
                 <div class="buttons is-right">
@@ -17,43 +14,21 @@
                 </div>
             </div>
         </div>
-    </div>
+    </page>
 </template>
 <script>
     import TaxonNameForm from '../components/forms/TaxonNameForm';
-    import TaxonNameView from '../components/views/TaxonNameView';
-    import Loading from '../components/LoadingSection';
-    import NotFoundView from '../components/views/NotFoundView';
+    import Page from './Page';
 
     export default {
         components: {
+            Page,
             TaxonNameForm,
-            TaxonNameView,
-            Loading,
-            NotFoundView,
         },
         data() {
             return {
                 formStatus: this.$c.PAGE_IS_LOADING,
                 presetData: null,
-            }
-        },
-        mounted() {
-            if (this.$route.name === 'taxon-name-edit') {
-                this.fetchTaxonName().then(() => {
-                    if (this.presetData) {
-                        this.$store.commit('breadcrumb/SET_ITEMS', [{
-                            url: '#',
-                            name: this.$t('functions.editTaxonName'),
-                        }]);
-                    }
-                });
-            } else {
-                this.formStatus = this.$c.PAGE_IS_SUCCESS;
-                this.$store.commit('breadcrumb/SET_ITEMS', [{
-                    url: '#',
-                    name: this.$t('functions.createTaxonName'),
-                }]);
             }
         },
         methods: {
@@ -63,29 +38,24 @@
             onAfterSubmitForm(data) {
                 this.$router.push(`/taxon-names/${data.id}`);
             },
-            openPreviewModal() {
-                this.$store.commit('openModal', {
-                    component: () => import('./../components/views/TaxonNameView'),
-                    props: this.$refs.form.previewData,
-                })
-            },
-            fetchTaxonName() {
-                return this.axios.get(`/taxon-names/${this.$route.params.id}/info`)
-                    .then(({ data: { data } }) => {
-                        this.presetData = data;
-                        this.formStatus = this.$c.PAGE_IS_SUCCESS;
-                    })
-                    .catch(({ status }) => {
-                        if (status === 401) {
-                            this.$router.push({
-                                path: '/login',
-                                query: { redirect: this.$route.fullPath },
-                            });
-                        } else if (status === 404) {
-                            this.formStatus = this.$c.PAGE_IS_NOTFOUND;
-                        }
-                    });
-            },
+            async onPreload() {
+                if (this.$route.name === 'taxon-name-create') {
+                    return 200;
+                }
+
+                try {
+                    const { data: { data } } = await this.axios.get(`/taxon-names/${this.$route.params.id}/info`)
+                    this.presetData = data;
+                    return 200;
+                } catch ({ status }) {
+                    return status;
+                }
+            }
         },
     }
 </script>
+<style lang="scss" scoped>
+    .form-body {
+        height: calc(100vh - #{$navbar-height} - 7rem);
+    }
+</style>

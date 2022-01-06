@@ -1,6 +1,5 @@
 <template>
-    <t-select :clearable="true"
-              :errors="errors"
+    <t-select :errors="errors"
               :options="options"
               :searchable="false"
               label="key"

@@ -5,7 +5,7 @@
               :searchable="false"
               :taggable="true"
               label="name"
-              :multiple="true"
+              :multiple="status === 'accepted' || status === 'not-accepted'"
               :filterable="false"
               v-model="localValue"
               v-on:input="onUpdateValue"
@@ -14,7 +14,9 @@
             <span v-text="`${option.abbreviation}`"/>
         </template>
         <template v-slot:option="{ option }">
-            <span v-text="`${option.abbreviation}(${option.name}) = ${option.definition}`"/>
+            <span v-text="`${option.abbreviation}`"/>
+            <br/>
+            <span class="help is-small has-text-grey-light" v-text="`${option.name} ${option.definition}`"></span>
         </template>
     </t-select>
 </template>
@@ -46,6 +48,7 @@
             status(v) {
                 this.localValue = [];
                 this.options = indications.filter(i => i.status === v && i.group.includes(this.type));
+                this.$emit('input', []);
             },
         },
         data() {
@@ -58,7 +61,13 @@
         },
         methods: {
             onUpdateValue(indicationObject) {
-                this.$emit('input', indicationObject);
+                if (indicationObject === null) {
+                    this.$emit('input', []);
+                } else if (Array.isArray(indicationObject)) {
+                    this.$emit('input', indicationObject);
+                } else {
+                    this.$emit('input', [indicationObject]);
+                }
             },
         },
     }

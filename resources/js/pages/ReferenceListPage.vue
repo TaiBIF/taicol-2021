@@ -1,28 +1,28 @@
 <template>
-    <div>
-        <div class="container">
+    <div class="container">
+        <searchbar v-if="$route.meta.searchbar"  v-on:on-search="fetchData" />
+        <div style="padding-top: 4rem">
             <!-- 筆數結果顯示 -->
             <div class="help has-text-centered">
-                <template v-if="total">共計 {{ total }} 筆資料</template>
+                <template v-if="total">共計 {{ total }} 筆資料 · 第 {{ currentPage }} 頁</template>
                 <span v-else-if="pageStatus === $c.PAGE_IS_SUCCESS" class="is-danger">查無結果</span>
             </div>
-
             <table class="table is-fullwidth is-hoverable has-text-left">
                 <thead>
                 <tr>
-                    <th>
-                        <sort-button :id="'type'" :on-click="onSortBy" :sortby="sortby">
+                    <th class="no-wrap">
+                        <sort-button :id="'type'" :direction="direction" :on-click="onSortBy" :sortby="sortby">
                             {{ $t('forms.reference.type') }}
                         </sort-button>
                     </th>
                     <th v-text="$t('forms.reference.author')"/>
-                    <th>
-                        <sort-button :id="'publish_year'" :on-click="onSortBy" :sortby="sortby">
+                    <th class="no-wrap">
+                        <sort-button :id="'publish_year'" :direction="direction" :on-click="onSortBy" :sortby="sortby">
                             {{ $t('forms.reference.publishYear') }}
                         </sort-button>
                     </th>
-                    <th style="max-width:100px">
-                        <sort-button :id="'article_title'" :on-click="onSortBy" :sortby="sortby">
+                    <th style="max-width:100px" class="no-wrap">
+                        <sort-button :id="'article_title'" :direction="direction" :on-click="onSortBy" :sortby="sortby">
                             {{ $t('forms.reference.articleTitle') }}
                         </sort-button>
                     </th>
@@ -49,13 +49,18 @@
 
                     <!-- 文章標題 -->
                     <td class="has-text-left">
-                        <span class="has-text-weight-bold"
-                              v-text="r.properties.articleTitle"></span>
-                        <br v-if="r.properties.articleTitle"/>
+                        <router-link v-if="r.properties.articleTitle"
+                                     :to="`/references/${r.id}`" class="my-link">
+                            <span class="has-text-weight-bold" v-text="r.properties.articleTitle"/>
+                        </router-link>
                     </td>
 
                     <!-- 發表文獻 -->
-                    <td class="has-text-left" v-text="subTitle(r)"/>
+                    <td class="has-text-left">
+                        <router-link :to="`/references/${r.id}`" class="my-link">
+                            {{ subTitle(r) }}
+                        </router-link>
+                    </td>
 
                     <!-- 語言 -->
                     <td class="no-wrap">
@@ -63,17 +68,17 @@
                             {{ $t(`forms.reference.languages.${r.language}`) }}
                         </span>
                     </td>
-
                     <td>
-                        <router-link :to="`/references/${r.id}`"
-                                     class="button is-small"
-                                     v-text="'查看'"
-                                     target="_blank "
-                        ></router-link>
+                        <favorite-button :type="3" :id="r.id" />
                     </td>
                 </tr>
                 <tr>
                     <th class="has-text-centered" colspan="7">
+                        <pagination :current-page="currentPage"
+                                    :per-page="perPage"
+                                    :total="total"
+                                    v-on:change="onChangePage"
+                        />
                         <span class="caption">共計 {{ total }} 筆資料</span>
                         <loading v-if="pageStatus === $c.PAGE_IS_LOADING"/>
                     </th>
@@ -81,70 +86,65 @@
                 </tbody>
             </table>
         </div>
-        <br/>
     </div>
 </template>
 <script>
     import AutoComplete from './../components/AutoComplete';
-    import Breadcrumb from '../components/Breadcrumb';
     import Loading from '../components/Loading';
     import { fullNameAbbreviation } from '../utils/preview/person';
     import { subTitle } from '../utils/preview/reference';
     import SortButton from '../components/SortButton';
+    import Pagination from '../components/Pagination';
+    import Searchbar from '../components/Searchbar';
+    import FavoriteButton from "../components/FavoriteButton";
 
     export default {
         data() {
             return {
                 pageStatus: this.$c.PAGE_IS_INITIAL,
-                currentPage: 1,
+                currentPage: parseInt(this.$route.query?.page) || 1,
                 lastPage: 1,
-                sortby: '',
-                direction: '',
+                sortby: this.$route.query?.sortby || '',
+                direction: this.$route.query?.direction || '',
+                perPage: 20,
                 total: 0,
                 references: [],
                 intersectionObserver: null,
             }
         },
-        computed: {
-            route() {
-                return this.$route.query;
-            },
-        },
-        watch: {
-            route() {
-                this.currentPage = 1;
-                this.lastPage = 1;
-                this.total = 0;
-                this.references = [];
-                this.fetchData();
-                this.setBreadcrumb();
-            },
-        },
         mounted() {
-            const app = this;
-            this.intersectionObserver = new IntersectionObserver(function (entries) {
-                if (entries[0].intersectionRatio > 0 && app.currentPage <= app.lastPage) {
-                    app.fetchData();
-                }
-            });
-            this.intersectionObserver.observe(document.querySelector('.caption'));
-            this.setBreadcrumb();
+            this.fetchData();
         },
         methods: {
             fullNameAbbreviation: (author) => fullNameAbbreviation(author),
             subTitle: (r) => subTitle(r, false),
-            setBreadcrumb() {
-                this.$store.commit('breadcrumb/SET_ITEMS', [{
-                    url: '#',
-                    name: `搜尋: ${this.$route.query.keyword}`,
-                }]);
+            onChangePage(page) {
+                const p = parseInt(page);
+                if (p !== this.currentPage) {
+                    this.$router.replace({ query: { ...this.$route.query, page: p } });
+                    this.currentPage = p;
+                    this.fetchData();
+                    window.scrollTo({
+                        top: 0,
+                        behavior: 'smooth',
+                    });
+                }
             },
-            onSortBy(column, direction) {
+            onSortBy(column, newDirection) {
+                const { sortby, direction } = this.$route.query;
+                if (sortby === column && direction === newDirection) {
+                    return;
+                }
+
+                this.$router.replace({ query: { ...this.$route.query, sortby: column, direction: newDirection } });
                 this.sortby = column;
-                this.direction = direction;
-                this.references = [];
-                this.currentPage = 1;
+                this.direction = newDirection;
+
                 this.fetchData();
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth',
+                });
             },
             fetchData() {
                 if (this.pageStatus === this.$c.PAGE_IS_LOADING) {
@@ -152,41 +152,37 @@
                 }
 
                 this.pageStatus = this.$c.PAGE_IS_LOADING;
-                this.axios.get(`/references`,
+                this.axios.get(`/search-references`,
                     {
                         params: {
-                            keyword: this.$route.query.keyword,
+                            keywords: this.$route.query.keywords,
+                            strict: 0,
                             page: this.currentPage,
                             sortby: this.sortby,
                             direction: this.direction,
+                            perPage: this.perPage,
                         },
                     },
                 )
                     .then(({ data: { data, total, lastPage } }) => {
-                        this.references = this.references.concat(data);
+                        this.references = data;
                         this.pageStatus = this.$c.PAGE_IS_SUCCESS;
-                        this.currentPage += 1;
                         this.lastPage = lastPage;
                         this.total = total;
                     });
             },
         },
-        destroyed() {
-            this.intersectionObserver.disconnect();
-        },
         components: {
+            FavoriteButton,
+            Pagination,
             SortButton,
             AutoComplete,
-            Breadcrumb,
             Loading,
+            Searchbar
         },
     }
 </script>
 <style lang="scss" scoped>
-    .no-wrap {
-        white-space: nowrap;
-    }
-
     .container {
         max-width: 90%;
 
@@ -198,7 +194,7 @@
                 background-color: white;
                 z-index: 60;
                 position: sticky;
-                top: calc(#{$navbar-height} + 1.5rem + 3rem);
+                top: calc(#{$navbar-height} + 3.5rem);
                 padding-top: 1.2rem;
                 color: $grey;
             }

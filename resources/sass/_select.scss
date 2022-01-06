@@ -2,7 +2,7 @@
 $vs-colors: (
     lightest: #dbdbdb,
     light: $primary,
-    dark: #333,
+    dark: $dark,
     darkest: rgba(0, 0, 0, .15),
 );
 $vs-component-line-height: 1.7;
@@ -46,5 +46,11 @@ $vs-component-line-height: 1.7;
         transform: rotate(-45deg);
         transform-origin: center;
         width: 0.625em;
+    }
+}
+
+.vs__dropdown-option--highlight {
+    .has-text-info {
+        color: white !important;
     }
 }

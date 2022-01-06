@@ -3,13 +3,21 @@
 namespace App;
 
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use Notifiable, HasApiTokens;
+    use Notifiable, HasApiTokens, SoftDeletes;
+
+    const ROLE_ADMIN = 1;
+    const ROLE_GENERAL = 0;
+
+    const STATUS_DISABLE = 0; // 停用
+    const STATUS_ENABLE = 1; // 啟用中
+    const STATUS_WAITING = 2; // 等待開通
 
     /**
      * The attributes that are mass assignable.
@@ -41,5 +49,10 @@ class User extends Authenticatable
     public function namespaces()
     {
         return $this->hasMany(MyNamespace::class);
+    }
+
+    public function folders()
+    {
+        return $this->hasMany(FavoriteFolder::class);
     }
 }

@@ -13,6 +13,7 @@ class Reference extends Model
     const TYPE_JOURNAL = 1;
     const TYPE_BOOK_ARTICLE = 2;
     const TYPE_BOOK = 3;
+    const TYPE_BACKBONE = 4;
 
     protected $casts = [
         'properties' => 'array'
@@ -58,5 +59,10 @@ class Reference extends Model
     public function usages()
     {
         return $this->hasMany(ReferenceUsage::class);
+    }
+
+    public function collectable()
+    {
+        return $this->morphMany(FavoriteItem::class, 'collectable')->morphMany(FavoriteMineItem::class, 'collectable');
     }
 }

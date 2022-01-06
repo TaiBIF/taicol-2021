@@ -3,20 +3,20 @@
         <div class="middle-center">
             <h1 class="title">物種學名管理工具</h1>
             <div class="field round-form">
-                <auto-complete v-model="keyword"
+                <auto-complete v-model="keywords"
                                :search-type="searchType"
-                               v-on:go-search="onSearch"
+                               v-on:go-search="onGoSearch()"
                 />
             </div>
             <div class="search-options">
                 搜尋選項
                 &nbsp;&nbsp;
                 <label class="radio">
-                    <input type="radio" v-model="searchType" value="taxon-names"> 學名、俗名
+                    <input v-model="searchType" type="radio" value="taxon-names"> 學名、俗名
                 </label>
 
                 <label class="radio">
-                    <input type="radio" v-model="searchType" value="references"> 文獻
+                    <input v-model="searchType" type="radio" value="references"> 文獻
                 </label>
             </div>
         </div>
@@ -24,21 +24,31 @@
 </template>
 <script>
     import AutoComplete from './../components/AutoComplete';
+
     export default {
-        components: {
-            AutoComplete,
-        },
         data() {
             return {
-                keyword: '',
+                keywords: [],
                 searchType: 'taxon-names',
             }
         },
         methods: {
-            onSearch() {
-                this.$router.push(`/${this.searchType}?keyword=${this.keyword}`);
-            }
-        }
+            onGoSearch() {
+                const keywordString = this.keywords.map(k => {
+                    return `${k.type}: ${k.name}`;
+                }).join('@');
+
+                this.$router.push({
+                    path: `/${this.searchType}`,
+                    query: {
+                        'keywords': keywordString,
+                    }
+                });
+            },
+        },
+        components: {
+            AutoComplete,
+        },
     }
 </script>
 <style lang="scss" scoped>
@@ -58,8 +68,7 @@
         padding: 0 2rem;
 
         .middle-center {
-            width: 100%;
-            max-width: 500px;
+            width: 80%;
 
             .search-options {
                 padding: 1.5rem 2rem;

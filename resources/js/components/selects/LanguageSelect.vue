@@ -1,10 +1,11 @@
 <template>
-    <t-select :clearable="true"
+    <t-select v-model="localValue"
+              :clearable="true"
               :errors="errors"
+              :keyId="isUseKeyId ? 'id' : ''"
               :options="options"
               :searchable="false"
               label="id"
-              v-model="localValue"
               v-on:input="onUpdateValue"
     >
         <template v-slot:selected-option="{ option }">
@@ -20,15 +21,16 @@
     import options from '../../utils/options/languages';
 
     export default {
-        components: {
-            tSelect: Select,
-        },
         props: {
             value: {
-                type: Object,
+                type: [Object, String],
             },
             errors: {
                 type: Array,
+            },
+            isUseKeyId: {
+                type: Boolean,
+                default: () => false,
             },
         },
         data() {
@@ -40,7 +42,10 @@
         methods: {
             onUpdateValue(value) {
                 this.$emit('input', value);
-            }
-        }
+            },
+        },
+        components: {
+            tSelect: Select,
+        },
     }
 </script>

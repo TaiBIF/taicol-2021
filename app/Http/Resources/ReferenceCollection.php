@@ -18,7 +18,7 @@ class ReferenceCollection extends JsonResource
     {
         return [
             'id' => $this->id,
-            'cover_path' => $this->cover_path ? "/images/$this->cover_path" : "/images/no-image.jpg",
+            'cover_path' => $this->cover_path ? "/images/$this->cover_path" : null,
             'type' => $this->type,
             'title' => $this->title,
             'subtitle' => $this->subtitle,

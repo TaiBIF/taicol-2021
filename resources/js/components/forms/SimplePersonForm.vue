@@ -4,7 +4,7 @@
             <div class="column is-2">
                 <div class="field">
                     <label class="label is-marked" v-text="$t('forms.person.lastName')"/>
-                    <general-input :errors="errors['lastName']" v-model="form.lastName"/>
+                    <general-input :errors="errors['lastName']" v-model="form.lastName" :disabled="isEdit" placeholder="拉丁字母填拼寫"/>
                 </div>
             </div>
             <div class="column is-2">
@@ -12,28 +12,34 @@
                     <label class="label is-marked">
                         {{ $t('forms.person.firstName') }}
                     </label>
-                    <general-input :errors="errors['firstName']" v-model="form.firstName"/>
+                    <general-input :errors="errors['firstName']" v-model="form.firstName" :disabled="isEdit" placeholder="拉丁字母填拼寫"/>
                 </div>
             </div>
             <div class="column is-2">
                 <div class="field">
                     <label class="label" v-text="$t('forms.person.middleName')"/>
-                    <general-input :errors="errors['middleName']" v-model="form.middleName"/>
+                    <general-input :errors="errors['middleName']" v-model="form.middleName" placeholder="拉丁字母填拼寫"/>
                 </div>
             </div>
         </div>
         <div class="columns">
             <div class="column is-6">
                 <div class="field">
-                    <label class="label" v-text="$t('forms.person.fullNameInNativeAlphabet')"/>
-                    <general-input :errors="errors['fullNameInNativeAlphabet']"
-                                   v-model="form.fullNameInNativeAlphabet"/>
+                    <label class="label is-marked" v-text="$t('forms.person.fullNameInNativeAlphabet')"/>
+                    <general-input :errors="errors['originalFullName']"
+                                   v-model="form.originalFullName" placeholder="完整全名包含[姓, 名 中間名]，如有中文名填入此欄"/>
                 </div>
             </div>
             <div class="column is-6">
                 <div class="field">
-                    <label class="label" v-text="`${$t('forms.person.nameAbbreviation')}（植物學名填寫）`"/>
-                    <general-input :errors="errors['authorAbbreviation']" v-model="form.abbreviationName"/>
+                    <label class="label"
+                           :class="{'is-marked': form.biologyDepartments.includes('plantae')}"
+                           v-text="`${$t('forms.person.nameAbbreviation')}`"
+                    />
+                    <general-input :errors="errors['abbreviationName']" v-model="form.abbreviationName"
+                                   :disabled="isEdit"
+                                   placeholder="植物學名命名者必填"
+                    />
                 </div>
             </div>
         </div>
@@ -49,18 +55,30 @@
             <div class="column is-2">
                 <div class="field">
                     <label class="label" v-text="$t('forms.person.yearOfBirth')"/>
-                    <general-input :errors="errors['yearOfBirth']" v-model="form.yearOfBirth"/>
+                    <general-input :errors="errors['yearOfBirth']" v-model="form.yearOfBirth" placeholder="YYYY"/>
                 </div>
             </div>
             <div class="column is-2">
                 <div class="field">
                     <label class="label" v-text="$t('forms.person.yearOfDeath')"/>
-                    <general-input :errors="errors['yearOfDeath']" v-model="form.yearOfDeath"/>
+                    <general-input :errors="errors['yearOfDeath']" v-model="form.yearOfDeath" placeholder="YYYY"/>
                 </div>
             </div>
             <div class="column is-2">
                 <div class="field">
-                    <label class="label" v-text="$t('forms.person.yearOfPublication')"/>
+                    <label class="label">
+                        {{ $t('forms.person.yearOfPublication') }}
+                        <b-tooltip
+                            position="is-bottom">
+                            <i class="fas fa-info-circle"></i>
+                            <template v-slot:content>
+                                發表或採集年代，以 fl. 或 col. 接年代或年代範圍。<br/>
+                                範例：fl. 1995-2016、fl. 2013-、col. 1790-1800<br/>
+                                生卒年不詳時建議盡量填寫本欄，可供選擇人名時參考。<br/>
+                            </template>
+                        </b-tooltip>
+                    </label>
+
                     <general-input :errors="errors['yearOfPublication']" v-model="form.yearOfPublication"/>
                 </div>
             </div>
@@ -74,7 +92,7 @@
             </div>
         </div>
         <div class="columns">
-            <div class="column is-12">
+            <div class="column is-6">
                 <div class="field">
                     <label class="label is-marked" v-text="$t('forms.person.biologyDepartment')"/>
                     <div class="control">
@@ -121,6 +139,21 @@
                     <p class="is-danger" v-for="m in errors['biologyDepartments']">{{ m }}</p>
                 </div>
             </div>
+            <div class="column is-6">
+                <div class="field">
+                    <label class="label">
+                        {{ $t('forms.person.biologicalGroup') }}
+                        <b-tooltip
+                            position="is-bottom" size="is-large" multilined>
+                            <i class="fas fa-info-circle"></i>
+                            <template v-slot:content>
+                                請填入大類群，如：藻類、苔蘚植物、蕨類、裸子植物、被子植物、子囊菌、擔子菌、昆蟲、蜘蛛、軟甲類、軟體動物、魚類、兩棲類、爬蟲類、鳥類、哺乳類、海洋無脊椎、陸生無脊椎等；或填入階層學名，如：鱗翅目、桑科等。也可填入多類群，以頓號「、」分隔。總字數10字以內。
+                            </template>
+                        </b-tooltip>
+                    </label>
+                    <general-input :errors="errors['biologicalGroup']" v-model="form.biologicalGroup"/>
+                </div>
+            </div>
         </div>
     </div>
 </template>
@@ -130,11 +163,11 @@
     import { openNotify } from './../../utils';
 
     export default {
-        components: {
-            GeneralInput,
-            CountrySelect,
-        },
         props: {
+            presetData: {
+                type: Object,
+                required: false,
+            },
             onAfterSubmit: {
                 type: Function,
                 required: true,
@@ -144,17 +177,21 @@
             return {
                 errors: {},
                 form: {
-                    lastName: '',
-                    firstName: '',
-                    middleName: '',
-                    abbreviationName: '',
-                    fullNameInNativeAlphabet: '',
-                    otherNames: '',
-                    yearOfBirth: '',
-                    yearOfDeath: '',
-                    yearOfPublication: '',
-                    nationality: null,
-                    biologyDepartments: [],
+                    ...{
+                        lastName: '',
+                        firstName: '',
+                        middleName: '',
+                        abbreviationName: '',
+                        originalFullName: '',
+                        otherNames: '',
+                        yearOfBirth: '',
+                        yearOfDeath: '',
+                        yearOfPublication: '',
+                        nationality: null,
+                        biologyDepartments: [],
+                        biologicalGroup: '',
+                    },
+                    ...this.presetData,
                 },
             }
         },
@@ -165,10 +202,17 @@
                     countryNumericCode: this.form.nationality?.numericCode,
                 }
             },
+            isEdit() {
+                return !!this.form?.id;
+            }
         },
         methods: {
-            submit() {
-                this.axios.post('/persons', this.formData)
+            submit(isEdit = false) {
+                this.axios({
+                    method: isEdit ? 'PUT' : 'POST',
+                    url: isEdit ? `/persons/${this.presetData.id}` : '/persons',
+                    data: { ...this.formData },
+                })
                     .then(({ data }) => {
                         this.onAfterSubmit(data);
                         openNotify(this.$t('forms.saveSuccess'));
@@ -181,6 +225,10 @@
                         }
                     });
             },
+        },
+        components: {
+            GeneralInput,
+            CountrySelect,
         },
     }
 </script>

@@ -1,14 +1,44 @@
 <template>
-    <span :class="{
-        'is-success': status === 'accepted',
-        'is-danger': status === 'not-accepted'
-    }" class="tag">
-        {{ finalStatus }}
-    </span>
+    <div class="tags">
+        <template v-if="indications.length">
+            <span class="bg-gray-50 px-3" v-for="indication in indications">
+                <template v-if="status === 'undetermined'">
+                    未決
+                </template>
+                <template v-else-if="status === 'misapplied'">
+                    誤用
+                </template>
+                <template v-else>
+                    {{ getIndicationObject(indication).display[$i18n.locale()] }}
+                </template>
+            </span>
+        </template>
+        <template v-else>
+            <template v-if="status === 'not-accepted'">
+                <span class="bg-gray-50 px-3">
+                    同物異名
+                </span>
+            </template>
+            <template v-else-if="status === 'accepted'">
+                <span class="bg-gray-50 px-3" v-if="nomenclature.group === 'plant'">
+                    正確學名
+                </span>
+                <span class="bg-gray-50 px-3" v-else-if="nomenclature.group === 'animal'">
+                    接受學名
+                </span>
+            </template>
+        </template>
+    </div>
 </template>
 <script>
+    import indications from './selects/indications';
+
     export default {
         props: {
+            nomenclature: {
+                type: Object,
+                required: true,
+            },
             status: {
                 type: String,
                 required: true,
@@ -18,33 +48,9 @@
                 required: true,
             },
         },
-        computed: {
-            finalStatus() {
-                if (this.status === 'accepted') {
-                    if (this.indications.includes('nom. prot.')) {
-                        return '受保護名';
-                    } else if (this.indications.includes('nom. cons.')) {
-                        return '保留名';
-                    } else {
-                        return '有效學名';
-                    }
-                } else if (this.status === 'not-accepted') {
-                    if (this.indications.includes('nom. obl.')) {
-                        return '被遺忘名';
-                    } else if (this.indications.includes('unavailable')) {
-                        return '不適用';
-                    } else if (this.indications.includes('nom. rej.')) {
-                        return '廢棄名';
-                    } else if (this.indications.includes('nom. illeg.')) {
-                        return '不合法名';
-                    } else if (this.indications.includes('nom. inval.')) {
-                        return '不正當名';
-                    } else {
-                        return '異名';
-                    }
-                } else {
-                    return '-';
-                }
+        methods: {
+            getIndicationObject(abbr) {
+                return indications.find(i => i.abbreviation === abbr);
             },
         },
     }

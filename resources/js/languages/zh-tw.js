@@ -1,5 +1,5 @@
 export default {
-    title: '物種名錄管理工具',
+    title: '物種學名管理工具',
     functions: {
         index: '首頁',
         myCollection: '我的收藏',
@@ -103,6 +103,7 @@ export default {
             },
             rank: '階層',
             nomenclature: '適用命名規約',
+            kingdom: '界',
             name: '名',
             exAuthor: '前述者/提出此名者',
             exAuthorYear: '前述/提出此名年代',
@@ -116,6 +117,7 @@ export default {
             figure: '圖號',
             showPage: '學名出現頁碼',
             specimenType: '模式標本',
+            typeName: '模式學名',
             latinGenus: '屬名',
             species: '種名',
             latinS1: '種小名',
@@ -169,7 +171,8 @@ export default {
             yearOfDeath: '卒年',
             yearOfPublication: '活躍年代',
             nationality: '國籍',
-            biologyDepartment: '研究類群',
+            biologyDepartment: '研究領域',
+            biologicalGroup: '研究類群',
             biologyDepartmentOptions: {
                 'viruses': '病毒',
                 'bacteria': '細菌',

@@ -4,8 +4,15 @@
             <div class="column is-3">
                 <div class="field">
                     <label class="label" v-text="$t('forms.reference.cover')"/>
-                    <img v-if="tempCoverUrl" :src="tempCoverUrl"/>
-                    <img v-else-if="reference.coverPath" :src="reference.coverPath"/>
+                    <div class="image-container">
+                        <img v-if="tempCoverUrl" :src="tempCoverUrl"/>
+                        <img v-else-if="reference.coverPath" :src="reference.coverPath"/>
+                        <img v-else src="/images/no-image.jpg"/>
+                        <button v-if="reference.coverPath || tempCoverUrl" v-on:click="onRemoveImage"
+                                class="button is-small is-danger is-outlined remove">
+                            移除圖片
+                        </button>
+                    </div>
                     <b-upload v-model="reference.cover">
                         <div class="uploader is-fullwidth">
                             <div class="content has-text-centered">
@@ -67,6 +74,7 @@
                         <label class="label is-marked" v-text="$t('forms.reference.journal')"/>
                         <div class="control">
                             <book-select v-model="targetBook"
+                                         v-on:input="onChangeBook"
                                          :errors="errors['propertiesBookTitle']"/>
                         </div>
                     </div>
@@ -143,6 +151,7 @@
                         <div class="field">
                             <label class="label is-marked" v-text="$t('forms.reference.bookTitle')"/>
                             <book-select v-model="targetBook"
+                                         v-on:input="onChangeBook"
                                          :errors="errors['propertiesBookTitle']"/>
                         </div>
                     </div>
@@ -196,6 +205,7 @@
                         <div class="field">
                             <label class="label is-marked" v-text="$t('forms.reference.bookTitle')"/>
                             <book-select v-model="targetBook"
+                                         v-on:input="onChangeBook"
                                          :errors="errors['propertiesBookTitle']"/>
                         </div>
                     </div>
@@ -282,11 +292,9 @@
 <script>
     import BookSelect from '../selects/BookSelect';
     import GeneralInput from '../GeneralInput';
-    import tSelect from '../Select';
     import ReferenceTypeSelect from '../selects/ReferenceTypeSelect';
     import PersonSelect from '../selects/PersonSelect';
     import LanguageSelect from '../selects/LanguageSelect';
-    import { debounce } from 'lodash';
     import { openNotify, getBase64 } from '../../utils';
     import { subTitle, title } from '../../utils/preview/reference';
 
@@ -312,7 +320,7 @@
                     properties: {
                         ...this.reference.properties,
                         bookTitle: this.targetBook?.title || null,
-                        bookTitleAbbreviation: this.reference.properties.bookTitleAbbreviation || this.targetBook?.titleAbbreviation,
+                        bookTitleAbbreviation: this.reference.properties.bookTitleAbbreviation || this.targetBook?.titleAbbreviation || this.targetBook.title,
                     },
                 }
                 return {
@@ -345,50 +353,87 @@
             }
         },
         methods: {
+            onRemoveImage() {
+                this.reference.cover = '';
+                this.reference.coverPath = '';
+            },
+            onChangeBook(v) {
+                if (v) {
+                    this.reference.properties.bookTitleAbbreviation = v.titleAbbreviation;
+                } else {
+                    this.reference.properties.bookTitleAbbreviation = '';
+                }
+            },
             onAppendAuthors(person) {
                 this.reference.authors.push(person.id);
             },
             onAfterCreateAPerson(author) {
                 this.targetAuthors.push(author)
             },
-            submit: debounce(async function (isPublish) {
-                this.axios({
-                    method: this.$route.name === 'reference-edit' ? 'PUT' : 'POST',
-                    url: this.$route.name === 'reference-edit' ? `/references/${this.reference.id}` : '/references',
-                    data: {
-                        ...this.reference,
-                        title: title(this.reference),
-                        subtitle: subTitle(this.reference),
-                        isPublish,
-                        authors: this.targetAuthors.map(author => author.id),
-                        language: this.targetLanguage?.id || '',
-                        properties: {
-                            ...this.reference.properties,
-                            bookTitle: this.targetBook?.title || null,
-                            bookTitleAbbreviation: this.reference.properties?.bookTitleAbbreviation || this.targetBook?.titleAbbreviation,
-                        },
-                        image: await getBase64(this.reference.cover),
+            async submit(isPublish) {
+                const app = this;
+                const method = app.$route.name === 'reference-edit' ? 'PUT' : 'POST';
+                const url = app.$route.name === 'reference-edit' ? `/references/${app.reference.id}` : '/references';
+                const data = {
+                    ...app.reference,
+                    title: title(app.reference),
+                    subtitle: subTitle(app.reference),
+                    isPublish,
+                    authors: app.targetAuthors.map(author => author.id),
+                    language: app.targetLanguage?.id || '',
+                    properties: {
+                        ...app.reference.properties,
+                        bookTitle: app.targetBook?.title || null,
+                        bookTitleAbbreviation: app.reference.properties?.bookTitleAbbreviation || app.targetBook?.titleAbbreviation || app.targetBook?.title,
                     },
-                }).then(({ data }) => {
-                    this.onAfterSubmit(data);
-                }).catch(({ errors }) => {
-                    this.errors = errors;
+                    image: app.reference.cover ? await getBase64(app.reference.cover) : null,
+                };
+
+                return new Promise(async function (resolve, reject) {
+                    app
+                        .axios({ method, url, data })
+                        .then(({ data }) => {
+                            app.onAfterSubmit(data);
+                            resolve();
+                        })
+                        .catch(({ errors }) => {
+                            app.errors = errors;
+                            reject();
+                        });
                 });
-            }),
+            },
         },
         components: {
             LanguageSelect,
             GeneralInput,
             BookSelect,
-            tSelect,
             ReferenceTypeSelect,
             PersonSelect,
         },
     }
 
 </script>
-<style lang="scss">
+<style lang="scss" scoped>
     .file-name {
         max-width: 100%;
+    }
+
+    .image-container {
+        position: relative;
+        height: 120px;
+        box-shadow: $shadow;
+
+        img {
+            object-fit: cover;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .remove {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+        }
     }
 </style>

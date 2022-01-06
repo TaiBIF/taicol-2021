@@ -16,6 +16,11 @@ class Person extends Model
         return $this->hasMany(Reference::class);
     }
 
+    public function country()
+    {
+        return $this->belongsTo(Country::class, 'country_numeric_code', 'numeric_code');
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

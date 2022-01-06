@@ -91,9 +91,18 @@ export const factory = (type) => {
  * 命名者邏輯
  */
 
-export const animalAuthorNames = (persons, expersons = [], originName, publishYear = '') => {
+export const animalAuthorNames = (persons, expersons = [], originName, publishYear = '', taxonName = null) => {
     // 若有「原始組合名」以原始組合名加上括號為「命名者」
     if (originName) {
+        // 同屬內變動
+        if (
+            taxonName?.species?.properties?.latinGenus === originName.properties?.latinGenus ||
+            (!!taxonName?.species && !!originName?.species && taxonName?.species.properties?.latinGenus === originName.species.properties.latinGenus) ||
+            (!!taxonName && !!originName?.species && taxonName?.properties?.latinGenus === originName.species.properties.latinGenus)
+        ) {
+            return animalAuthorNames(originName.authors, originName.exAuthors, null, originName.publishYear);
+        }
+
         return `(${animalAuthorNames(originName.authors, originName.exAuthors, null, originName.publishYear)})`;
     }
 

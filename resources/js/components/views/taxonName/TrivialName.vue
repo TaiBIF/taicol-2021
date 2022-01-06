@@ -12,7 +12,6 @@
             }
         },
         mounted() {
-            this.axios.get('/taxon-name');
         }
     }
 </script>

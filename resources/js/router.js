@@ -11,9 +11,7 @@ Vue.use(VueRouter);
 // Lazy load pages
 const Index = () => import(/* webpackChunkName: "index" */'./pages/IndexPage');
 const Result = () => import(/* webpackChunkName: "results" */'./pages/ResultPage');
-const ReferenceForm = () => import(/* webpackChunkName: "reference-form" */'./pages/ReferenceFormPage');
 const Reference = () => import(/* webpackChunkName: "reference" */'./pages/ReferencePage');
-const TaxonNameForm = () => import(/* webpackChunkName: "taxon-name-form" */'./pages/TaxonNameFormPage');
 const TaxonNameList = () => import(/* webpackChunkName: "taxon-name-list" */'./pages/TaxonNameListPage')
 const ReferenceList = () => import(/* webpackChunkName: "reference-list" */'./pages/ReferenceListPage');
 
@@ -48,7 +46,7 @@ const routes = [
     {
         name: 'referenceForm',
         path: '/reference',
-        component: ReferenceForm,
+        component: () => import(/* webpackChunkName: "reference-create" */'./pages/ReferenceCreatePage'),
         meta: {
             backgroundColor: 'grey',
         },
@@ -73,7 +71,7 @@ const routes = [
     {
         name: 'reference-edit',
         path: '/references/:id/edit',
-        component: ReferenceForm,
+        component: () => import(/* webpackChunkName: "reference-edit" */'./pages/ReferenceFormPage'),
     },
     {
         name: 'reference-usages',
@@ -82,6 +80,25 @@ const routes = [
         meta: {
             allowAnonymous: true,
         },
+    },
+    {
+        name: 'person',
+        path: '/persons/:id',
+        component: () => import(/* webpackChunkName: "person-page" */'./pages/PersonPage'),
+        meta: {
+            backgroundColor: 'grey',
+            allowAnonymous: true,
+        },
+
+    },
+    {
+        name: 'person-edit',
+        path: '/persons/:id/edit',
+        component: () => import(/* webpackChunkName: "person-page" */'./pages/PersonFormPage'),
+        meta: {
+            backgroundColor: 'grey',
+        },
+
     },
     {
         name: 'taxon-name-list',
@@ -96,7 +113,7 @@ const routes = [
     {
         name: 'taxon-name',
         path: '/taxon-names/:id',
-        component: () => import(/* webpackChunkName: "taxon name page" */ './pages/TaxonNamePage'),
+        component: () => import(/* webpackChunkName: "taxon-name-page" */ './pages/TaxonNamePage'),
         meta: {
             backgroundColor: 'grey',
             allowAnonymous: true,
@@ -105,15 +122,23 @@ const routes = [
     {
         name: 'taxon-name-create',
         path: '/taxon-name',
-        component: TaxonNameForm,
+        component: () => import(/* webpackChunkName: "taxon-name-page" */ './pages/TaxonNameEditPage'),
         meta: {
             backgroundColor: 'grey',
         },
     },
     {
+        name: 'taxon-name-usages-compare',
+        path: '/taxon-names/:id/compare',
+        component: () => import(/* webpackChunkName: "usage-compare-page" */'./pages/UsageComparePage'),
+        meta: {
+            allowAnonymous: true,
+        },
+    },
+    {
         name: 'taxon-name-edit',
         path: '/taxon-names/:id/edit',
-        component: TaxonNameForm,
+        component: () => import(/* webpackChunkName: "taxon-name-form" */'./pages/TaxonNameFormPage'),
         meta: {
             backgroundColor: 'grey',
         },
@@ -121,27 +146,70 @@ const routes = [
     {
         name: 'namespace-list',
         path: '/namespaces',
-        component: () => import(/* webpackChunkName: "namespace list page" */ './pages/NamespaceListPage'),
+        component: () => import(/* webpackChunkName: "namespace-list-page" */ './pages/NamespaceListPage'),
         meta: {
             backgroundColor: 'grey',
         },
     },
     {
         name: 'namespace',
-        path: '/namespaces/:id',
-        component: () => import(/* webpackChunkName: "namespace list page" */ './pages/NamespacePage'),
+        path: '/namespaces/:id/usages',
+        component: () => import(/* webpackChunkName: "namespace-page" */ './pages/UsageContainerPage'),
+        meta: {
+            backgroundColor: 'grey',
+        },
+        children: [
+            {
+                name: 'usage',
+                path: '',
+                component: () => import(/* webpackChunkName: "namespace-page" */ './pages/NamespacePage'),
+                meta: {
+                    backgroundColor: 'grey',
+                },
+            },
+            {
+                name: 'namespace-usages',
+                path: ':usageId',
+                component: () => import(/* webpackChunkName: "namespace-usage-page" */ './pages/UsagePage'),
+                meta: {
+                    backgroundColor: 'grey',
+                },
+            },
+        ]
+    },
+    {
+        name: 'favorite',
+        path: '/favorite-folders',
+        component: () => import(/* webpackChunkName: "favorite-folder-page" */ './pages/FavoriteFolderPage'),
         meta: {
             backgroundColor: 'grey',
         },
     },
     {
-        name: 'namespace-usages',
-        path: '/namespaces/:namespaceId/usages/:usageId',
-        component: () => import(/* webpackChunkName: "namespace list page" */ './pages/UsagePage'),
+        name: 'favorite',
+        path: '/favorite-folders/:id',
+        component: () => import(/* webpackChunkName: "favorite-folder-item-page" */ './pages/FavoriteFolderItemPage'),
         meta: {
             backgroundColor: 'grey',
         },
     },
+    {
+        name: 'admin-manager',
+        path: '/admin',
+        component: () => import(/* webpackChunkName: "admin" */ './pages/admin/AdminGroup'),
+        children: [
+            {
+                name: 'admin-users',
+                path: 'users',
+                component: () => import(/* webpackChunkName: "user-list-page" */ './pages/admin/UserListPage'),
+            },
+            {
+                name: 'admin-users',
+                path: 'users/:id',
+                component: () => import(/* webpackChunkName: "user-page" */ './pages/admin/UserPage'),
+            }
+        ]
+    }
 ];
 
 const router = new VueRouter({
@@ -156,7 +224,6 @@ VueRouter.prototype.push = function push(location, onResolve, onReject) {
 }
 
 router.beforeEach((to, from, next) => {
-    store.commit('breadcrumb/CLEAR_ITEMS');
     if (!to.meta?.allowAnonymous && !store.getters['auth/authenticated']) {
         next({
             path: '/login',

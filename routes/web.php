@@ -31,7 +31,13 @@ Route::get('/taxon-names/{id}', 'PageController@index');
 
 Route::get('/taxon-names/{id}/edit', 'PageController@index');
 
+Route::get('/persons/{id}', 'PageController@index');
+
+Route::get('/persons/{id}/edit', 'PageController@index');
+
 Route::get('/taxon-names', 'PageController@index');
+
+Route::get('/taxon-names/{id}/compare', 'PageController@index');
 
 Route::get('/taxon-name', 'PageController@index');
 
@@ -41,6 +47,16 @@ Route::get('/register', 'PageController@index');
 
 Route::get('/namespaces', 'PageController@index');
 
-Route::get('/namespaces/{id}', 'PageController@index');
+Route::get('/namespaces/{id}/usages', 'PageController@index');
 
 Route::get('/namespaces/{id}/usages/{usage_id}', 'PageController@index');
+
+Route::get('/favorite-folders', 'PageController@index');
+
+Route::get('/favorite-folders/{id}', 'PageController@index');
+
+Route::prefix('admin')->group(function() {
+    Route::get('/', 'PageController@index');
+    Route::get('/users', 'PageController@index');
+    Route::get('/users/{id}', 'PageController@index');
+});

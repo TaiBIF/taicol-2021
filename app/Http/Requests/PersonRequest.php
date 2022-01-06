@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class PersonRequest extends FormRequest
 {
@@ -18,8 +19,11 @@ class PersonRequest extends FormRequest
             'first_name' => 'required',
             'year_of_birth' => 'nullable|digits:4|integer|min:1100',
             'year_of_death' => 'nullable|digits:4|integer|min:1100',
-            'year_of_publication' => 'nullable|digits:4|integer|min:1900',
             'biology_departments' => 'required|array',
+            'original_full_name' => 'required',
+            'abbreviation_name' => [
+                Rule::requiredIf(in_array('plantae', $this->get('biology_departments')))
+            ]
         ];
     }
 

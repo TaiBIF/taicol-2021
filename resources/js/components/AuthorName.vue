@@ -24,6 +24,9 @@
             originalTaxonName: {
                 type: Object,
             },
+            taxonName: {
+                type: Object,
+            }
         },
         computed: {
             finalName() {
@@ -33,7 +36,8 @@
                         this.exAuthors,
                         this.originalTaxonName,
                         this.publishYear,
-                    );
+                        this.taxonName,
+                    )
                 } else if (this.type === 'plant') {
                     return plantAuthorNames(
                         this.authors,

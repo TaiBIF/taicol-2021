@@ -1,12 +1,12 @@
 <template>
     <div>
         <div class="columns row">
-            <div class="column is-2">
+            <div class="column is-3">
                 <div class="cover">
-                    <img :src="coverPath"/>
+                    <img :src="coverPath || '/images/no-image.jpg'"/>
                 </div>
             </div>
-            <div class="column is-11 is-middle-content">
+            <div class="column is-9 is-middle-content">
                 <div>
                     <p class="label">{{ title }}</p>
                     <p class="subtitle is-6">{{ subtitle }}</p>
@@ -35,7 +35,12 @@
                     <label class="label" v-text="$t('forms.reference.author')"/>
                 </div>
                 <div class="column is-9">
-                    <p v-for="author in authors">{{ author.fullName }}</p>
+                    <p v-for="author in authors">
+                        <router-link :key="`author_${author.id}`"
+                                     :to="`/persons/${author.id}`"
+                                     class="my-link"
+                                     v-text="author.fullName"/>
+                    </p>
                 </div>
             </div>
 
@@ -148,10 +153,10 @@
                 </div>
                 <div class="column">
                     <router-link :to="`/references/${id}/edit`"
-                                 class="button is-small"
+                                 class="button"
                                  v-text="$t('functions.editReference')"
                     ></router-link>
-                    <button class="button is-small"
+                    <button class="button" v-if="authenticated"
                         v-on:click="onShowImportUsage">匯入異名表</button>
                 </div>
             </div>
@@ -161,6 +166,7 @@
 <script>
     import BookView from './BookDetailView';
     import referenceTypes from '../../utils/options/referenceTypes';
+    import { mapGetters } from "vuex";
 
     export default {
         props: {
@@ -217,6 +223,9 @@
             }
         },
         computed: {
+            ...mapGetters({
+                authenticated: 'auth/authenticated',
+            }),
             typeDisplay() {
                 const typeObject = referenceTypes.find(type => type.value === this.type);
                 return typeObject ? this.$t(`forms.reference.typeOptions.${typeObject.value}`) : '';

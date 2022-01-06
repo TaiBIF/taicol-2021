@@ -6,14 +6,13 @@ import VueAxios from './vue-axios';
 import initial from './initial';
 import axios from './utils/maxios';
 
-import { Tooltip, Upload, Toast } from 'buefy';
+import { Tooltip, Upload, Toast, Pagination } from 'buefy';
 
 import store from './store';
 import router from './router';
 
 import Header from './components/Header';
 import breadcrumb from './components/Breadcrumb';
-import searchbar from './components/Searchbar';
 
 import zhTw from './languages/zh-tw';
 import c from './constants';
@@ -25,6 +24,7 @@ Vue.i18n.set('zh-tw');
 Vue.use(Tooltip);
 Vue.use(Upload);
 Vue.use(Toast);
+Vue.use(Pagination);
 
 Vue.use(VueAxios, axios);
 Vue.prototype.$c = c;
@@ -50,7 +50,6 @@ initial()
             components: {
                 tHeader: Header,
                 breadcrumb,
-                searchbar,
                 layers,
                 modal,
             },

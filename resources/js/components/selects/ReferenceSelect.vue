@@ -73,17 +73,15 @@
                 this.$emit('input', value);
             },
             onAddReferenceFormLayer() {
-                this.$store.state.layers.push(
-                    {
-                        template: () => import('./../layers/ReferenceLayer'),
-                        events: {
-                            onAfterSubmit: (reference) => {
-                                this.localValue = reference;
-                                this.onUpdateValue(this.localValue);
-                            },
+                this.$store.commit('layer/ADD', {
+                    template: () => import('./../layers/ReferenceLayer'),
+                    events: {
+                        onAfterSubmit: (reference) => {
+                            this.localValue = reference;
+                            this.onUpdateValue(this.localValue);
                         },
                     },
-                )
+                });
             },
         },
     }

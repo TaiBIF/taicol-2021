@@ -1,5 +1,24 @@
 <template>
     <div class="form">
+        <div class="hidden">
+            <taxon-name-label class="" ref="preGenerateName" :taxon-name="{
+                properties: {
+                    latinName,
+                    latinGenus,
+                    latinS1,
+                    isHybridFormula,
+                },
+                rank: targetRank,
+                hybridParents,
+                nomenclature: targetNomenclature,
+                authors: targetAuthors,
+                exAuthors: targetExAuthors,
+                species,
+                speciesLayers,
+                originalTaxonName: targetOriginalTaxonName,
+            }" />
+        </div>
+
         <div class="columns">
             <!-- 命名規約 -->
             <div class="column is-4">
@@ -10,7 +29,7 @@
                                    position="is-bottom">
                             <i class="fas fa-info-circle"></i>
                             <template v-slot:content>
-                                <template v-for="nomenclature in nomenclatureOptions">
+                                <template v-for="nomenclature in $store.state.nomenclature.items">
                                     {{ nomenclature.display['zh-tw'] }} = {{ nomenclature.name }}<br/>
                                 </template>
                             </template>
@@ -18,8 +37,8 @@
                     </label>
                     <nomenclature-select ref="nomenclatureSelect"
                                          v-model="targetNomenclature"
+                                         :disabled="isEdit"
                                          :errors="errors.nomenclatureId"
-                                         v-on:after-load-options="onAfterLoadNomenclatureOptions"
                     />
                 </div>
             </div>
@@ -43,6 +62,7 @@
                                  v-model="targetRank"
                                  :errors="errors.rankId"
                                  :options="rankOptions"
+                                 :disabled="isEdit"
                     />
                 </div>
             </div>
@@ -50,10 +70,12 @@
             <!-- 雜交親代 -->
             <div v-if="isNeedHybridFormula" class="column is-6">
                 <div class="field ">
-                    <label class="label is-marked" v-text="$t('forms.taxonName.hybridFormula')"/>
+                    <label class="label"
+                           :class="{'is-marked': targetRank && targetRank.key === 'hybrid-formula'}"
+                           v-text="$t('forms.taxonName.hybridFormula')"/>
                     <div class="field has-addons">
                         <p class="control is-expanded">
-                            <taxon-name-select v-model="hybridParents[0]" :errors="errors['hybridParents0']"/>
+                            <taxon-name-select v-model="hybridParents[0]" :errors="errors['hybridParents0']" :disabled="isEdit"/>
                         </p>
                         <div class="control">
                             &nbsp;
@@ -61,7 +83,7 @@
                             &nbsp;
                         </div>
                         <p class="control is-expanded">
-                            <taxon-name-select v-model="hybridParents[1]" :errors="errors['hybridParents1']"/>
+                            <taxon-name-select v-model="hybridParents[1]" :errors="errors['hybridParents1']" :disabled="isEdit"/>
                         </p>
                     </div>
                 </div>
@@ -75,7 +97,7 @@
                     <label class="label is-marked">
                         {{ targetRank.display ? targetRank.display['zh-tw'] : '' }}{{ $t('forms.taxonName.name') }}
                     </label>
-                    <general-input v-model="latinGenus" :errors="errors['latinGenus']"/>
+                    <general-input v-model="latinName" :errors="errors['latinName']" :disabled="isEdit"/>
                 </div>
             </div>
 
@@ -86,17 +108,17 @@
                         <div class="column is-6">
                             <div class="field">
                                 <label class="label is-marked" v-text="$t('forms.taxonName.latinGenus')"/>
-                                <general-input v-model="latinGenus" :errors="errors['latinGenus']"/>
+                                <general-input v-model="latinGenus" :errors="errors['latinGenus']" :disabled="isEdit"/>
                             </div>
                         </div>
 
-                        <div v-if="targetRank && rankSpecies && targetRank.order === rankSpecies.order"
+                        <div v-if="targetRank && speciesRank && targetRank.order === speciesRank.order"
                              class="column is-6">
                             <div class="field">
                                 <label class="label is-marked">
                                     {{ $t('forms.taxonName.latinS1') }}
                                 </label>
-                                <general-input v-model="latinS1" :errors="errors['latinS1']"/>
+                                <general-input v-model="latinS1" :errors="errors['latinS1']" :disabled="isEdit"/>
                             </div>
                         </div>
                     </div>
@@ -110,7 +132,8 @@
                         <div class="column">
                             <label class="label is-marked" v-text="$t('forms.taxonName.species')"/>
                             <taxon-name-select v-model="species"
-                                               :errors="errors['speciesId']"/>
+                                               :errors="errors['speciesId']"
+                                               :disabled="isEdit" />
                         </div>
                     </div>
                     <div v-for="(speciesLayer, index) in speciesLayers" class="columns">
@@ -119,8 +142,9 @@
                                 <label class="label is-marked"
                                        v-text="$t('forms.taxonName.sRank', {s: $t('forms.taxonName.s').repeat(index + 1)})"/>
                                 <rank-select v-model="speciesLayer.rank"
-                                             :errors="errors[`speciesLayers${index}RankId`]"
-                                             :options="rankOptions.filter(rank => rank.order > rankSpecies.order && rank.order <= targetRank.order)"/>
+                                             :errors="errors[`speciesLayers${index}RankAbbreviation`]"
+                                             :options="rankOptions.filter(rank => rank.order > speciesRank.order && rank.order <= targetRank.order)"
+                                             :disabled="isEdit"/>
                             </div>
                         </div>
 
@@ -129,13 +153,14 @@
                                 <label class="label is-marked"
                                        v-text="$t('forms.taxonName.sLatin',{s: $t('forms.taxonName.s').repeat(index + 1)}) "/>
                                 <general-input v-model="speciesLayer.latinName"
-                                               :errors="errors[`speciesLayers${index}LatinName`]"/>
+                                               :errors="errors[`speciesLayers${index}LatinName`]"
+                                               :disabled="isEdit"/>
                             </div>
                         </div>
                     </div>
                     <div class="columns">
                         <div class="column">
-                            <div class="button is-small"
+                            <div class="button is-small" v-if="!isEdit"
                                  v-on:click="onAddSpeciesLayer">
                                 <i class="fa fa-plus"></i>&nbsp;
                                 {{
@@ -144,7 +169,7 @@
                             </div>
                         </div>
                         <div class="column">
-                            <div v-if="speciesLayers.length"
+                            <div v-if="speciesLayers.length && !isEdit"
                                  class="button is-small is-pulled-right"
                                  v-on:click="onDeleteSpeciesLayer">
                                 <i class="fa fa-trash"></i>&nbsp;
@@ -160,7 +185,7 @@
             <!--  學名發表日期 -->
             <div class="column is-2">
                 <div class="field">
-                    <label class="label is-marked" v-text="$t('forms.reference.publishYear')"/>
+                    <label class="label" v-text="$t('forms.reference.publishYear')"/>
                     <general-input v-model="publishYear" :errors="errors.publishYear"/>
                 </div>
             </div>
@@ -183,7 +208,7 @@
         <div class="columns">
             <div class="column is-6">
                 <div class="field">
-                    <label class="label" :class="{'is-marked': targetNomenclature ? targetNomenclature.name === 'ICN' : false}">
+                    <label class="label">
                         {{
                             $t(`forms.taxonName.author.${targetNomenclature ? targetNomenclature.settings.keyOfAuthors :
                                 'authors'}`)
@@ -198,7 +223,8 @@
             </div>
         </div>
 
-        <div class="columns">
+        <!-- 前述者/提出此名者 -->
+        <div class="columns" v-if="isNeedExAuthors">
             <div class="column is-6">
                 <div class="field">
                     <label class="label">
@@ -213,23 +239,19 @@
 
                     <person-select
                         v-model="targetExAuthors"
-                        :disabled="isNeedExAuthors"
                         :errors="errors.exAuthors"
                         :group="targetNomenclature ? targetNomenclature.group : ''"
                     />
-                </div>
-            </div>
-            <div class="column is-3">
-                <div class="field">
-                    <label class="label" v-text="$t('forms.taxonName.exAuthorYear')"/>
-                    <general-input v-model="exAuthorYear"/>
                 </div>
             </div>
         </div>
 
         <!-- 文獻 -->
         <div>
-            <p class="subtitle is-4">文獻</p>
+            <p class="subtitle is-4">
+                發表文獻
+                <span class="ml-2 text-base">(擇一填入)</span>
+            </p>
             <hr/>
         </div>
         <reference-container
@@ -242,32 +264,49 @@
 
         <!-- 模式標本 -->
         <br/>
-        <template v-if="typeSpecimens.length">
-            <h3 class="subtitle is-4">模式標本</h3>
-            <hr/>
-            <div class="columns is-multiline">
-                <div v-for="(typeSpecimen, index) in typeSpecimens" class="column is-6">
-                    <div class="box" style="padding-top: 2.5rem">
-                        <a class="close-button"
-                           v-on:click="(index) => typeSpecimens.splice(index, 1)">
-                        </a>
-                        <type-specimen :ref="`typespecimen_${index}`"
-                                       v-model="typeSpecimens[index]"
-                                       :errors="errors"
-                                       :index="index"
-                        />
+        <template v-if="targetRank && targetRank.order > genusRank.order">
+            <template v-if="typeSpecimens.length">
+                <h3 class="subtitle is-4">模式標本</h3>
+                <hr/>
+                <div class="columns is-multiline">
+                    <div v-for="(typeSpecimen, index) in typeSpecimens" class="column is-6">
+                        <div class="box">
+                            <a class="close-button is-pulled-right"
+                               v-on:click="(index) => typeSpecimens.splice(index, 1)">
+                            </a>
+                            <br/><br/>
+                            <type-specimen :ref="`typespecimen_${index}`"
+                                           v-model="typeSpecimens[index]"
+                                           :errors="errors"
+                                           :index="index"
+                                           :is-show-is-pointed="false"
+                            />
+                        </div>
                     </div>
+                </div>
+            </template>
+            <div class="columns">
+                <div class="column is-12">
+                    <button class="button is-text" v-on:click="onAddTypeSpecimens">
+                        <i class="fa fa-plus-circle"></i>
+                        &nbsp;&nbsp;{{ $t('forms.taxonName.specimenType') }}
+                    </button>
                 </div>
             </div>
         </template>
-        <div class="columns">
-            <div class="column is-12">
-                <button class="button is-text" v-on:click="onAddTypeSpecimens">
-                    <i class="fa fa-plus-circle"></i>
-                    &nbsp;&nbsp;{{ $t('forms.taxonName.specimenType') }}
-                </button>
+
+        <!-- 模式學名 --->
+        <template v-else>
+            <h3 class="subtitle is-4">&nbsp;&nbsp;{{ $t('forms.taxonName.typeName') }}</h3>
+            <hr/>
+            <div class="columns is-multiline">
+                <div class="column is-6">
+                    <taxon-name-select v-model="typeName"></taxon-name-select>
+                </div>
             </div>
-        </div>
+        </template>
+
+        <!-- 備註 -->
         <div class="columns">
             <div class="column is-12">
                 <div class="field">
@@ -295,6 +334,8 @@
     import sexs from '../selects/sexs';
     import { factory } from '../../utils/preview/person';
     import ReferenceContainer from '../ReferenceContainer';
+    import { mapGetters } from 'vuex';
+    import TaxonNameLabel from "../views/TaxonNameLabel";
 
     export default {
         props: {
@@ -305,52 +346,56 @@
             },
         },
         data() {
+            const presetData = this.presetData;
             const typeSpecimens = this.presetData?.typeSpecimens.map((t) => {
                 return {
                     ...t,
                     sex: sexs.find(s => s.id === t.sexId),
                 }
-            })
+            });
+
             return {
-                id: this.presetData?.id || null,
-                targetNomenclature: this.presetData?.nomenclature || null,
-                targetRank: this.presetData?.rank || null,
-                targetReference: this.presetData?.usage?.reference || null,
-                targetAuthors: this.presetData?.authors || [],
-                targetExAuthors: this.presetData?.exAuthors || [],
+                id: presetData?.id || null,
+                targetNomenclature: presetData?.nomenclature || null,
+                targetRank: presetData?.rank || null,
+                targetReference: presetData?.usage?.reference || null,
+                targetAuthors: presetData?.authors || [],
+                targetExAuthors: presetData?.exAuthors || [],
                 errors: {},
-                species: this.presetData?.species || null,
-                publishYear: this.presetData?.publishYear || '',
-                nomenclatureOptions: [],
-                rankOptions: this.presetData?.nomenclature.ranks || [],
-                targetOriginalTaxonName: this.presetData?.originalTaxonName,
+                species: presetData?.species || null,
+                publishYear: presetData?.publishYear || '',
+                rankOptions: this.$store.state.nomenclature.items.find(n => n.id === presetData?.nomenclature.id)?.ranks ?? [],
+                targetOriginalTaxonName: presetData?.originalTaxonName,
 
-                latinGenus: this.presetData?.properties?.latinGenus || '',
-                latinS1: this.presetData?.properties?.latinS1 || '',
+                latinName: presetData?.properties?.latinName || '',
+                latinGenus: presetData?.properties?.latinGenus || '',
+                latinS1: presetData?.properties?.latinS1 || '',
 
-                isHybridFormula: (this.presetData?.hybridParents || []).length > 0,
-                hybridParents: this.presetData?.hybridParents || [],
+                isHybridFormula: presetData?.properties?.isHybridFormula,
+                hybridParents: presetData?.hybridParents || [],
                 typeSpecimens: typeSpecimens || [],
-                speciesLayers: this.presetData?.speciesLayers || [],
-                exAuthorYear: this.presetData?.exAuthorYear,
-                note: this.presetData?.note || '',
+                typeName: presetData?.typeName,
+                speciesLayers: presetData?.speciesLayers || [],
+                exAuthorYear: presetData?.exAuthorYear,
+                note: presetData?.note || '',
 
                 // 發表文獻
                 usage: {
-                    target: this.presetData?.reference,
-                    nameInReference: this.presetData?.properties?.usage?.nameInReference,
-                    showPage: this.presetData?.properties?.usage?.showPage,
-                    figure: this.presetData?.properties?.usage?.figure,
+                    target: presetData?.reference,
+                    nameInReference: presetData?.properties?.usage?.nameInReference,
+                    showPage: presetData?.properties?.usage?.showPage,
+                    figure: presetData?.properties?.usage?.figure,
                 },
-                referenceName: this.presetData?.properties?.referenceName || '',
+                referenceName: presetData?.properties?.referenceName || '',
             }
         },
         computed: {
-            rankSpecies() {
-                return this.targetNomenclature?.ranks?.find(r => r.key === 'species') || null;
-            },
-            rankGenus() {
-                return this.targetNomenclature?.ranks?.find(r => r.key === 'genus') || null;
+            ...mapGetters({
+                genusRank: 'rank/getGenusRank',
+                speciesRank: 'rank/getSpeciesRank',
+            }),
+            isEdit() {
+                return !!this.id;
             },
             isNeedHybridFormulaCheck() {
                 // 階層: (種以上)「屬」,(種)「種」有勾選 Hybrid
@@ -358,7 +403,7 @@
                     return false;
                 }
 
-                return this.targetRank.key === this.rankSpecies?.key || this.targetRank.key === this.rankGenus?.key;
+                return this.targetRank.key === this.speciesRank.key || this.targetRank.key === this.genusRank.key;
             },
             isNeedHybridFormula() {
                 // 階層: (種以上)「屬」有勾選 Hybrid, (種)「種」有勾選 Hybrid, (雜交組合)
@@ -369,58 +414,19 @@
                     return false;
                 }
 
-                return this.targetRank.order >= this.rankSpecies.order;
+                return this.targetRank.order >= this.speciesRank.order;
             },
             isNeedExAuthors() {
-                const lastSpeciesLayer = this.speciesLayers[this.speciesLayers.length - 1];
-
-                return (
-                    (this.targetRank?.key === 'species' && this.targetOriginalTaxonName?.latinS1 === this.latinS1) ||
-                    (this.targetRank?.order > this.rankSpecies?.order && this.targetOriginalTaxonName?.latinS1 === lastSpeciesLayer?.latinS1)
-                );
+                return this.targetNomenclature?.group === 'plant';
             },
             isOverSpecies() {
-                return this.targetRank?.order < this.rankSpecies?.order;
+                return this.targetRank?.order < this.speciesRank.order;
             },
             isSpecies() {
                 return this.targetRank?.key === 'species';
             },
             isUnderSpecies() {
-                return this.targetRank?.order > this.rankSpecies?.order;
-            },
-            name() {
-                const app = this;
-
-                if (this.isHybridFormula || this.targetRank?.key === 'hybrid-formula') {
-                    return `${this.hybridParents[0]?.formattedName || ''} x ${this.hybridParents[1]?.formattedName || ''}`
-                }
-
-                return [
-                    this.latinGenus,
-                    this.latinS1,
-                    [this.species?.latinGenus, this.species?.latinS1].filter(Boolean).join(' '),
-                    this.speciesLayers?.map(function (layer, index) {
-                        if (index === 0 && app.targetNomenclature.group === 'animal') return layer.latinName;
-                        else return `${layer.rank.abbreviation} ${layer.latinName}`;
-                    }).join(' '),
-                ].filter(Boolean).join(' ');
-            },
-            formattedName() {
-                const app = this;
-
-                if (this.isHybridFormula || this.targetRank?.key === 'hybrid-formula') {
-                    return `${this.hybridParents[0]?.formattedName || ''} x ${this.hybridParents[1]?.formattedName || ''}`
-                }
-
-                return [
-                    this.latinGenus,
-                    this.latinS1,
-                    this.species?.latinGenus,
-                    this.speciesLayers?.map((layer, index) => {
-                        if (index === 0 && app.targetNomenclature.group === 'animal') return layer.latinName;
-                        else return `_${layer.rank.abbreviation}_ ${layer.latinName}`;
-                    }).join(' '),
-                ].filter(Boolean).join(' ');
+                return this.targetRank?.order > this.speciesRank.order;
             },
             formattedAuthors() {
                 if (!this.targetNomenclature) {
@@ -460,10 +466,10 @@
             formData() {
                 return {
                     id: this.presetData?.id || null,
-                    name: this.name,
-                    formattedName: this.formattedName,
+                    name: this.$refs['preGenerateName'].$el.innerText,
                     formattedAuthors: this.formattedAuthors,
                     formattedExAuthors: this.formattedExAuthors,
+                    latinName: this.latinName,
                     latinGenus: this.latinGenus,
                     latinS1: this.latinS1,
                     nomenclatureId: this.targetNomenclature?.id || null,
@@ -476,13 +482,14 @@
                     })),
                     speciesId: this.species?.id,
                     isHybridFormula: this.isHybridFormula,
+                    typeName: this.typeName ? this.typeName.id : null,
                     typeSpecimens: this.typeSpecimens.map(t => {
                         if (t.sex) {
                             t.sexId = t.sex.id;
                         }
 
                         if (t.collectors.length) {
-                            t.collectors.map(c => c.id);
+                            t.collectorsId = t.collectors.map(c => c.id);
                         }
 
                         if (t.country) {
@@ -491,10 +498,13 @@
 
                         return { ...t };
                     }),
-                    hybridParents: this.hybridParents,
+                    hybridParents: [
+                        this.hybridParents[0] ?? null,
+                        this.hybridParents[1] ?? null,
+                    ],
                     publishYear: this.publishYear,
                     originalTaxonNameId: this.targetOriginalTaxonName?.id || null,
-                    exAuthorYear: this.exAuthorYear,
+                    exAuthorYear: this.exAuthorYear || '',
                     note: this.note,
 
                     // 發布文獻
@@ -528,15 +538,6 @@
             },
         },
         methods: {
-            onAfterLoadNomenclatureOptions(options) {
-                this.nomenclatureOptions = options;
-            },
-            onAddNewAuthor(author) {
-                this.targetAuthors.push(author);
-            },
-            onAddNewExAuthor(exAuthors) {
-                this.targetExAuthors.push(exAuthors);
-            },
             onAddTypeSpecimens() {
                 const index = this.typeSpecimens.length;
                 this.typeSpecimens.push({});
@@ -560,9 +561,10 @@
                 return this.speciesLayers.splice(-1);
             },
             submit: debounce(function (isPublish) {
+                const isEdit = !!this.presetData?.id;
                 this.axios({
-                    method: this.$route.name === 'taxon-name-edit' ? 'PUT' : 'POST',
-                    url: this.$route.name === 'taxon-name-edit' ? `/taxon-names/${this.presetData.id}` : '/taxon-names',
+                    method: isEdit ? 'PUT' : 'POST',
+                    url: isEdit ? `/taxon-names/${this.presetData.id}` : '/taxon-names',
                     data: { ...this.formData, isPublish },
                 }).then(({ data }) => {
                     this.onAfterSubmit(data);
@@ -573,6 +575,7 @@
             }),
         },
         components: {
+            TaxonNameLabel,
             ReferenceContainer,
             SimpleReferenceView,
             ReferenceSelect,

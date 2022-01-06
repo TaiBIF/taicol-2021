@@ -7,13 +7,12 @@
                 </div>
                 <div class="column is-5">
                     <div>
-                        <p class="title is-5 is-inline-block">本文獻分類群及其異名表</p>
-                        <div class="title buttons is-pulled-right is-inline-block">
-                            <router-link class="button is-small is-text"
-                                         :to="`/references/${this.$route.params.id}/usages`">檢視異名表</router-link>
-                        </div>
+                        <p class="text-xl font-bold pt-2 is-5 is-inline-block">本文獻分類群及其異名表</p>
+                        <router-link :to="`/references/${this.$route.params.id}/usages`"
+                                     class="button is-text float-right">檢視異名表
+                        </router-link>
                     </div>
-                    <div class="box has-background-light usage-container">
+                    <div class="box has-background-light usage-container mt-5">
                         <template v-for="(usages, index) in usageGroups">
                             <template v-for="(usage, index) in usages">
                                 <div :class="{
@@ -24,28 +23,25 @@
                                 >
                                     <router-link :to="`/taxon-names/${usage.taxonName.id}`">
                                         <div class="usage-content">
-                                            <span class="utitle">
-                                                <!-- 屬以上的學名不斜體 -->
-                                                <template v-if="usage.taxonName.rank.order >= 30">
-                                                    <i>{{ usage.taxonName.name }}</i>
-                                                </template>
-                                                <template v-else>
-                                                    {{ usage.taxonName.name }}
-                                                </template>
+                                            <span v-if="(usage.status === '' || usage.status === 'accepted') && usage.taxonName.rank.order < speciesRank.order && !usage.isIndent" class="font-bold">
+                                                {{ usage.taxonName.rank.display['en-us'] }}
                                             </span>
-                                            <author-name v-bind="{
-                                                authors: usage.taxonName.authors,
-                                                exAuthors: usage.taxonName.exAuthors,
-                                                type: usage.taxonName.nomenclature.group,
-                                                originalTaxonName: usage.taxonName.originalTaxonName,
-                                                publishYear: usage.taxonName.publishYear,
-                                            }">
-                                            </author-name>
+                                            <usage-preview
+                                                ref="nameRemark"
+                                                :indications="getIndications(usage.properties.indications)"
+                                                :is-simple="true"
+                                                :per-usages="usage.perUsages"
+                                                :status="usage.status"
+                                                :taxon-name="usage.taxonName"
+                                                :type-specimens="usage.typeSpecimens"
+                                                :type-name="usage.typeName"
+                                                class="inline-block"
+                                            />
                                         </div>
                                     </router-link>
                                 </div>
                             </template>
-                            <hr/>
+                            <hr class="my-4" v-if="parseInt(index) !== usageGroupsCount"/>
                         </template>
                     </div>
                 </div>
@@ -58,6 +54,9 @@
     import ReferenceView from '../components/views/ReferenceView';
     import { subTitle, title } from '../utils/preview/reference';
     import AuthorName from '../components/AuthorName';
+    import UsagePreview from '../components/UsagePreview';
+    import indications from '../components/selects/indications';
+    import { mapGetters } from "vuex";
 
     export default {
         data() {
@@ -96,11 +95,22 @@
                 });
         },
         methods: {
-            goTaxonName(id) {
-                this.$router.push(`/taxon-names/${id}`);
+            getIndications(indicationArray) {
+                return indicationArray?.map((abbreviation) => {
+                    return indications.find(i => i.abbreviation === abbreviation);
+                }).filter(Boolean);
+            },
+        },
+        computed: {
+            ...mapGetters({
+                speciesRank: 'rank/getSpeciesRank',
+            }),
+            usageGroupsCount() {
+                return Object.values(this.usageGroups);
             }
         },
         components: {
+            UsagePreview,
             AuthorName,
             ReferenceView,
             Breadcrumb,
@@ -108,6 +118,10 @@
     }
 </script>
 <style lang="scss" scoped>
+    a {
+        color: $black;
+    }
+
     .container {
         padding-top: 1rem;
 

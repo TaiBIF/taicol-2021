@@ -20,7 +20,7 @@ class JournalReferenceEntity implements ReferenceOtherProperties
         $this->articleTitle = $data['article_title'] ?? '';
         $this->volume = $data['volume'];
         $this->issue = $data['issue'] ?? '';
-        $this->pagesRange = $data['pages_range'] ?? '';
+        $this->pagesRange = str_replace('-', '–', $data['pages_range'] ?? '');
         $this->articleNumber = $data['article_number'] ?? '';
         $this->doi = $data['doi'] ?? '';
         $this->url = $data['url'] ?? '';

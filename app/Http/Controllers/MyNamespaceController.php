@@ -32,10 +32,12 @@ class MyNamespaceController extends Controller
     public function show(Request $request, $id)
     {
         $namespace = MyNamespace::with([
+            'usages.parent',
             'usages.taxonName.nomenclature',
             'usages.taxonName.rank',
             'usages.taxonName.authors',
             'usages.taxonName.exAuthors',
+            'usages.taxonName.reference.authors',
             'usages.taxonName.originalTaxonName.authors',
             'usages.taxonName.originalTaxonName.exAuthors',
         ])->find($id);
@@ -96,37 +98,51 @@ class MyNamespaceController extends Controller
     public function import(Request $request, $referenceId)
     {
         $namespaceIds = $request->get('ids');
+        $overwrite = $request->get('overwrite', false);
 
-        $importUsages = MyNamespaceUsage::whereIn('namespace_id', $namespaceIds)->get();
+        $importUsages = MyNamespaceUsage::whereIn('namespace_id', $namespaceIds)
+            ->orderBy('namespace_id')
+            ->get();
 
         $reference = Reference::with('usages')->find($referenceId);
 
         try {
             DB::beginTransaction();
+            if ($overwrite) {
+                $reference->usages()->delete();
+            }
 
             $latestUsage = ReferenceUsage::where('reference_id', $referenceId)
                 ->orderBy('order')
-                ->orderBy('group', 'desc')->first();
+                ->orderBy('group', 'desc')
+                ->first();
 
-            $groupLast = $latestUsage ? $latestUsage->group : 0;
-            foreach ($importUsages as $usage) {
-                $referenceUsage = new ReferenceUsage();
-                $referenceUsage->parent_taxon_name_id = $usage->parent_taxon_name_id;
-                $referenceUsage->is_for_publish = false;
-                $referenceUsage->status = $usage->status;
-                $referenceUsage->type_specimens = $usage->type_specimens;
-                $referenceUsage->name_remark = $usage->name_remark;
-                $referenceUsage->custom_name_remark = $usage->custom_name_remark;
-                $referenceUsage->properties = $usage->properties;
-                $referenceUsage->per_usages = $usage->per_usages;
-                $referenceUsage->taxon_name_id = (int) $usage->taxon_name_id;
-                $referenceUsage->group = $usage->group + $groupLast;
-                $referenceUsage->order = $usage->order;
+            $groupLast = $latestUsage ? $latestUsage->group + 1 : 0;
+            $groupUsages = $importUsages->groupBy('namespace_id');
+            foreach ($groupUsages as $groupUsage) {
 
-                $referenceUsage->is_title = $usage->is_title;
-                $referenceUsage->is_indent = (bool) $usage->is_indent;
-                $reference->usages()->save($referenceUsage);
+                foreach ($groupUsage as $usage) {
+                    $referenceUsage = new ReferenceUsage();
+                    $referenceUsage->parent_taxon_name_id = $usage->parent_taxon_name_id;
+                    $referenceUsage->is_for_publish = false;
+                    $referenceUsage->status = $usage->status;
+                    $referenceUsage->type_specimens = $usage->type_specimens;
+                    $referenceUsage->name_remark = $usage->name_remark;
+                    $referenceUsage->custom_name_remark = $usage->custom_name_remark;
+                    $referenceUsage->properties = $usage->properties;
+                    $referenceUsage->per_usages = $usage->per_usages;
+                    $referenceUsage->taxon_name_id = (int) $usage->taxon_name_id;
+                    $referenceUsage->group = $usage->group + $groupLast;
+                    $referenceUsage->order = $usage->order;
+
+                    $referenceUsage->is_title = $usage->is_title;
+                    $referenceUsage->is_indent = (bool) $usage->is_indent;
+                    $reference->usages()->save($referenceUsage);
+                }
+
+                $groupLast = $usage->group + $groupLast;
             }
+
             DB::commit();
 
             return response()->json([

@@ -5,6 +5,7 @@
               label="display"
               v-model="localValue"
               v-on:input="onUpdateValue"
+              :disabled="disabled"
     >
         <template v-slot:selected-option="{ option }">
             {{ option.display['zh-tw'] }}
@@ -36,6 +37,10 @@
             errors: {
                 type: Array,
             },
+            disabled: {
+                type: Boolean,
+                default: false,
+            }
         },
         watch: {
             value(value) {

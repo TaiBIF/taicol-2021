@@ -4,7 +4,7 @@
 import { subTitle, title } from '../utils/preview/reference';
 import camelCaseKeys from 'camelcase-keys';
 
-const argv = require('minimist')(process.argv.slice(2));
+const argv = require('minimist')(global.process.argv.slice(2));
 
 try {
     console.log(

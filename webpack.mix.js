@@ -1,6 +1,7 @@
 const mix = require('laravel-mix');
 const path = require('path');
 
+const tailwindcss = require('tailwindcss');
 /*
  |--------------------------------------------------------------------------
  | Mix Asset Management
@@ -16,6 +17,9 @@ mix.js('resources/js/app.js', 'public/js')
     .vue({ version: 2 })
     .sass('resources/sass/app.scss', 'public/css')
     .js('resources/js/services/computeReference.js', 'public/js')
+    .options({
+        postCss: [tailwindcss('./tailwind.config.js')],
+    })
     .webpackConfig({
         resolve: {
             alias: {
@@ -26,13 +30,16 @@ mix.js('resources/js/app.js', 'public/js')
             rules: [
                 {
                     test: /\.scss$/,
-                    loader: "sass-loader",
+                    loader: 'sass-loader',
                     options: {
                         data: `
                                 @import "~@/_variables.scss";
-                          `
-                    }
-                }
-            ]
-        }
+                          `,
+                    },
+                },
+            ],
+        },
+        output: {
+            chunkFilename: mix.inProduction() ? 'js/chunks/[name].[chunkhash].js' : 'js/chunks/[name].js',
+        },
     }).version();

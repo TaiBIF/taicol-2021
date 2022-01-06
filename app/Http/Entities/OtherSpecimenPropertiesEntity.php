@@ -11,7 +11,7 @@ class OtherSpecimenPropertiesEntity
     public function setProperties(array $data)
     {
         $this->citationNoteNumber = $data['citation_note_number'];
-        $this->country = $data['lecto_designated_reference'];
+        $this->lectoDesignatedReferenceId = $data['lecto_designated_reference']['id'] ?? null;
         $this->lectoCitePage = $data['lecto_cite_page'];
 
         return $this;
@@ -26,7 +26,7 @@ class OtherSpecimenPropertiesEntity
     {
         return [
             'citation_note_number' => $this->citationNoteNumber ?? '',
-            'lecto_designated_reference' => $this->lectoDesignatedReference,
+            'lecto_designated_reference_id' => $this->lectoDesignatedReferenceId,
             'lecto_cite_page' => $this->lectoCitePage ?? '',
         ];
     }

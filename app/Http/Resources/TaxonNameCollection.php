@@ -22,16 +22,22 @@ class TaxonNameCollection extends JsonResource
     {
         $speciesLayer = isset($this->properties['species_layers']) ? $this->properties['species_layers'] : [];
 
-        $parent = $this->originalTaxonName;
-        if ($parent) {
-            $parent->authors = $this->originalTaxonName->authors;
-            $parent->ex_authors = $this->originalTaxonName->exAuthors;
-        }
+        $species = $this->properties['species_id'] ? TaxonName::find($this->properties['species_id']) : null;
+
+        $typeName = ($this->properties['type_name'] ?? '') ? TaxonNameCollection::collection([
+            TaxonName::with([
+                'authors',
+                'exAuthors',
+                'reference',
+                'nomenclature',
+                'originalTaxonName.authors',
+                'originalTaxonName.exauthors'
+            ])->find((int) $this->properties['type_name'])
+        ])[0] : null;
 
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'formatted_name' => $this->formatted_name,
             'formatted_authors' => $this->formatted_authors,
             'nomenclature' => $this->nomenclature,
             'reference' => ReferenceCollection::collection([$this->reference])->first(),
@@ -40,30 +46,38 @@ class TaxonNameCollection extends JsonResource
                 'figure' => $this->properties['usage']['figure'] ?? '',
                 'name_in_reference' => $this->properties['usage']['name_in_reference'] ?? '',
             ] : [],
-            'original_taxon_name' => $parent,
+            'original_taxon_name' => $this->originalTaxonName ? TaxonNameCollection::collection([$this->originalTaxonName])[0] : null,
             'rank' => $this->rank,
             'authors' => PersonCollection::collection($this->authors),
             'ex_authors' => PersonCollection::collection($this->exauthors),
-            'type_specimens' => collect($this->type_specimens)->map(function ($typeSpecimen) {
+            'type_specimens' => collect($this->type_specimens)->map(function ($typeSpecimen) use ($request) {
                 $typeSpecimen['country'] = $typeSpecimen['country_id'] ?? null ? Country::find($typeSpecimen['country_id']) : null;
-                $typeSpecimen['collectors'] = $typeSpecimen['collectors'] ?? [];
+                $collectors = collect($typeSpecimen['collectors'])->pluck('id');
+                $collectorPersons = Person::whereIn('id', $collectors)->get();
+                $typeSpecimen['collectors'] = $collectors->count() ? PersonCollection::collection($collectorPersons)->toArray($request) : [];
+
+                $lectoDesignatedReference = null;
+                if ($typeSpecimen['lecto_designated_reference_id']) {
+                    $reference = Reference::find($typeSpecimen['lecto_designated_reference_id']);
+                    $lectoDesignatedReference = $reference ?? ReferenceCollection::collection([$reference])->first();
+                }
+
+                $typeSpecimen['lecto_designated_reference'] = $lectoDesignatedReference;
                 return $typeSpecimen;
             }),
-            'species' => TaxonName::find($this->properties['species_id'] ?? ''),
+            'species' => $species ? TaxonNameCollection::collection([$species])[0] : null,
             'species_layers' => collect($speciesLayer)->map(function ($s) {
                 return [
                     'rank' => Rank::where('abbreviation', ($s['rank_abbreviation']))->first(),
                     'latin_name' => $s['latin_name']
                 ];
             }),
+            'root' => $this->root,
             'properties' => $this->properties,
+            'type_name' => $typeName,
             'publish_year' => $this->publish_year,
-            'hybridParents' => $this->hybridParents->map(function ($p) {
-                return [
-                    'id' => $p->id,
-                    'name' => $p->name,
-                    'formatted_name' => $p->formatted_name,
-                ];
+            'hybrid_parents' => $this->hybridParents->map(function ($p) {
+                return TaxonNameCollection::collection([$p])[0];
             }),
             'note' => $this->note,
         ];

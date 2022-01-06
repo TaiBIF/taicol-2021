@@ -116,6 +116,9 @@
                 },
             ]);
         },
+        destroyed() {
+            this.$store.commit('breadcrumb/CLEAR_ITEMS');
+        },
         methods: {
             onToggleEditNamespace(e, index) {
                 e.stopPropagation();
@@ -164,7 +167,7 @@
             },
             onGoNamespace(namespace) {
                 if(!namespace.isEdit) {
-                    this.$router.push(`/namespaces/${namespace.id}`);
+                    this.$router.push(`/namespaces/${namespace.id}/usages`);
                 }
             },
         },

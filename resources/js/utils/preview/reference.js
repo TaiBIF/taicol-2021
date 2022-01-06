@@ -68,7 +68,7 @@ const renderJournalSubtitle = (reference) => {
  */
 const renderBookSubtitle = (reference) => {
     const volume = reference.properties?.volume ?
-        `vol. ${reference.properties?.volume}`
+        `${reference.properties?.volume}`
         : reference.properties?.chapter ? `ch. ${reference.properties?.chapter}` : '';
     return [
         reference.properties?.bookTitleAbbreviation,
@@ -140,7 +140,7 @@ export const taxonNameInReference = (reference) => {
     }
 }
 
-export const comboAnimal = (references,  names = Lastnames) => {
+export const comboAnimal = (references, names = Lastnames) => {
     /**
      * 動物
      * [last_name], [publish_year]: [page_name], [cite_figure]
@@ -156,14 +156,11 @@ export const comboAnimal = (references,  names = Lastnames) => {
         }
 
         const publishYear = ref.target?.publishYear || '';
+
         const title = [
             names(ref.target?.authors || []),
             publishYear,
         ].filter(Boolean).join(', ');
-
-        if (!title) {
-            return '';
-        }
 
         const page = [
             ref.showPage ?? '',
@@ -171,8 +168,11 @@ export const comboAnimal = (references,  names = Lastnames) => {
         ].filter(Boolean).join(', ');
 
         return [
-            `${title}${page ? `: ${page}` : ''}`,
-            ref.customNameRemark ? `'${ref.customNameRemark}'` : '',
+            [
+                title,
+                page,
+            ].filter(Boolean).join(': '),
+            ref.nameInReference ? `'${ref.nameInReference}'` : '',
             ref.proParte ? 'pro parte' : '',
         ].filter(Boolean).join(', ');
     }).filter(Boolean).join('; ');
@@ -198,7 +198,6 @@ export const comboPlant = (references, names = AbbNames) => {
             ref.figure ?? '',
         ].filter(Boolean).join(', ');
 
-
         // [volume]([issue]): [page_name]
         const volume = [
             [
@@ -208,18 +207,32 @@ export const comboPlant = (references, names = AbbNames) => {
             page,
         ].filter(Boolean).join(': ');
 
-        const title = [
-            [
+        let title = '';
+
+        // 書籍有版本
+        if (ref.target?.type === TYPE_BOOK) {
+            title = [
                 names(ref.target?.authors || []),
                 ref.target?.properties?.bookTitleAbbreviation,
-                ref.properties?.edition ? `${ref.properties.edition} ed` : '',
-            ].filter(Boolean).join(', '),
-            volume,
-        ].filter(Boolean).join(' ');
+                ref.target?.properties?.edition ? `${ref.target?.properties.edition} ed.` : '',
+                volume,
+            ].filter(Boolean).join(', ');
+        } else {
+            title = [
+                [
+                    names(ref.target?.authors || []),
+                    ref.target?.properties?.bookTitleAbbreviation,
+                ].filter(Boolean).join(', '),
+                volume,
+            ].filter(Boolean).join(' ');
+        }
 
         return [
-            `${title}${ref.target?.publishYear ? `. ${ref.target?.publishYear}` : ''}`,
-            ref.customNameRemark ? `'${ref.customNameRemark}'` : '',
+            [
+                title,
+                ref.target?.publishYear,
+            ].filter(Boolean).join('. '),
+            ref.nameInReference ? `'${ref.nameInReference}'` : '',
             ref.proParte ? 'pro parte' : '',
         ].filter(Boolean).join(', ');
     }).filter(Boolean).join('; ');

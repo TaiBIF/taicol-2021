@@ -44,19 +44,6 @@
         <p class="is-danger" v-for="m in errors">{{ m }}</p>
     </div>
 </template>
-<style lang="scss">
-    .vs__dropdown-option {
-        &:hover {
-            background-color: lightgray;
-            cursor: pointer;
-        }
-
-    }
-
-    .vs__dropdown-option--highlight {
-        background: lightgray !important;
-    }
-</style>
 <script>
     export default {
         props: {
@@ -158,15 +145,13 @@
             },
             updateValue(value) {
                 if (this.keyId) {
-                    console.log(value);
-
                     if (this.multiple) {
                         this.$emit('input', value.map((item) => item[this.keyId]))
                     } else {
-                        this.$emit('input', value[this.keyId])
+                        this.$emit('input', value ? value[this.keyId] : null)
                     }
                 } else {
-                    this.$emit('input', value)
+                    this.$emit('input', value);
                 }
             },
             typing(text) {
@@ -176,4 +161,9 @@
         },
     }
 </script>
+<style lang="scss">
+.vs--disabled .vs__dropdown-toggle, .vs--disabled .vs__clear, .vs--disabled .vs__search, .vs--disabled .vs__selected, .vs--disabled .vs__open-indicator {
+    background-color: #f8f8f887;
+}
+</style>
 
