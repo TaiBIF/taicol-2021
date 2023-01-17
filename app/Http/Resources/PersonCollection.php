@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources;
 
-use App\Country;
 use App\Person;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -28,7 +27,10 @@ class PersonCollection extends JsonResource
             'abbreviation_name' => $this->abbreviation_name,
             'original_full_name' => $this->original_full_name ?? '',
             'other_names' => $this->other_names,
-            'nationality' => $this->country,
+            'nationality' => $this->country ? [
+                'numeric_code' => $this->country->numeric_code,
+                'display' => $this->country->display,
+            ] : null,
             'year_life' => $this->getYearLife(),
             'year_of_birth' => $this->year_birth,
             'year_of_death' => $this->year_death,
@@ -38,7 +40,8 @@ class PersonCollection extends JsonResource
         ];
     }
 
-    private function getYearLife() {
+    private function getYearLife()
+    {
         return $this->year_birth || $this->year_death ? sprintf('%d-%s', $this->year_birth ?? '', $this->year_death ?? '') : $this->year_publication ?? '';
     }
 }

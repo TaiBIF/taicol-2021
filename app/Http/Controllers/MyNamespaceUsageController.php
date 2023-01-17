@@ -6,14 +6,17 @@ use App\Http\Resources\MyNamespaceCollection;
 use App\Http\Resources\PersonCollection;
 use App\Http\Resources\TaxonNameCollection;
 use App\Http\Resources\UsageCollection;
+use App\Http\Services\UsageImportService;
 use App\MyNamespace;
 use App\MyNamespaceUsage;
 use App\Person;
+use App\Rank;
 use App\Reference;
 use App\TaxonName;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class MyNamespaceUsageController extends Controller
 {
@@ -52,7 +55,7 @@ class MyNamespaceUsageController extends Controller
             ->where('id', $usageId)
             ->first();
 
-        $acceptedUsage = MyNamespaceUsage::with([
+        $accepted = MyNamespaceUsage::with([
             'parent',
             'taxonName.nomenclature',
             'taxonName.rank',
@@ -70,7 +73,20 @@ class MyNamespaceUsageController extends Controller
             ->where('id', '!=', $usage->id)
             ->first();
 
-        $typeName =  $typeName = ($usage->properties['type_name'] ?? '') ? TaxonNameCollection::collection([
+        $acceptedUsage = null;
+        if ($accepted) {
+            $acceptedUsage = $accepted->taxonName;
+            $speciesLayer = isset($acceptedUsage->properties['species_layers']) ? $acceptedUsage->properties['species_layers'] : [];
+            $acceptedUsage->species = $accepted->taxonName->properties['species_id'] ? TaxonName::find($accepted->taxonName->properties['species_id']) : null;
+            $acceptedUsage->species_layers = collect($speciesLayer)->map(function ($s) {
+                return [
+                    'rank' => Rank::where('abbreviation', ($s['rank_abbreviation']))->first(),
+                    'latin_name' => $s['latin_name']
+                ];
+            });
+        }
+
+        $typeName = $typeName = ($usage->properties['type_name'] ?? '') ? TaxonNameCollection::collection([
             TaxonName::with([
                 'authors',
                 'exAuthors',
@@ -108,10 +124,12 @@ class MyNamespaceUsageController extends Controller
     {
         $taxonNameId = $request->get('taxon_name_id');
 
+        $typeSpecimens = $request->get('type_specimens');
+
         $request->validate([
             'status' => 'required',
             'properties.indications' => 'required_if:status,misapplied,undetermined',
-            'parent_taxon_name_id' => function($attribute, $parentTaxonNameId, $fail) use ($taxonNameId) {
+            'parent_taxon_name_id' => function ($attribute, $parentTaxonNameId, $fail) use ($taxonNameId) {
                 // validate parent taxon name id
                 $taxonName = TaxonName::with(['rank'])->where('id', $taxonNameId)->first();
 
@@ -138,7 +156,14 @@ class MyNamespaceUsageController extends Controller
             'type_specimens.*.collection_day' => 'max:2',
             'type_specimens.*.collector_ids' => 'required_if:type_specimens.*.kind,1|array|exists:persons,id',
             'type_specimens.*.isotypes.*.herbarium' => 'required',
-            'type_specimens.*.lecto_designated_reference' => 'required_if:type_specimens.*.use,lectotype',
+            'type_specimens.*.lecto_designated_reference' => function ($attribute, $value, $fail) use ($typeSpecimens) {
+                preg_match('/.*\.(\d)\..*/', $attribute, $matches);
+                $index = $matches[1];
+                if ($typeSpecimens[$index]['use'] === 'lectotype' &&
+                    ($typeSpecimens[$index]['is_designated'] === false && !$typeSpecimens[$index]['lecto_designated_reference'])) {
+                    $fail('必填');
+                }
+            },
             'per_usages.*.reference_id' => 'required',
             'per_usages.*.show_page' => 'integer|nullable',
         ], [
@@ -265,5 +290,38 @@ class MyNamespaceUsageController extends Controller
 
 
         return response([]);
+    }
+
+    public function import(Request $request, $id)
+    {
+        $request->validate([
+            'file' => 'required|file|max:1000|mimes:xls,xlsx',
+        ], [
+            'max' => '超過上傳限制 1MB',
+            'required' => '必填',
+            'mimes' => '檔案類型必須為 :values'
+        ]);
+
+        $files = $request->file();
+        $file = $files['file'];
+
+        $spreadsheet = IOFactory::load($file->path());
+        $sheets = $spreadsheet->getAllSheets();
+
+        try {
+            $service = new UsageImportService($sheets[0], $id);
+            $count = $service->handle();
+        } catch (\Exception $e) {
+            return response()->json([
+                'data' => $service->getErrorRows(),
+                'message' => $e->getMessage(),
+            ])->setStatusCode(409);
+        }
+
+        return response()->json([
+            'message' => 'success',
+            'total' => $count,
+        ]);
+
     }
 }

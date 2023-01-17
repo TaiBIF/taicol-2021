@@ -13,6 +13,7 @@ class OtherSpecimenPropertiesEntity
         $this->citationNoteNumber = $data['citation_note_number'];
         $this->lectoDesignatedReferenceId = $data['lecto_designated_reference']['id'] ?? null;
         $this->lectoCitePage = $data['lecto_cite_page'];
+        $this->url = $data['url'];
 
         return $this;
     }
@@ -28,6 +29,7 @@ class OtherSpecimenPropertiesEntity
             'citation_note_number' => $this->citationNoteNumber ?? '',
             'lecto_designated_reference_id' => $this->lectoDesignatedReferenceId,
             'lecto_cite_page' => $this->lectoCitePage ?? '',
+            'url' => $this->url,
         ];
     }
 }

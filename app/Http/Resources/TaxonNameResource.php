@@ -52,7 +52,7 @@ class TaxonNameResource extends JsonResource
             'ex_authors' => PersonCollection::collection($this->exauthors),
             'type_specimens' => collect($this->type_specimens)->map(function ($typeSpecimen) use ($request) {
                 $typeSpecimen['country'] = $typeSpecimen['country_id'] ?? null ? Country::find($typeSpecimen['country_id']) : null;
-                $collectors = collect($typeSpecimen['collectors'])->pluck('id');
+                $collectors = collect($typeSpecimen['collectors'] ?? [])->pluck('id');
                 $collectorPersons = Person::whereIn('id', $collectors)->get();
                 $typeSpecimen['collectors'] = $collectors->count() ? PersonCollection::collection($collectorPersons)->toArray($request) : [];
 

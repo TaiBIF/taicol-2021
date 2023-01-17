@@ -1,107 +1,175 @@
 <?php
 
+
 namespace App\Http\Services;
 
+
+use App\FavoriteMineItem;
 use App\Http\Entities\SpecimenEntity;
 use App\Http\Entities\TypeSpecimenPropertiesFactory;
+use App\Nomenclature;
 use App\Person;
 use App\Rank;
 use App\Reference;
-use App\ReferenceUsage;
 use App\TaxonName;
-use App\TaxonNameHybridParent;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class TaxonNameService
 {
-    protected $nomenclatureId;
-    protected $rankId;
-    protected $rank;
-    protected $formattedName = '';
-    protected $authors = [];
-    protected $exAuthors = [];
-    protected $formattedAuthors = '';
-    protected $formattedExAuthors = '';
-    protected $usage = [];
-    protected $properties = [];
-    protected $typeSpecimens = [];
-    protected $originalTaxonName;
-    protected $hybridParents = [];
-    protected $reference;
-
-    public function setAllProperties($data): self
+    public function __construct(Model $taxonName)
     {
-        $this->nomenclatureId = $data['nomenclature_id'];
-        $this->rankId = $data['rank_id'];
-        $this->rank = Rank::find($this->rankId);
-        $this->name = trim(preg_replace('!\s+!', ' ', str_replace("\n", '', $data['name'])));
-        $this->usage = $data['usage'];
-        $this->publishYear = $data['publish_year'];
-        $this->note = $data['note'];
+        $this->taxonName = $taxonName;
 
-        $authors = $data['authors'];
-        $this->authors = Person::whereIn('id', $data['authors'])->get()->sortBy(function($model) use ($authors){
-            return array_search($model->getKey(), $authors);
-        });
-        $this->exAuthors = Person::whereIn('id', $data['ex_authors'])->get();
-        $this->originalTaxonName = TaxonName::find($data['original_taxon_name_id']);
-        $this->formattedAuthors = $data['formatted_authors'];
+        $this->ranks = Rank::select(['id', 'order', 'abbreviation'])->get()->keyBy('abbreviation');
+    }
 
-        $isHybridFormula = $data['is_hybrid_formula'] ?? false;
+    /**
+     * 是否存在(unique)的判斷方式為: 法規 + 階層 + name + 命名者 + 文獻
+     *
+     * @param int $nomenclatureId
+     * @param int $rankId
+     * @param string $name
+     * @param int|null $referenceId
+     * @param array $authorIds
+     * @return int|null
+     */
+    public function hasExist(int $nomenclatureId, int $rankId, string $name, int $referenceId = null, array $authorIds): int|null
+    {
+        $existQuery = TaxonName::query()
+            ->with(['authors'])
+            ->where('nomenclature_id', $nomenclatureId)
+            ->where('rank_id', $rankId)
+            ->where('name', $name)
+            ->where('reference_id', $referenceId);
 
-        if ($isHybridFormula || $this->rank->key == 'hybrid-formula') {
-            $hybridParents = TaxonName::whereIn('id', array_map(function ($parent) {
-                return $parent['id'] ?? null;
-            }, $data['hybrid_parents']))
-                ->get()
-                ->keyBy('id');
-
-            if ($hybridParents[$data['hybrid_parents'][0]['id']] ?? null) {
-                $this->hybridParents[$data['hybrid_parents'][0]['id']] = ['order' => 0];
-            }
-
-            if ($hybridParents[$data['hybrid_parents'][1]['id']] ?? null) {
-                $this->hybridParents[$data['hybrid_parents'][1]['id']] = ['order' => 1];
-            }
+        // 若為 update 的話，不能為自己
+        if ($this->taxonName->id) {
+            $existQuery->where('id', '!=', $this->taxonName->id);
         }
 
-        $this->reference = isset($data['usage']['reference_id']) ? Reference::find($data['usage']['reference_id']) : null;
+        $taxonNames = $existQuery->get();
 
-        $this->properties = [];
+        if (!$taxonNames->count()) return false;
 
-        $ranks = Rank::select(['id', 'order', 'abbreviation'])->get()->keyBy('abbreviation');
+        foreach ($taxonNames as $taxonName) {
+            $existAuthors = $taxonName->authors->pluck('id')->toArray();
 
-        $rankGenus = $ranks[RANK::KEY_GENUS];
-        $rankSpecies = $ranks[RANK::KEY_SPECIES];
+            sort($existAuthors);
+            sort($authorIds);
+
+            if ($existAuthors === $authorIds) return $taxonName->id;
+        }
+
+        return null;
+    }
+
+    /**
+     *
+     * @param array $data
+     * @param array $authors
+     * @param array $exAuthors
+     * @param array $usage
+     * @return Model
+     * @throws \Exception
+     */
+    public function saveAll(array $data, array $authors = [], array $exAuthors = [], array $usage = [])
+    {
+        DB::beginTransaction();
+        try {
+            $rank = Rank::findOrFail($data['rank_id']);
+            $nomenclature = Nomenclature::findOrFail($data['nomenclature_id']);
+
+            $this->taxonName = $this->create($nomenclature, $rank, $data);
+
+            $this->saveAuthors($authors);
+            $this->saveExAuthors($exAuthors);
+
+            if (array_key_exists('reference_id', $usage)) {
+                $this->saveReference($usage['reference_id']);
+            }
+
+            $isHybrid = (bool) ($data['is_hybrid'] ?? false);
+            if ($isHybrid || $rank->key == 'hybrid-formula') {
+                $this->saveHybridParents($data['hybrid_parents_id'] ?? []);
+            }
+
+            $this->updateRelatedHyBridTaxonName();
+
+            DB::commit();
+        } catch (\Exception $exception) {
+            DB::rollBack();
+            Log::error($exception->getMessage());
+            throw $exception;
+        }
+
+        return $this->taxonName;
+    }
+
+    private function create(Nomenclature $nomenclature, Rank $rank, array $data): Model
+    {
+        $rankGenus = $this->ranks[RANK::KEY_GENUS];
+        $rankSpecies = $this->ranks[RANK::KEY_SPECIES];
+
+        $properties = [];
 
         // 屬以下(模式標本)
-        if ($this->rank->order > $rankGenus->order) {
-            $this->setTypeSpecimens($data['type_specimens']);
+        if ($rank->order > $rankGenus->order) {
+            $typeSpecimens = $this->formatTypeSpecimens($data['type_specimens'] ?? []);
         } else { // 屬(含)以上(模式學名)
-            $this->properties['type_name'] = $data['type_name'] ?? '';
-            $this->setTypeSpecimens([]);
+            $properties['type_name'] = $data['type_name'] ?? '';
+            $typeSpecimens = [];
         }
 
         // 種(包含)以下
-        if ($this->rank->order >= $rankSpecies->order) {
-            $this->properties['latin_genus'] = $data['latin_genus'];
-            $this->properties['latin_s1'] = $data['latin_s1'] ?? '';
+        if ($nomenclature->group === 'virus') {
+            $properties['latin_name'] = $data['latin_name'];
+            $properties['latin_s1'] = $data['latin_name'];
+        } else if ($rank->order >= $rankSpecies->order) {
+            $properties['latin_genus'] = $data['latin_genus'];
+            $properties['latin_s1'] = $data['latin_s1'] ?? '';
         } else {
-            $this->properties['latin_name'] = $data['latin_name'];
+            $properties['latin_name'] = $data['latin_name'];
         }
 
-        $this->properties['reference_name'] = $data['reference_name'];
-        $this->properties['usage'] = $data['usage'];
-        $this->properties['is_hybrid_formula'] = (bool) $isHybridFormula;
+        $isHybrid = (bool) ($data['is_hybrid'] ?? false);
 
-        $this->properties['species_id'] = $data['species_id'] ?? null;
-        $this->properties['species_layers'] = $data['species_layers'];
+        $properties['reference_name'] = $data['reference_name'];
+        $properties['usage'] = $data['usage'];
+        $properties['is_hybrid'] = $isHybrid;
 
-        return $this;
+        $properties['species_id'] = $data['species_id'] ?? null;
+        $properties['species_layers'] = $data['species_layers'];
+
+        if ($nomenclature->group === 'bacteria') {
+            $properties['is_approved_list'] = $data['is_approved_list'];
+            $properties['initial_year'] = $data['initial_year'];
+        }
+
+        if ($nomenclature->group === 'virus') {
+            $properties['genome_composition'] = $data['genome_composition'];
+            $properties['host'] = $data['host'];
+        }
+
+        $this->taxonName->nomenclature_id = $nomenclature->id;
+        $this->taxonName->rank_id = $rank->id;
+        $this->taxonName->name = $data['name'];
+        $this->taxonName->formatted_authors = $data['formatted_authors'] ?? '';
+        $this->taxonName->original_taxon_name_id = $data['original_taxon_name_id'] ?? null;
+        $this->taxonName->type_specimens = $typeSpecimens;
+        $this->taxonName->properties = $properties;
+        $this->taxonName->publish_year = $data['publish_year'];
+        $this->taxonName->note = $data['note'] ?? '';
+        $this->taxonName->save();
+
+        return $this->taxonName;
     }
 
-    public function setTypeSpecimens(array $typeSpecimensArray): self
+    private function formatTypeSpecimens(array $typeSpecimensArray)
     {
-        $this->typeSpecimens = array_map(function ($typeSpecimen) {
+        return array_map(function ($typeSpecimen) {
             $newTypeSpecimen = [];
             $newTypeSpecimen['use'] = $typeSpecimen['use'];
             $newTypeSpecimen['kind'] = $typeSpecimen['kind'];
@@ -118,40 +186,86 @@ class TaxonNameService
 
             return $newTypeSpecimen;
         }, $typeSpecimensArray);
-        return $this;
     }
 
-    public function saveAll(TaxonName $taxonName = null)
+    public function saveAuthors(array $authorIds)
     {
-        $taxonName = $taxonName ? $taxonName : new TaxonName();
-        $taxonName->nomenclature_id = $this->nomenclatureId;
-        $taxonName->rank_id = $this->rankId;
-        $taxonName->name = $this->name;
-        $taxonName->formatted_authors = $this->formattedAuthors ?? '';
-        $taxonName->original_taxon_name_id = $this->originalTaxonName->id ?? null;
-        $taxonName->type_specimens = $this->typeSpecimens ?? [];
-        $taxonName->properties = $this->properties;
-        $taxonName->publish_year = $this->publishYear;
-        $taxonName->note = $this->note ?? '';
-        $taxonName->save();
+        $authors = Person::whereIn('id', $authorIds)
+            ->get()
+            ->sortBy(function ($model) use ($authorIds) {
+                return array_search($model->getKey(), $authorIds);
+            })
+            ->values()
+            ->map(function ($authors, $order) {
+                return [
+                    'person_id' => $authors->id,
+                    'order' => $order
+                ];
+            });
 
-        // authors
-        $taxonName->authors()->detach();
-        $taxonName->authors()->attach($this->authors);
+        $this->taxonName->authors()->detach();
+        $this->taxonName->authors()->attach($authors);
+    }
 
-        // exAuthors
-        $taxonName->exAuthors()->sync($this->exAuthors);
+    public function saveExAuthors(array $exAuthorIds)
+    {
+        $exAuthors = Person::whereIn('id', $exAuthorIds)
+            ->get()
+            ->sortBy(function ($model) use ($exAuthorIds) {
+                return array_search($model->getKey(), $exAuthorIds);
+            })->values()->map(function ($authors, $order) {
+                return [
+                    'person_id' => $authors->id,
+                    'order' => $order
+                ];
+            });
 
-        // reference
-        if ($this->reference) {
-            $taxonName->reference()->associate($this->reference);
-        } else {
-            $taxonName->reference()->dissociate();
+        $this->taxonName->exAuthors()->sync($exAuthors);
+    }
+
+    public function saveReference(int $referenceId = null)
+    {
+        if (!$referenceId) {
+            $this->taxonName->reference()->dissociate();
+            $this->taxonName->save();
+            return;
         }
-        $taxonName->save();
 
-        // save hybrid parent
-        $taxonName->hybridParents()->sync($this->hybridParents);
+        $reference = Reference::find($referenceId);
+        $this->taxonName->reference()->associate($reference);
+        $this->taxonName->save();
+    }
+
+    public function saveHybridParents(array $hybridParentIds = [])
+    {
+        $hybridParent1 = $hybridParentIds[0] ?? null;
+        $hybridParent2 = $hybridParentIds[1] ?? null;
+
+        $hybridParents = [];
+
+        // 須照順序
+        $h1 = TaxonName::find($hybridParent1);
+        if ($hybridParent1 && $h1) {
+            $hybridParents[$hybridParent1] = ['order' => 0];
+        }
+
+        $h2 = TaxonName::find($hybridParent2);
+        if ($hybridParent2 && $h2) {
+            $hybridParents[$hybridParent2] = ['order' => 1];
+        }
+
+        // hybrid-formula 學名特殊處理
+        if ($this->taxonName->rank->key === 'hybrid-formula') {
+            $this->taxonName->name = "{$h1?->name} × {$h2?->name}";
+            $this->taxonName->save();
+        }
+
+        $this->taxonName->hybridParents()->sync($hybridParents);
+    }
+
+    public function updateRelatedHyBridTaxonName()
+    {
+        $taxonName = $this->taxonName;
 
         // 更新有關聯的 hybrid parent name
         $relatedTaxonNames = TaxonName::with(['hybridParents'])
@@ -163,7 +277,14 @@ class TaxonNameService
             $name->name = sprintf('%s x %s', $name->hybridParents[0]->name, $name->hybridParents[1]->name);
             $name->save();
         }
+    }
 
-        return $taxonName;
+    public function saveToMyFavoriteItem()
+    {
+        $item = new FavoriteMineItem();
+        $item->collectable_type = FavoriteMineItem::TYPE_TAXON_NAME;
+        $item->collectable_id = $this->taxonName->id;
+        $item->user_id = Auth::user()->id;
+        $item->save();
     }
 }

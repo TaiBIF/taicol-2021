@@ -7,16 +7,25 @@ use App\Http\Requests\PersonRequest;
 use App\Http\Resources\PersonCollection;
 use App\Http\Resources\ReferenceCollection;
 use App\Http\Resources\TaxonNameCollection;
-use App\Http\Resources\UsageCollection;
+use App\Http\Services\LogService;
+use App\Http\Services\LogType;
+use App\Http\Services\PersonImportService;
+use App\Http\Services\PersonService;
 use App\Person;
 use App\Reference;
 use App\ReferenceUsage;
 use App\TypeSpecimen;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class PersonController extends Controller
 {
+    /**
+     * 下拉式人名選單
+     * @param Request $request
+     * @return \Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory|\Illuminate\Http\Response
+     */
     public function index(Request $request)
     {
         $keyword = $request->get('keyword');
@@ -82,7 +91,7 @@ class PersonController extends Controller
                         'country_id' => $typeSpecimen['country_id'],
                         'locality' => $typeSpecimen['locality'],
                         'collector_number' => $typeSpecimen['collector_number'],
-                        'citation_note_number' => $typeSpecimen['citation_note_number'],
+                        'specimens' => $typeSpecimen['specimens'],
                         'taxon_name' => $usage->taxonName,
                     ];
                 })->toArray();
@@ -103,60 +112,108 @@ class PersonController extends Controller
 
     public function store(PersonRequest $request)
     {
-        $request->validated();
+        $lastName = $request->get('last_name') ?? '';
+        $firstName = $request->get('first_name') ?? '';
+        $middleName = $request->get('middle_name') ?? '';
+        $yearBirth = $request->get('year_of_birth') ?? '';
 
-        $existPerson = Person::where('last_name', $request->get('last_name'))
-            ->where('first_name', $request->get('first_name'))
-            ->count();
+        $service = new PersonService(new Person());
 
-        if ($existPerson) {
+        if ($service->hasExist($lastName, $middleName, $firstName, $yearBirth)) {
             return response([
-                'message' => 'Person exists.'
+                'message' => 'Person exist.'
             ])->setStatusCode(409);
         }
 
-        $person = new Person();
-        $person->last_name = $request->get('last_name');
-        $person->first_name = $request->get('first_name');
-        $person->middle_name = $request->get('middle_name') ?? '';
-        $person->abbreviation_name = $request->get('abbreviation_name') ?? '';
-        $person->original_full_name = $request->get('original_full_name') ?? '';
-        $person->other_names = $request->get('other_names') ?? '';
-        $person->year_birth = $request->get('year_of_birth');
-        $person->year_death = $request->get('year_of_death');
-        $person->year_publication = $request->get('year_of_publication') ?? '';
-        $person->country_numeric_code = $request->get('country_numeric_code');
-        $person->biology_departments = implode(',', $request->get('biology_departments'));
-        $person->biological_group = $request->get('biological_group') ?? '';
-        $person->save();
+        $person = $service->saveAll($request->all());
+        $logService = new LogService();
+        $logService->writeCreateLog(LogType::PERSON(), $person->id);
 
-        return response(PersonCollection::collection([$person])[0]);
+        return response(PersonService::fetchById($person->id));
     }
 
     public function update(PersonRequest $request, $id)
     {
-        $request->validated();
-
         $person = Person::find($id);
 
         if (!$person) {
-            return response()->setStatusCode(404);
+            return response([])->setStatusCode(404);
         }
 
-        $person->last_name = $request->get('last_name');
-        $person->first_name = $request->get('first_name');
-        $person->middle_name = $request->get('middle_name') ?? '';
-        $person->abbreviation_name = $request->get('abbreviation_name') ?? '';
-        $person->original_full_name = $request->get('original_full_name') ?? '';
-        $person->other_names = $request->get('other_names') ?? '';
-        $person->year_birth = $request->get('year_of_birth');
-        $person->year_death = $request->get('year_of_death');
-        $person->year_publication = $request->get('year_of_publication') ?? '';
-        $person->country_numeric_code = $request->get('country_numeric_code');
-        $person->biology_departments = implode(',', $request->get('biology_departments'));
-        $person->biological_group = $request->get('biological_group') ?? '';
-        $person->save();
+        $lastName = $request->get('last_name') ?? '';
+        $firstName = $request->get('first_name') ?? '';
+        $middleName = $request->get('middle_name') ?? '';
+        $yearBirth = $request->get('year_of_birth') ?? '';
 
-        return response(PersonCollection::collection([$person])[0]);
+        $service = new PersonService($person);
+
+        if ($service->hasExist($lastName, $middleName, $firstName, $yearBirth)) {
+            return response([
+                'message' => 'Person exist.'
+            ])->setStatusCode(409);
+        }
+
+        $person = $service->saveAll($request->all());
+
+        $logService = new LogService();
+        $logService->writeUpdateLog(LogType::PERSON(), $person);
+
+        return response()->json([
+            'id' => $person->id
+        ]);
+    }
+
+    public function validateSheet(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|max:10000|mimes:xls,xlsx',
+        ], [
+            'max' => '超過上傳限制 1MB',
+            'required' => '必填',
+            'mimes' => '檔案類型必須為 :values'
+        ]);
+
+        $files = $request->file();
+        $file = $files['file'];
+
+        $spreadsheet = IOFactory::load($file->path());
+        $sheets = $spreadsheet->getAllSheets();
+
+        $service = new PersonImportService($sheets[0]);
+        $validationResult = $service->getErrorRows();
+
+        return response()->json($validationResult);
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|max:1000|mimes:xls,xlsx',
+        ], [
+            'max' => '超過上傳限制 1MB',
+            'required' => '必填',
+            'mimes' => '檔案類型必須為 :values'
+        ]);
+
+        $files = $request->file();
+        $file = $files['file'];
+
+        $spreadsheet = IOFactory::load($file->path());
+        $sheets = $spreadsheet->getAllSheets();
+
+        try {
+            $service = new PersonImportService($sheets[0]);
+            $count = $service->handle();
+        } catch (\Exception $e) {
+            return response()->json([
+                'data' => $service->getErrorRows(),
+                'message' => $e->getMessage(),
+            ])->setStatusCode(409);
+        }
+
+        return response()->json([
+            'message' => 'success',
+            'total' => $count,
+        ]);
     }
 }

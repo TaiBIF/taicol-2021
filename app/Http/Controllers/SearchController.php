@@ -12,6 +12,7 @@ use App\TaxonName;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Class SearchController
@@ -37,6 +38,8 @@ class SearchController extends Controller
                     "CASE WHEN LOWER(`title`) = '{$keyword}' THEN 0 WHEN LOWER(`title`) LIKE '{$keyword}%' THEN 1 WHEN LOWER(`title`) LIKE '% {$keyword}' THEN 2 ELSE 3 END");
         } else if ($type === 'references') {
             $query->whereIn('n', ['person', 'reference']);
+        } else if ($type === 'persons') {
+            $query->whereIn('n', ['person']);
         } else {
             return response()->json([
                 'data' => [],
@@ -127,24 +130,41 @@ class SearchController extends Controller
 
         $referenceQuery = Reference::with(['authors']);
 
-        $keywords->each(function ($keyword) use ($referenceQuery) {
-            $type = $keyword['type'];
-            $word = trim(strtoLower($keyword['name']));
+        try {
+            $keywords->each(function ($keyword) use ($referenceQuery, $perPage) {
+                $type = $keyword['type'];
+                $word = trim(strtoLower($keyword['name']));
 
-            if ($type === 'text' || $type === 'reference') {
-                $referenceQuery->where(function ($referenceQuery) use ($word) {
-                    $referenceQuery
-                        ->whereRaw('title LIKE ? ', '%' . $word . '%')
-                        ->orWhereRaw('subtitle LIKE ? ', '%' . $word . '%');
-                });
-            }
+                switch ($type) {
+                    case $type === 'text' || $type === 'reference':
+                        $referenceQuery
+                            ->where(function ($referenceQuery) use ($word) {
+                                $referenceQuery
+                                    ->whereRaw('title LIKE ? ', '%' . $word . '%')
+                                    ->orWhereRaw('subtitle LIKE ? ', '%' . $word . '%');
+                            })->orWhereHas('book', function ($query) use ($word) {
+                                $query->whereRaw('title LIKE ? ', '%' . $word . '%');
+                            });
+                        break;
+                    case $type === 'person':
+                        $referenceQuery->whereHas('authors', function ($query) use ($word) {
+                            $query->whereRaw('CONCAT(last_name, \', \', first_name, \' \', middle_name) like ?', '%' . $word . '%');
+                        });
+                        break;
+                    default:
+                        throw new \Exception('not exist type');
+                }
+            });
+        } catch (\Exception $e) {
+            return response()->json([
+                'total' => 0,
+                'data' => [],
+                'per_page' => $perPage,
+                'current_page' => 0,
+                'last_page' => 0,
+            ]);
+        }
 
-            if ($type === 'person') {
-                $referenceQuery->whereHas('authors', function ($query) use ($word) {
-                    $query->whereRaw('CONCAT(last_name, \', \', first_name, \' \', middle_name) like ?', '%' . $word . '%');
-                });
-            }
-        });
 
         if ($request->get('sortby') === 'type') {
             $referenceQuery->orderBy('type', $request->get('direction'));
@@ -169,6 +189,24 @@ class SearchController extends Controller
             'current_page' => $references->currentPage(),
             'last_page' => $references->lastPage(),
         ]);
+    }
+
+    /**
+     * @param $keywordsString String
+     * @return Collection
+     */
+    private function getKeywords($keywordsString): Collection
+    {
+        $keywordString = trim(mb_strtolower($keywordsString, 'utf8'));
+        $keywords = $keywordString ? collect(explode('@', $keywordString))->map(function ($keywordOS) {
+            [$type, $name] = explode(': ', $keywordOS);
+
+            return [
+                'type' => trim($type),
+                'name' => trim($name),
+            ];
+        }) : collect([]);
+        return $keywords;
     }
 
     /**
@@ -200,8 +238,8 @@ class SearchController extends Controller
             'originalTaxonName.authors',
             'originalTaxonName.exAuthors',
             'hybridParents',
-            'usages' => function($query) {
-                $query->select(['reference_usages.*','references.publish_year', 'references.id'])
+            'usages' => function ($query) {
+                $query->select(['reference_usages.*', 'references.publish_year', 'references.id'])
                     ->where('status', 'accepted')
                     ->leftJoin('references', 'references.id', '=', 'reference_usages.reference_id')
                     ->where('reference_usages.properties->common_names', 'like', '%zh-tw%')
@@ -210,26 +248,48 @@ class SearchController extends Controller
         ])
             ->leftJoin('ranks', 'taxon_names.rank_id', 'ranks.id');
 
-        $keywords->each(function ($keyword) use ($query) {
-            $type = $keyword['type'];
-            $word = $keyword['name'];
+        try {
+            $keywords->each(function ($keyword) use ($query, $perPage) {
+                $type = $keyword['type'];
+                $word = $keyword['name'];
 
-            if ($type === 'text' || $type === 'taxon-name') {
-                $query->whereRaw('name like ? ', '%' . $word . '%');
-            }
+                switch ($type) {
+                    case $type === 'text' || $type === 'taxon-name':
+                        $query->where(function ($query) use ($word) {
+                            $query->whereRaw('name like ? ', '%' . $word . '%')
+                                ->orWhereHas('usages', function ($query) use ($word) {
+                                    $query->whereRaw('JSON_EXTRACT(properties, "$.common_names[*].name") like ?', '%' . $word . '%');
+                                });
+                        });
+                        break;
+                    case $type === 'person':
+                        $query->whereHas('persons', function ($query) use ($word) {
+                            $query->whereRaw('CONCAT(last_name, \', \', first_name, \' \', middle_name) like ?', '%' . $word . '%');
+                        });
+                        break;
+                    case $type === 'person_id':
+                        $query->whereHas('authors', function ($query) use ($word) {
+                            $query->where('persons.id', (int) $word);
+                        });
+                        break;
+                    case $type === 'reference':
+                        $query->whereHas('reference', function ($query) use ($word) {
+                            $query->where('title', $word)->orWhere('subtitle', $word);
+                        });
 
-            if ($type === 'person') {
-                $query->whereHas('persons', function ($query) use ($word) {
-                    $query->whereRaw('CONCAT(last_name, \', \', first_name, \' \', middle_name) like ?', '%' . $word . '%');
-                });
-            }
-
-            if ($type === 'person_id') {
-                $query->whereHas('authors', function ($query) use ($word) {
-                    $query->where('persons.id', (int) $word);
-                });
-            }
-        });
+                    default:
+                        throw new \Exception('not exist type');
+                }
+            });
+        } catch (\Exception $e) {
+            return response()->json([
+                'total' => 0,
+                'data' => [],
+                'per_page' => $perPage,
+                'current_page' => 0,
+                'last_page' => 0,
+            ]);
+        }
 
         if ($request->get('sortby') === 'rank') {
             $query->orderBy('ranks.order', $request->get('direction'));
@@ -245,38 +305,83 @@ class SearchController extends Controller
 
         $taxonNames = $query->paginate($perPage);
 
-        $roots = [];
-        if ($taxonNames->count()) {
-            $roots = TaxonName::ancestors($taxonNames->pluck('id')->toArray());
-        }
-
         return response()->json([
             'total' => $taxonNames->total(),
-            'data' => TaxonNameListCollection::collection($taxonNames->map(function ($taxonName) use ($roots) {
-                $taxonName->root = $roots[$taxonName->id] ?? null;
-                return $taxonName;
-            })),
+            'data' => TaxonNameListCollection::collection($taxonNames),
             'per_page' => $taxonNames->perPage(),
             'current_page' => $taxonNames->currentPage(),
             'last_page' => $taxonNames->lastPage(),
         ]);
     }
 
-    /**
-     * @param $keywordsString String
-     * @return Collection
-     */
-    private function getKeywords($keywordsString): Collection
+    public function person(Request $request)
     {
-        $keywordString = trim(mb_strtolower($keywordsString, 'utf8'));
-        $keywords = $keywordString ? collect(explode('@', $keywordString))->map(function ($keywordOS) {
-            [$type, $name] = explode(': ', $keywordOS);
+        $perPage = $request->get('perPage', 30);
+        $perPage = $perPage > 30 ? 30 : $perPage;
 
-            return [
-                'type' => trim($type),
-                'name' => trim($name),
-            ];
-        }) : collect([]);
-        return $keywords;
+        $keywords = $this->getKeywords($request->get('keywords', ''));
+        $strict = (bool) $request->get('strict', true);
+
+        if ($strict && count($keywords) === 0) {
+            return response()->json([
+                'total' => 0,
+                'data' => [],
+                'per_page' => $perPage,
+                'current_page' => 0,
+                'last_page' => 0,
+            ]);
+        }
+
+        $query = Person::query();
+
+        $query->select('*', DB::raw('CONCAT(last_name, \', \', first_name, \' \', middle_name) full_name'));
+
+        try {
+            $keywords->each(function ($keyword) use ($query, $perPage) {
+                $type = $keyword['type'];
+                $word = $keyword['name'];
+
+                switch ($type) {
+                    case $type === 'text' || $type === 'person':
+                        $query->whereRaw('CONCAT(last_name, \', \', first_name, \' \', middle_name) like ?', '%' . $word . '%')
+                            ->orWhere('abbreviation_name', 'like', "%{$word}%")
+                            ->orWhere('original_full_name', 'like', "%{$word}%");
+                        break;
+                    default:
+                        throw new \Exception('not exist type');
+                }
+            });
+        } catch (\Exception $e) {
+            return response()->json([
+                'total' => 0,
+                'data' => [],
+                'per_page' => $perPage,
+                'current_page' => 0,
+                'last_page' => 0,
+            ]);
+        }
+
+
+        if ($request->get('sortby') === 'name') {
+            $query->orderBy('full_name', $request->get('direction'));
+        }
+
+        if ($request->get('sortby') === 'abbreviation_name') {
+            $query->orderBy('persons.abbreviation_name', $request->get('direction'));
+        }
+
+        if ($request->get('sortby') === 'original_full_name') {
+            $query->orderBy('persons.original_full_name', $request->get('direction'));
+        }
+
+        $persons = $query->paginate($perPage);
+
+        return response()->json([
+            'total' => $persons->total(),
+            'data' => PersonCollection::collection($persons),
+            'per_page' => $persons->perPage(),
+            'current_page' => $persons->currentPage(),
+            'last_page' => $persons->lastPage(),
+        ]);
     }
 }

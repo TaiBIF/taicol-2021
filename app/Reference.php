@@ -2,13 +2,13 @@
 
 namespace App;
 
-use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Reference extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, HasFactory;
 
     const TYPE_JOURNAL = 1;
     const TYPE_BOOK_ARTICLE = 2;
@@ -19,19 +19,14 @@ class Reference extends Model
         'properties' => 'array'
     ];
 
-    public function authors()
-    {
-        return $this->belongsToMany(Person::class);
-    }
-
-    public function book()
-    {
-        return $this->belongsTo(Book::class);
-    }
-
     public function saveAuthors($ids)
     {
         $this->authors()->sync($ids);
+    }
+
+    public function authors()
+    {
+        return $this->belongsToMany(Person::class)->orderBy('order');
     }
 
     public function saveBook($title, $titleAbbreviation = '', $editorIds = [])
@@ -54,6 +49,11 @@ class Reference extends Model
         }
 
         $this->book()->associate($book);
+    }
+
+    public function book()
+    {
+        return $this->belongsTo(Book::class);
     }
 
     public function usages()

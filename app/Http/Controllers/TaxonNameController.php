@@ -2,21 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use App\FavoriteMineItem;
 use App\Http\Requests\TaxonNameRequest;
 use App\Http\Resources\PersonCollection;
 use App\Http\Resources\ReferenceCollection;
 use App\Http\Resources\TaxonNameCollection;
 use App\Http\Resources\TaxonNameResource;
+use App\Http\Services\LogService;
+use App\Http\Services\LogType;
+use App\Http\Services\TaxonNameImportService;
+use App\Http\Services\TaxonNameLogService;
 use App\Http\Services\TaxonNameService;
 use App\Reference;
 use App\ReferenceUsage;
 use App\TaxonName;
-use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class TaxonNameController extends Controller
 {
@@ -65,22 +67,12 @@ class TaxonNameController extends Controller
         $taxonNames = $query->orderByRaw(
             "CASE WHEN LOWER(`name`) = '{$keyword}' THEN 0 WHEN LOWER(`name`) LIKE '{$keyword}%' THEN 1 WHEN LOWER(`name`) LIKE '% {$keyword}' THEN 2 ELSE 3 END"
         )
-            ->paginate($perPage);
-
-        $roots = [];
-        if ($taxonNames->count()) {
-            $roots = TaxonName::ancestors($taxonNames->pluck('id')->toArray());
-        }
+            ->orderBy('taxon_names.name')
+            ->limit($perPage)
+            ->get();
 
         return response()->json([
-            'total' => $taxonNames->total(),
-            'data' => TaxonNameCollection::collection($taxonNames->map(function ($taxonName) use ($roots) {
-                $taxonName->root = $roots[$taxonName->id] ?? null;
-                return $taxonName;
-            })),
-            'per_page' => $taxonNames->perPage(),
-            'current_page' => $taxonNames->currentPage(),
-            'last_page' => $taxonNames->lastPage(),
+            'data' => TaxonNameCollection::collection($taxonNames),
         ]);
     }
 
@@ -172,7 +164,6 @@ class TaxonNameController extends Controller
         $commonNames = ReferenceUsage::query()
             ->select('reference_id', 'reference_usages.properties', 'references.publish_year')
             ->where('status', 'accepted')
-            ->where('references.id', '!=', 153)
             ->where('taxon_name_id', $id)
             ->leftJoin('references', 'references.id', '=', 'reference_usages.reference_id')
             ->whereJsonLength('reference_usages.properties->common_names', '>', 0)
@@ -191,9 +182,9 @@ class TaxonNameController extends Controller
 
         return response()->json([
             'taxon_name' => new TaxonNameResource($taxonName),
-            'common_name' => $commonNames->sortByDesc('publish_year')->map(function($names) {
+            'common_name' => $commonNames->sortByDesc('publish_year')->map(function ($names) {
                 return collect($names->properties['common_names'])
-                    ->filter(function($name) {
+                    ->filter(function ($name) {
                         return $name['language'] == 'zh-tw';
                     });
             })
@@ -228,7 +219,9 @@ class TaxonNameController extends Controller
                 ],
                 [
                     'key' => 'common-name',
-                    'display' => (boolean) !!$commonNames->count(),
+                    'display' => (boolean) !!$commonNames->filter(function ($n) {
+                        return $n->reference_id !== 153;
+                    })->count(),
                 ],
             ]
         ]);
@@ -253,14 +246,29 @@ class TaxonNameController extends Controller
 
     public function parents($id)
     {
-        $root = TaxonName::ancestors([$id])->first();
+        $currentTaxonNameId = $id;
 
-        $parentIds = explode('>', $root->path ?? '');
+        $taxonNameIds = [];
 
-        $parents = TaxonName::whereIn('id', $parentIds)->where('id', '!=', $id)->get();
+        while ($currentTaxonNameId != null) {
+            $currentTaxonName = DB::table('accepted_usages')
+                ->select('taxon_name_id', 'parent_taxon_name_id')
+                ->where('taxon_name_id', $currentTaxonNameId)
+                ->first();
+
+            if ($currentTaxonName && $currentTaxonName->parent_taxon_name_id) {
+                $taxonNameIds[] = $currentTaxonName->parent_taxon_name_id;
+            }
+
+            $currentTaxonNameId = $currentTaxonName ? $currentTaxonName->parent_taxon_name_id : null;
+        }
+
+        $parents = TaxonName::with('authors', 'exauthors')
+            ->whereIn('id', $taxonNameIds)
+            ->get();
 
         return response()->json([
-            'data' => $parents->map(function($p){
+            'data' => $parents->map(function ($p) {
                 $usage = ReferenceUsage::select('reference_usages.*', 'references.publish_year')
                     ->leftJoin('references', 'reference_usages.reference_id', '=', 'references.id')
                     ->where('reference_usages.properties->common_names', 'like', '%zh-tw%')
@@ -336,7 +344,6 @@ class TaxonNameController extends Controller
     {
         $u = ReferenceUsage::where('status', 'not-accepted')
             ->where('taxon_name_id', $id)
-            ->where('is_indent', 1)
             ->get();
 
         if ($u->count() === 0) {
@@ -370,8 +377,7 @@ class TaxonNameController extends Controller
                 $query->orWhere(function ($q) use ($uu) {
                     $q->where('reference_usages.reference_id', $uu->reference_id)
                         ->where('group', $uu->group)
-                        ->where('status', 'accepted')
-                        ->where('is_indent', 0);
+                        ->where('status', 'accepted');
                 });
             }
         });
@@ -395,8 +401,15 @@ class TaxonNameController extends Controller
         return response()->json([
             'total' => $acceptedUsages->total(),
             'data' => $acceptedUsages->map(function ($usage) {
-                $usage->taxon_name = TaxonNameCollection::collection([$usage->taxon_name])[0];
-                return $usage;
+                $u = [
+                    'show_page' => $usage->showPage,
+                    'figure' => $usage->figure,
+                    'reference' => $usage->reference,
+                    'status' => $usage->status,
+                    'properties' => $usage->properties,
+                ];
+                $u['taxon_name'] = TaxonNameCollection::collection([$usage->taxonName])[0];
+                return $u;
             }),
             'per_page' => $acceptedUsages->perPage(),
             'current_page' => $acceptedUsages->currentPage(),
@@ -464,12 +477,17 @@ class TaxonNameController extends Controller
 
         $synonyms = $synonymsQuery->paginate();
 
+        $result = $synonyms->map(function ($usage) {
+            return [
+                'status' => $usage->status,
+                'indications' => $usage->properties['indications'],
+                'taxon_name' => $usage->taxonName ? TaxonNameCollection::collection([$usage->taxonName])[0] : null,
+                'reference' => $usage->reference,
+            ];
+        });
         return response()->json([
             'total' => $synonyms->total(),
-            'data' => $synonyms->map(function ($usage) {
-                $usage->taxon_name = TaxonNameCollection::collection([$usage->taxon_name])[0];
-                return $usage;
-            }),
+            'data' => $result,
             'per_page' => $synonyms->perPage(),
             'current_page' => $synonyms->currentPage(),
             'last_page' => $synonyms->lastPage(),
@@ -504,27 +522,6 @@ class TaxonNameController extends Controller
             'current_page' => $reference->currentPage(),
             'last_page' => $reference->lastPage(),
         ]);
-    }
-
-    private function getSubById($ids)
-    {
-        $taxonNameIds = ReferenceUsage::whereIn('parent_taxon_name_id', $ids)
-            ->orderBy('reference_usages.created_at', 'desc')
-            ->pluck('taxon_name_id');
-
-        $taxonNamesQuery = TaxonName::select('taxon_names.*')
-            ->with([
-                'authors',
-                'exAuthors',
-                'reference',
-                'nomenclature', 'rank',
-                'originalTaxonName.authors',
-                'originalTaxonName.exauthors'
-            ])
-            ->leftJoin('references', 'references.id', 'taxon_names.reference_id')
-            ->whereIn('taxon_names.id', $taxonNameIds);
-
-        return $taxonNamesQuery->get();
     }
 
     public function subTaxonNames(Request $request, $id)
@@ -601,7 +598,7 @@ class TaxonNameController extends Controller
 
         $direction = $request->get('direction');
         if (!$direction) {
-            $usagesQuery->orderBy('references.publish_year', 'desc');;
+            $usagesQuery->orderBy('references.publish_year', 'desc');
         } else {
             if ($request->get('sortby') === 'publish_year') {
                 $usagesQuery->orderBy('references.publish_year', $direction);
@@ -617,21 +614,21 @@ class TaxonNameController extends Controller
 
         $names = collect([]);
 
-        $usages->each(function ($usage) use ($names, $references)  {
+        $usages->each(function ($usage) use ($names, $references) {
             collect(json_decode($usage->common_names))
-                ->each(function($n) use ($names, $usage, $references) {
-                $names->push([
-                    'name' => $n->name,
-                    'area' => $n->area,
-                    'language' => $n->language,
-                    'publish_year' => $usage->publish_year,
-                    'reference' => ReferenceCollection::collection([$references[$usage->reference_id]])->first()
-                ]);
-            });
+                ->each(function ($n) use ($names, $usage, $references) {
+                    $names->push([
+                        'name' => $n->name,
+                        'area' => $n->area,
+                        'language' => $n->language,
+                        'publish_year' => $usage->publish_year,
+                        'reference' => ReferenceCollection::collection([$references[$usage->reference_id]])->first()
+                    ]);
+                });
         });
 
         if ($request->get('sortby') === 'language') {
-            $names = $direction === 'desc' ?  $names->sortByDesc('language')->values()->all() : $names->sortBy('language')->values()->all();
+            $names = $direction === 'desc' ? $names->sortByDesc('language')->values()->all() : $names->sortBy('language')->values()->all();
         }
 
         return response()->json([
@@ -639,59 +636,164 @@ class TaxonNameController extends Controller
         ]);
     }
 
-    public function update(TaxonNameRequest $request)
+    public function update(int $id, TaxonNameRequest $request)
     {
-        DB::beginTransaction();
+        $taxonName = TaxonName::find($id);
 
-        try {
-            $taxonName = TaxonName::find($request->get('id'));
-            $newTaxonName = (new TaxonNameService())->setAllProperties($request->all())
-                ->saveAll($taxonName ?? null);
-
-            DB::commit();
-        } catch (Exception $e) {
-            DB::rollBack();
-            return response([
-                'message' => $e->getMessage(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile(),
-                'trace' => $e->getTrace(),
-            ])->setStatusCode(500);
+        if (!$taxonName) {
+            return response([], 404);
         }
 
-        return response(TaxonNameCollection::collection([$newTaxonName])[0]);
+        $taxonNameLogService = new TaxonNameLogService();
+        $taxonNameLogService->initOriginData($taxonName);
+
+        $nomenclatureId = $request->get('nomenclature_id');
+        $rankId = $request->get('rank_id');
+        $authorIds = $request->get('authors', []);
+        $exAuthorIds = $request->get('ex_authors', []);
+        $usage = $request->get('usage');
+        $referenceId = $usage['reference_id'] ?? null;
+        $name = trim(preg_replace('!\s+!', ' ', str_replace("\n", '', $request->get('name'))));
+
+        $service = new TaxonNameService($taxonName);
+
+        if ($existId = $service->hasExist($nomenclatureId, $rankId, $name, $referenceId, $authorIds)) {
+            return response()->json([
+                'message' => 'TaxonName exist',
+                'errors' => [
+                    'same_id' => $existId,
+                ],
+            ])->setStatusCode(409);
+        }
+
+        $taxonName = $service->saveAll([
+            'nomenclature_id' => $nomenclatureId,
+            'rank_id' => $rankId,
+            'name' => $name,
+            'formatted_authors' => $request->get('formatted_authors'),
+            'original_taxon_name_id' => $request->get('original_taxon_name_id'),
+            'type_specimens' => $request->get('type_specimens'),
+            'publish_year' => $request->get('publish_year'),
+            'note' => $request->get('note'),
+
+            'is_hybrid' => $request->get('is_hybrid'),
+            'hybrid_parents_id' => $request->get('hybrid_parents_id'),
+            'latin_genus' => $request->get('latin_genus'),
+            'latin_name' => $request->get('latin_name'),
+            'latin_s1' => $request->get('latin_s1'),
+            'reference_name' => $request->get('reference_name'),
+            'species_id' => $request->get('species_id'),
+            'species_layers' => $request->get('species_layers'),
+            'type_name' => $request->get('type_name'),
+            'usage' => $request->get('usage'),
+
+            // ICNP
+            'is_approved_list' => $request->get('is_approved_list', false),
+            'initial_year' => $request->get('initial_year'),
+
+            // ICNP
+            'genome_composition' => $request->get('genome_composition'),
+            'host' => $request->get('host'),
+        ],
+            $authorIds,
+            $exAuthorIds,
+            $request->get('usage', [])
+        );
+
+        $taxonNameLogService->saveUpdateLog($taxonName, $authorIds, $exAuthorIds);
+        return response([
+            'id' => $taxonName->id,
+        ]);
     }
 
     public function store(TaxonNameRequest $request)
     {
-        DB::beginTransaction();
+        $service = (new TaxonNameService(new TaxonName()));
 
-        try {
-            $newTaxonName = (new TaxonNameService())->setAllProperties($request->all())
-                ->saveAll();
+        $nomenclatureId = $request->get('nomenclature_id');
+        $rankId = $request->get('rank_id');
+        $authorIds = $request->get('authors', []);
+        $usage = $request->get('usage');
+        $referenceId = $usage['reference_id'] ?? null;
+        $name = trim(preg_replace('!\s+!', ' ', str_replace("\n", '', $request->get('name'))));
 
-            DB::commit();
-        } catch (Exception $e) {
-            DB::rollBack();
+        if ($service->hasExist($nomenclatureId, $rankId, $name, $referenceId, $authorIds)) {
             return response([
-                'message' => $e->getMessage(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile(),
-                'trace' => $e->getTrace(),
-            ])->setStatusCode(500);
+                'message' => 'TaxonName exist'
+            ])->setStatusCode(409);
         }
 
-        $taxonName = TaxonName::with([
-            'authors', 'exAuthors', 'reference', 'usages', 'nomenclature', 'rank'
-        ])->find($newTaxonName->id);
+        $taxonName = $service->saveAll([
+            'nomenclature_id' => $nomenclatureId,
+            'rank_id' => $rankId,
+            'name' => $name,
+            'formatted_authors' => $request->get('formatted_authors'),
+            'original_taxon_name_id' => $request->get('original_taxon_name_id'),
+            'type_specimens' => $request->get('type_specimens'),
+            'publish_year' => $request->get('publish_year'),
+            'note' => $request->get('note'),
 
-        // save to my favorite list
-        $item = new FavoriteMineItem();
-        $item->collectable_type = FavoriteMineItem::TYPE_TAXON_NAME;
-        $item->collectable_id = $taxonName->id;
-        $item->user_id = Auth::user()->id;
-        $item->save();
+            'is_hybrid' => $request->get('is_hybrid'),
+            'hybrid_parents_id' => $request->get('hybrid_parents_id'),
+            'latin_genus' => $request->get('latin_genus'),
+            'latin_name' => $request->get('latin_name'),
+            'latin_s1' => $request->get('latin_s1'),
+            'reference_name' => $request->get('reference_name'),
+            'species_id' => $request->get('species_id'),
+            'species_layers' => $request->get('species_layers'),
+            'type_name' => $request->get('type_name'),
+            'usage' => $request->get('usage'),
+
+            // ICNP
+            'is_approved_list' => $request->get('is_approved_list', false),
+            'initial_year' => $request->get('initial_year'),
+
+            // ICNP
+            'genome_composition' => $request->get('genome_composition'),
+            'host' => $request->get('host'),
+        ],
+            $authorIds,
+            $request->get('ex_authors', []),
+            $request->get('usage', []),
+        );
+
+        $service->saveToMyFavoriteItem();
+        $logService = new LogService();
+        $logService->writeCreateLog(LogType::TAXON_NAME(), $taxonName->id);
 
         return response(TaxonNameCollection::collection([$taxonName])[0]);
+    }
+
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|max:1000|mimes:xls,xlsx',
+        ], [
+            'max' => '超過上傳限制 1MB',
+            'required' => '必填',
+            'mimes' => '檔案類型必須為 :values'
+        ]);
+
+        $files = $request->file();
+        $file = $files['file'];
+
+        $spreadsheet = IOFactory::load($file->path());
+        $sheets = $spreadsheet->getAllSheets();
+
+        try {
+            $service = new TaxonNameImportService($sheets[0]);
+            $count = $service->handle();
+        } catch (\Exception $e) {
+            return response()->json([
+                'data' => $service->getErrorRows(),
+                'message' => $e->getMessage(),
+            ])->setStatusCode(409);
+        }
+
+        return response()->json([
+            'message' => 'success',
+            'total' => $count,
+        ]);
     }
 }

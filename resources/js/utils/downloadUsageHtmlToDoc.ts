@@ -22,7 +22,7 @@ export default (container, title) => {
         type: 'application/msword'
     });
 
-// Specify link url
+    // Specify link url
     var url = 'data:application/vnd.openxmlformats-officedocument.wordprocessingml.document;charset=utf-8,' + encodeURIComponent(html);
 
     filename = filename ? filename + '.doc' : 'document.doc';
@@ -31,8 +31,9 @@ export default (container, title) => {
 
     document.body.appendChild(downloadLink);
 
-    if (navigator.msSaveOrOpenBlob) {
-        navigator.msSaveOrOpenBlob(blob, filename);
+    const globalNavigator: any = window.navigator;
+    if (globalNavigator.msSaveOrOpenBlob) {
+        globalNavigator.msSaveOrOpenBlob(blob, filename);
     } else {
         downloadLink.href = url;
 

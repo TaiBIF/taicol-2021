@@ -2,14 +2,12 @@
 
 namespace App;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Book extends Model
 {
-    public function editors()
-    {
-        return $this->belongsToMany(Person::class);
-    }
+    use HasFactory;
 
     public function country()
     {
@@ -24,5 +22,10 @@ class Book extends Model
             ->pluck('id');
 
         $this->editors()->sync($personIds);
+    }
+
+    public function editors()
+    {
+        return $this->belongsToMany(Person::class);
     }
 }

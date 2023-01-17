@@ -3,21 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Book;
-use App\FavoriteMineItem;
-use App\Http\Entities\ReferenceOtherPropertiesFactory;
+use App\Http\Requests\ReferenceRequest;
+use App\Http\Resources\PersonCollection;
 use App\Http\Resources\ReferenceCollection;
-use App\Http\Resources\TaxonNameCollection;
 use App\Http\Resources\UsageCollection;
+use App\Http\Services\LogService;
+use App\Http\Services\LogType;
+use App\Http\Services\ReferenceImportService;
+use App\Http\Services\ReferenceLogService;
+use App\Http\Services\ReferenceService;
+use App\Person;
 use App\Reference;
 use App\ReferenceUsage;
-use Carbon\Carbon;
 use Exception;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ReferenceController extends Controller
 {
@@ -29,6 +31,9 @@ class ReferenceController extends Controller
         if ($keyword) {
             $referenceQuery->whereRaw('LOWER(`title`) LIKE ? ', ['%' . trim(strtoLower($keyword)) . '%'])
                 ->orWhereRaw('LOWER(`subtitle`) LIKE ? ', ['%' . trim(strtoLower($keyword)) . '%'])
+                ->orWhereHas('book', function ($query) use ($keyword) {
+                    $query->whereRaw('title LIKE ? ', '%' . $keyword . '%');
+                })
                 ->orWhereHas('authors', function ($query) use ($keyword) {
                     $query->where('last_name', 'like', $keyword)
                         ->orWhere('first_name', 'like', $keyword)
@@ -75,94 +80,65 @@ class ReferenceController extends Controller
         return ReferenceCollection::collection([$reference])[0];
     }
 
-    public function update(Request $request, $id)
+    public function update(ReferenceRequest $request, $id)
     {
-        $request->validate([
-            'type' => 'required|Integer|not_in:0',
-            'authors' => 'required|array|min:1|exists:persons,id',
-            'publish_year' => 'required|regex:/^[1-2]{1}[0-9]{3}$/',
-            'properties.volume' => 'required_if:type,1|nullable|regex:/^[0-9a-zA-Z]+/u',
-            'properties.book_title' => 'required_if:type,1|required_if:type,2|required_if:type,3',
-            'properties.pages_range' => 'nullable|regex:/^[0-9\-–,]+$/u',
-            'properties.edition' => 'nullable',
-            'properties.chapter' => 'nullable|regex:/^[0-9a-zA-Z]+/u',
-            'properties.url' => 'nullable|url',
-        ], [
-            'min' => '必填',
-            'not_in' => '必填',
-            'required' => '必填',
-            'required_if' => '必填',
-            'integer' => '須為數字',
-            'properties.volume.regex' => '只允許「數字」、「英文」',
-            'properties.chapter.regex' => '只允許「數字」、「英文」',
-            'publish_year.regex' => '須為年份4位數',
-            'properties.pages_range.regex' => '只允許「數字」、「–」、「,」'
-        ]);
-
         $reference = Reference::with(['book', 'authors'])->find($id);
+
+        $referenceLogService = new ReferenceLogService();
+        $referenceLogService->initOriginData($reference);
 
         if (!$reference) {
             return response([], 404);
         }
 
         $authors = $request->get('authors');
-        $isPublish = $request->get('is_publish');
-        $editors = $request->get('editors', []);
+        $authorsWithOrder = Person::whereIn('id', $authors)
+            ->get()->sortBy(function ($model) use ($authors) {
+                return array_search($model->getKey(), $authors);
+            })
+            ->values()
+            ->map(function ($authors, $order) {
+                return [
+                    'person_id' => $authors->id,
+                    'order' => $order
+                ];
+            });
+        $title = $request->get('title', '') ?? '';
         $type = $request->get('type');
+        $publishYear = $request->get('publish_year') ?? '';
         $properties = $request->get('properties');
 
+        $service = new ReferenceService($reference);
+
+        if ($service->checkExistWithNewMeta($title, $publishYear, $authors)) {
+            return response([
+                'message' => 'Reference exist'
+            ])->setStatusCode(409);
+        }
+
         DB::beginTransaction();
+
         try {
-            $reference->type = $type;
-            $reference->publish_year = $request->get('publish_year');
-            $reference->language = $request->get('language');
+            $service->create([
+                'type' => $type,
+                'title' => $request->get('title'),
+                'subtitle' => $request->get('subtitle'),
+                'publish_year' => $request->get('publish_year'),
+                'language' => $request->get('language'),
+                'properties' => $properties,
+                'note' => $request->get('note'),
+            ]);
 
-            $reference->properties = (new ReferenceOtherPropertiesFactory())
-                ->createPropertiesFromType($type)
-                ->setProperties($properties)
-                ->toArray();
+            $reference->saveAuthors($authorsWithOrder);
 
-            $reference->note = $request->get('note') ?? '';
-            $reference->is_publish = (bool) $isPublish;
-            $reference->save();
+            $service->saveBook(
+                $properties['book_title'],
+                $properties['book_title_abbreviation'] ?? ''
+            );
 
-            $reference->saveAuthors($authors);
+            $service->saveCoverImage($request->get('image'), $request->get('cover_path'));
 
-            if ($type === Reference::TYPE_JOURNAL || $type === Reference::TYPE_BOOK_ARTICLE || $type === Reference::TYPE_BOOK) {
-                $reference->saveBook(
-                    $properties['book_title'],
-                    $properties['book_title_abbreviation'] ?? '',
-                    $editors
-                );
-            }
-
-            // upload image
-            $file = $request->get('image');
-            if ($file) {
-                $extension = explode('/', mime_content_type($file))[1];
-                $path = sprintf(
-                    'references/%d-%d.%s',
-                    $reference->id,
-                    time(),
-                    $extension
-                );
-
-                Storage::disk('images')->put($path, file_get_contents($file));
-                $reference->cover_path = $path;
-                $reference->save();
-            } else if (!$file && !$request->get('cover_path')) {
-                $reference->cover_path = '';
-                $reference->save();
-            }
-
-            // 儲存 computed data
-            $reference->save();
-            $r = json_encode($reference->toJson());
-            exec("node ../public/js/computeReference.js --r={$r} 2>&1", $title);
-            $reference->title = $title[0] ?? '';
-            $reference->subtitle = $title[1] ?? '';
-            $reference->save();
-
+            $referenceLogService->saveUpdateLog($reference, $authors);
             DB::commit();
         } catch (Exception $e) {
             DB::rollback();
@@ -174,113 +150,62 @@ class ReferenceController extends Controller
         return response(ReferenceCollection::collection([$reference])[0]);
     }
 
-    public function uploadImage(Request $request, $id)
+    public function store(ReferenceRequest $request)
     {
-        $reference = Reference::find($id);
-
-        if (!$reference) {
-            return response()->setStatusCode(404);
-        }
-
-        $file = $request->file('file');
-        $path = sprintf(
-            'references/%d-%d.%s',
-            $id,
-            time(),
-            $file->extension()
-        );
-
-        Storage::disk('images')->put($path, file_get_contents($file));
-        $reference->cover_path = $path;
-        $reference->save();
-    }
-
-    public function store(Request $request)
-    {
-        $request->validate([
-            'type' => 'required|Integer|not_in:0',
-            'authors' => 'required|array|min:1',
-            'publish_year' => 'required|regex:/[1-2][0-9]{3}/',
-            'properties.volume' => 'required_if:type,1|nullable|regex:/^[0-9a-zA-Z]+/',
-            'properties.book_title' => 'required_if:type,1|required_if:type,2|required_if:type,3',
-            'properties.pages_range' => 'nullable|regex:/^[0-9\-–,]+$/u',
-            'properties.edition' => 'nullable',
-            'properties.chapter' => 'nullable|regex:/^[0-9a-zA-Z]+/',
-            'properties.url' => 'nullable|url',
-        ], [
-            'min' => '必填',
-            'not_in' => '必填',
-            'required' => '必填',
-            'required_if' => '必填',
-            'integer' => '須為數字',
-            'properties.volume.regex' => '只允許「數字」、「英文」',
-            'properties.chapter.regex' => '只允許「數字」、「英文」',
-            'properties.pages_range.regex' => '只允許「數字」、「–」、「,」',
-            'regex' => '格式不符',
-        ]);
-
         $authors = $request->get('authors');
-        $isPublish = $request->get('is_publish');
-        $editors = $request->get('editors', []);
+        $authorsWithOrder = Person::whereIn('id', $authors)
+            ->get()->sortBy(function ($model) use ($authors) {
+                return array_search($model->getKey(), $authors);
+            })
+            ->values()
+            ->map(function ($authors, $order) {
+                return [
+                    'person_id' => $authors->id,
+                    'order' => $order
+                ];
+            });
+
+        $title = $request->get('title', '');
         $type = $request->get('type');
+        $publishYear = $request->get('publish_year', '');
         $properties = $request->get('properties');
+
+        $service = new ReferenceService(new Reference());
+
+        if ($service->checkExistWithNewMeta($title, $publishYear, $authors)) {
+            return response([
+                'message' => 'Reference exist'
+            ])->setStatusCode(409);
+        }
 
         DB::beginTransaction();
 
         try {
-            $newReference = new Reference();
-            $newReference->type = $type;
-            $newReference->cover_path = '';
-            $newReference->title = $request->get('title') ?? '';
-            $newReference->subtitle = $request->get('subtitle') ?? '';
-            $newReference->publish_year = $request->get('publish_year');
-            $newReference->language = $request->get('language');
+            $newReference = $service->create([
+                'type' => $type,
+                'title' => $title,
+                'subtitle' => $request->get('subtitle'),
+                'publish_year' => $publishYear,
+                'language' => $request->get('language'),
+                'properties' => $properties,
+                'note' => $request->get('note'),
+            ]);
 
-            $newReference->properties = (new ReferenceOtherPropertiesFactory())
-                ->createPropertiesFromType($type)
-                ->setProperties($properties)
-                ->toArray();
+            $newReference->saveAuthors($authorsWithOrder);
 
-            $newReference->note = $request->get('note') ?? '';
-            $newReference->is_publish = (bool) $isPublish;
-            $newReference->save();
-
-            $newReference->saveAuthors($authors);
-
-            if ($type === Reference::TYPE_JOURNAL || $type === Reference::TYPE_BOOK_ARTICLE || $type === Reference::TYPE_BOOK) {
-                $newReference->saveBook($properties['book_title'], $properties['book_title_abbreviation'] ?? '', $editors);
-            }
+            $service->saveBook(
+                $properties['book_title'],
+                $properties['book_title_abbreviation'] ?? ''
+            );
 
             // upload image
-            $file = $request->get('image');
-            if ($file) {
-                $extension = explode('/', mime_content_type($file))[1];
-                $path = sprintf(
-                    'references/%d-$d.%s',
-                    $newReference->id,
-                    time(),
-                    $extension
-                );
-
-                Storage::disk('images')->put($path, file_get_contents($file));
-                $newReference->cover_path = $path;
-                $newReference->save();
-            }
-
-            // 儲存 computed data
-            $r = json_encode(Reference::with(['authors'])->find($newReference->id)->toJson());
-            exec("node ../public/js/computeReference.js --r={$r} 2>&1", $title);
-            $newReference->title = $title[0] ?? '';
-            $newReference->subtitle = $title[1] ?? '';
-            $newReference->save();
+            $service->saveCoverImage($request->get('image'), $request->get('cover_path'));
 
             // save to my favorite list
-            $item = new FavoriteMineItem();
-            $item->collectable_type = FavoriteMineItem::TYPE_REFERENCE;
-            $item->collectable_id = $newReference->id;
-            $item->user_id = Auth::user()->id;
-            $item->save();
+            $service->saveToMyFavoriteItem();
 
+            $logService = new LogService();
+            $logService->writeCreateLog(LogType::REFERENCE(), $newReference->id);
             DB::commit();
         } catch (Exception $e) {
             DB::rollback();
@@ -313,11 +238,129 @@ class ReferenceController extends Controller
             ->get();
 
         return response()->json([
-            'data' => $usages->groupBy('group')->map(function($group) {
-                return $group->map(function($usage) {
+            'data' => $usages->groupBy('group')->map(function ($group) {
+                return $group->map(function ($usage) {
                     return UsageCollection::collection([$usage])->first();
                 });
             })
+        ]);
+    }
+
+    public function fetchDoi(Request $request)
+    {
+        $request->validate([
+            'doi' => 'required'
+        ], ['required' => '必填']);
+
+        $doi = $request->get('doi');
+        $url = "https://api.crossref.org/works/$doi";
+
+        $curl = curl_init();
+        curl_setopt($curl, CURLOPT_URL, $url);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($curl, CURLOPT_TIMEOUT, 120);
+        $result = curl_exec($curl);
+
+        $jsonResult = json_decode($result);
+
+        if ($jsonResult == null) {
+            return response([
+                'message' => '找不到資源',
+            ])->setStatusCode(404);
+        }
+
+        if ($jsonResult->status !== 'ok') {
+            throw new \Exception();
+        }
+
+        $typeMapping = [
+            'journal-article' => Reference::TYPE_JOURNAL,
+            'book-chapter' => Reference::TYPE_BOOK_ARTICLE,
+            'book' => Reference::TYPE_BOOK,
+        ];
+
+        $data = $jsonResult->message;
+
+        if (!isset($typeMapping[$data->type])) {
+            return response()
+                ->json([
+                    'message' => '不匯入資料'
+                ])
+                ->setStatusCode(409);
+        }
+
+        $type = $typeMapping[$data->type];
+        $authors = $data->author;
+        $publishYears = $data->published->{'date-parts'};
+        $publishYear = $publishYears[0][0] ?? '';
+        $authorPossible = [];
+
+        foreach ($authors as $key => $author) {
+            $givenName = str_replace(['.', ' '], '', $author->given);
+            $person = Person::whereRaw('CONCAT(first_name, middle_name) like ?', ["%$givenName%"])
+                ->where('last_name', 'like', "%$author->family%")
+                ->first();
+            $authorPossible[$key] = $person ? PersonCollection::collection([$person])[0] : null;
+        }
+
+        $articleTitle = $data->title[0];
+        $bookTitle = implode(';', $data->{'container-title'});
+
+        $book = Book::where('title', $bookTitle)->first();
+        $bookAbbr = $book->title_abbreviation ?? '';
+        $volume = $data->volume ?? '';
+        $issue = $data->issue ?? '';
+        $page = str_replace('-', '–', $data->page ?? '');
+        $DOI = $data->DOI;
+        $URL = $data->URL;
+        $language = $data->language ?? '';
+
+        return response()->json([
+            'type' => $type,
+            'authors' => $authors,
+            'authors_possible' => $authorPossible,
+            'publish_year' => $publishYear,
+            'articleTitle' => $articleTitle,
+            'book_title' => $bookTitle,
+            'book_title_abbreviation' => $bookAbbr,
+            'volume' => $volume,
+            'issue' => $issue,
+            'page' => $page,
+            'doi' => $DOI,
+            'url' => $URL,
+            'language' => $language,
+        ]);
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|max:1000|mimes:xls,xlsx',
+        ], [
+            'max' => '超過上傳限制 1MB',
+            'required' => '必填',
+            'mimes' => '檔案類型必須為 :values'
+        ]);
+
+        $files = $request->file();
+        $file = $files['file'];
+
+        $spreadsheet = IOFactory::load($file->path());
+        $sheets = $spreadsheet->getAllSheets();
+
+        try {
+            $service = new ReferenceImportService($sheets[0]);
+            $count = $service->handle();
+        } catch (\Exception $e) {
+            return response()->json([
+                'data' => $service->getErrorRows(),
+                'message' => $e->getMessage(),
+            ])->setStatusCode(409);
+        }
+
+        return response()->json([
+            'message' => 'success',
+            'total' => $count,
         ]);
     }
 }

@@ -22,7 +22,7 @@ class PersonRequest extends FormRequest
             'biology_departments' => 'required|array',
             'original_full_name' => 'required',
             'abbreviation_name' => [
-                Rule::requiredIf(in_array('plantae', $this->get('biology_departments')))
+                Rule::requiredIf(in_array('plantae', $this->get('biology_departments', [])))
             ]
         ];
     }

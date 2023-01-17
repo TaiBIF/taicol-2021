@@ -9,6 +9,7 @@ use App\Reference;
 use App\TaxonName;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\DB;
 
 class TaxonNameCollection extends JsonResource
 {
@@ -23,6 +24,25 @@ class TaxonNameCollection extends JsonResource
         $speciesLayer = isset($this->properties['species_layers']) ? $this->properties['species_layers'] : [];
 
         $species = $this->properties['species_id'] ? TaxonName::find($this->properties['species_id']) : null;
+
+        // find root & parent group
+        $currentTaxonNameId = $this->id;
+
+        $rootId = null;
+
+        while ($currentTaxonNameId != null) {
+            $currentTaxonName = DB::table('accepted_usages')
+                ->select('taxon_name_id', 'parent_taxon_name_id')
+                ->where('taxon_name_id', $currentTaxonNameId)
+                ->first();
+
+            $parent = TaxonName::select('rank_id', 'id')->find($currentTaxonNameId);
+
+            if ($currentTaxonName && $parent->rank_id == 3 && $currentTaxonName->parent_taxon_name_id == null)
+                $rootId = $currentTaxonNameId;
+
+            $currentTaxonNameId = $currentTaxonName ? $currentTaxonName->parent_taxon_name_id : null;
+        }
 
         $typeName = ($this->properties['type_name'] ?? '') ? TaxonNameCollection::collection([
             TaxonName::with([
@@ -52,7 +72,7 @@ class TaxonNameCollection extends JsonResource
             'ex_authors' => PersonCollection::collection($this->exauthors),
             'type_specimens' => collect($this->type_specimens)->map(function ($typeSpecimen) use ($request) {
                 $typeSpecimen['country'] = $typeSpecimen['country_id'] ?? null ? Country::find($typeSpecimen['country_id']) : null;
-                $collectors = collect($typeSpecimen['collectors'])->pluck('id');
+                $collectors = collect($typeSpecimen['collectors'] ?? [])->pluck('id');
                 $collectorPersons = Person::whereIn('id', $collectors)->get();
                 $typeSpecimen['collectors'] = $collectors->count() ? PersonCollection::collection($collectorPersons)->toArray($request) : [];
 
@@ -72,7 +92,7 @@ class TaxonNameCollection extends JsonResource
                     'latin_name' => $s['latin_name']
                 ];
             }),
-            'root' => $this->root,
+            'root' => $rootId ? TaxonName::find($rootId) : null,
             'properties' => $this->properties,
             'type_name' => $typeName,
             'publish_year' => $this->publish_year,

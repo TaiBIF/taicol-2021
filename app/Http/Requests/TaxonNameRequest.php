@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Nomenclature;
 use App\Rank;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -16,28 +17,29 @@ class TaxonNameRequest extends FormRequest
     public function rules()
     {
         $rank = Rank::find($this->get('rank_id'));
+        $nomenclature = Nomenclature::find($this->get('nomenclature_id'));
 
         // 物種階層
         $speciesRank = Rank::where('key', 'species')->first();
-        $hybridParents = array_filter($this->get('hybrid_parents'));
+        $hybridParents = array_filter($this->get('hybrid_parents', []));
         $id = $this->get('id');
 
         return [
             'nomenclature_id' => 'required|integer|exists:nomenclatures,id',
             'rank_id' => 'required|integer|exists:ranks,id',
             'authors' => 'exists:persons,id|array',
-            'ex_authors' => 'array',
+            'ex_authors' => 'exists:persons,id|array',
             'is_hybrid_formula' => 'boolean|',
-            'hybrid_parents.0' => [
-                Rule::requiredIf($rank && $rank->key === 'hybrid-formula'),
-                Rule::requiredIf(count($hybridParents) === 1),
-                function ($attribute, $value, $fail) use ($id, $hybridParents) {
-                    if ($id === ($value['id'] ?? '')) {
+            'original_taxon_name_id' => [
+                'nullable',
+                'exists:taxon_names,id',
+                function ($attribute, $value, $fail) use ($id) {
+                    if ($id === $value) {
                         $fail('不能為自己');
                     }
                 },
             ],
-            'hybrid_parents.1' => [
+            'hybrid_parents_id.0' => [
                 Rule::requiredIf($rank && $rank->key === 'hybrid-formula'),
                 Rule::requiredIf(count($hybridParents) === 1),
                 function ($attribute, $value, $fail) use ($id, $hybridParents) {
@@ -45,6 +47,19 @@ class TaxonNameRequest extends FormRequest
                         $fail('不能為自己');
                     }
                 },
+                'nullable',
+                'exists:taxon_names,id'
+            ],
+            'hybrid_parents_id.1' => [
+                Rule::requiredIf($rank && $rank->key === 'hybrid-formula'),
+                Rule::requiredIf(count($hybridParents) === 1),
+                function ($attribute, $value, $fail) use ($id, $hybridParents) {
+                    if ($id === ($value['id'] ?? '')) {
+                        $fail('不能為自己');
+                    }
+                },
+                'nullable',
+                'exists:taxon_names,id'
             ],
             'latin_name' => [
                 Rule::requiredIf(function () use ($rank, $speciesRank) {
@@ -52,12 +67,14 @@ class TaxonNameRequest extends FormRequest
                 }),
             ],
             'latin_genus' => [
-                Rule::requiredIf(function () use ($rank, $speciesRank) {
+                Rule::requiredIf(function () use ($nomenclature, $rank, $speciesRank) {
+                    if ($nomenclature->group === 'virus') return false;
                     return $rank && $rank->order == $speciesRank->order;
                 }),
             ],
             'latin_s1' => [
-                Rule::requiredIf(function () use ($rank, $speciesRank) {
+                Rule::requiredIf(function () use ($nomenclature, $rank, $speciesRank) {
+                    if ($nomenclature->group === 'virus') return false;
                     return $rank && $rank->order == $speciesRank->order;
                 }),
             ],
@@ -81,10 +98,12 @@ class TaxonNameRequest extends FormRequest
             'type_specimens.*.collectors' => 'required_if:type_specimens.*.kind,1|array',
             'type_specimens.*.collectors.*.id' => 'exists:persons,id',
             'type_specimens.*.isotypes.*.herbarium' => 'required',
-            'publish_year' => 'nullable|integer',
+            'publish_year' => 'nullable|integer|regex:/[1-2][0-9]{3}/',
+            'initial_year' => 'nullable|integer|regex:/[1-2][0-9]{3}/',
+            'is_approved_list' => 'nullable|boolean',
 
             'usage.show_page' => [
-                Rule::requiredIf(function() {
+                Rule::requiredIf(function () {
                     $usage = $this->get('usage');
                     return isset($usage['reference_id']);
                 }),

@@ -14,6 +14,6 @@ class Nomenclature extends Model
 
     public function ranks()
     {
-        return $this->belongsToMany(Rank::class)->orderBy('id');
+        return $this->belongsToMany(Rank::class)->orderBy('order');
     }
 }

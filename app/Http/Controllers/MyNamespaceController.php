@@ -3,25 +3,22 @@
 namespace App\Http\Controllers;
 
 use App\Http\Resources\MyNamespaceCollection;
+use App\ImportUsageLog;
 use App\MyNamespace;
 use App\MyNamespaceUsage;
 use App\Reference;
 use App\ReferenceUsage;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class MyNamespaceController extends Controller
 {
     public function index(Request $request)
     {
-        $currentPage = Paginator::resolveCurrentPage('page');
-        $perPage = 20;
-
         $namespaces = $request->user()
             ->namespaces()
             ->orderBy('id', 'desc')
-            ->forPage($currentPage, $perPage)
             ->get();
 
         return response([
@@ -99,6 +96,7 @@ class MyNamespaceController extends Controller
     {
         $namespaceIds = $request->get('ids');
         $overwrite = $request->get('overwrite', false);
+        $note = $request->get('note');
 
         $importUsages = MyNamespaceUsage::whereIn('namespace_id', $namespaceIds)
             ->orderBy('namespace_id')
@@ -142,6 +140,13 @@ class MyNamespaceController extends Controller
 
                 $groupLast = $usage->group + $groupLast;
             }
+
+            $log = new ImportUsageLog();
+            $log->reference_id = $reference->id;
+            $log->action = $overwrite ? ImportUsageLog::ACTION_OVERWRITE : ImportUsageLog::ACTION_APPEND;
+            $log->user_id = Auth::user()->id;
+            $log->note = $note;
+            $log->save();
 
             DB::commit();
 

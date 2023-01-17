@@ -2,13 +2,12 @@
 
 namespace App\Http\Entities;
 
-use App\Person;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Contracts\Support\Jsonable;
 
 class SpecimenPropertiesEntity implements Jsonable, Arrayable
 {
-    protected $sex;
+    protected $sexId;
     protected $country;
     protected $locality;
     protected $localityVerbatim;
@@ -29,9 +28,9 @@ class SpecimenPropertiesEntity implements Jsonable, Arrayable
         $this->collectionDay = $data['collection_day'] ?? '';
         $this->collectors = $data['collectors'];
         $this->collectorNumber = $data['collector_number'];
-        $this->collectorNumber = $data['collector_number'];
         $this->lectoCitePage = $data['lecto_cite_page'];
         $this->lectoDesignatedReferenceId = $data['lecto_designated_reference']['id'] ?? null;
+        $this->specimens = $data['specimens'];
 
         return $this;
     }
@@ -55,6 +54,7 @@ class SpecimenPropertiesEntity implements Jsonable, Arrayable
             'collector_number' => $this->collectorNumber ?? '',
             'lecto_cite_page' => $this->lectoCitePage ?? '',
             'lecto_designated_reference_id' => $this->lectoDesignatedReferenceId ?? null,
+            'specimens' => $this->specimens,
         ];
     }
 }

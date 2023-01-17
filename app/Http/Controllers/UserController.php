@@ -95,7 +95,6 @@ class UserController extends Controller
             'email' => 'required|email|unique:users',
             'password' => 'required|same:password_confirm',
             'name' => 'required',
-            'role' => 'required|in:1,0',
             'password_confirm' => [
                 Rule::requiredIf(function () use ($request) {
                     return !!$request->get('password');

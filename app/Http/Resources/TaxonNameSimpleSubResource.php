@@ -29,6 +29,7 @@ class TaxonNameSimpleSubResource extends JsonResource
             'ex_authors' => PersonCollection::collection($this->exAuthors),
             'properties' => $this->properties,
             'publish_year' => $this->publish_year,
+            'original_taxon_name' => $this->originalTaxonName ? new TaxonNameResource($this->originalTaxonName) : null,
 
             // Taxon name page 原始組合名所需要的資訊
             'species' => $species ? new TaxonNameResource($species) : null,

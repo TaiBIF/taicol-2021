@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -20,6 +19,7 @@ Route::post('/users', 'UserController@store');
 Route::get('/search', 'SearchController@index');
 Route::get('/search-references', 'SearchController@reference');
 Route::get('/search-taxon-names', 'SearchController@taxonName');
+Route::get('/search-persons', 'SearchController@person');
 
 Route::get('/countries', 'CountryController@index');
 Route::get('/nomenclatures', 'NomenclatureController@index');
@@ -43,6 +43,7 @@ Route::get('taxon-names/{id}/synonyms', 'TaxonNameController@synonyms');
 Route::get('taxon-names/{id}/sub-taxon-names', 'TaxonNameController@subTaxonNames');
 Route::get('taxon-names/{id}/common-names', 'TaxonNameController@commonNames');
 Route::get('taxon-names/{id}/parents', 'TaxonNameController@parents');
+Route::get('/doi', 'ReferenceController@fetchDoi');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', 'UserController@index');
@@ -57,7 +58,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::resource('references', 'ReferenceController')->except('index', 'show');
 
-    Route::post('references/{id}/image', 'ReferenceController@uploadImage');
     Route::resource('taxon-names', 'TaxonNameController')->except('index', 'show');
     Route::get('taxon-names/{id}/info', 'TaxonNameController@info');
 
@@ -70,12 +70,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('namespaces/{namespaceId}/usages/{usageId}', 'MyNamespaceUsageController@show');
     Route::put('namespaces/{namespaceId}/usages/{usageId}', 'MyNamespaceUsageController@update');
 
-    Route::middleware('auth.admin')->group(function() {
+    Route::post('/import/namespaces/{id}/usages', 'MyNamespaceUsageController@import');
+
+    Route::middleware('auth.admin')->group(function () {
         Route::get('/users', 'UserController@list');
         Route::get('/users/{id}', 'UserController@getUser');
         Route::put('/users/{id}', 'UserController@update');
         Route::put('/users/{id}/status', 'UserController@updateStatus');
         Route::post('/users/{id}', 'UserController@store');
+
+        Route::post('/import/persons', 'PersonController@import');
+        Route::post('/import/references', 'ReferenceController@import');
+        Route::post('/import/taxon-names', 'TaxonNameController@import');
+        Route::post('/validate/persons', 'PersonController@validateSheet');
+        Route::post('/validate/references', 'ReferenceController@validateSheet');
     });
 
     Route::resource('/favorite-folders', 'FavoriteFolderController');

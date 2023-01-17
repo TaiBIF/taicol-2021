@@ -2,13 +2,14 @@
 
 namespace App;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 
 class TaxonName extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, HasFactory;
 
     const ROLE_AUTHOR = 0;
     const ROLE_EX_AUTHOR = 1;
@@ -27,12 +28,12 @@ class TaxonName extends Model
 
     public function authors()
     {
-        return $this->belongsToMany(Person::class)->withPivotValue(['role' => self::ROLE_AUTHOR]);
+        return $this->belongsToMany(Person::class)->withPivotValue(['role' => self::ROLE_AUTHOR])->orderBy('order');
     }
 
     public function exAuthors()
     {
-        return $this->belongsToMany(Person::class)->withPivotValue(['role' => self::ROLE_EX_AUTHOR]);
+        return $this->belongsToMany(Person::class)->withPivotValue(['role' => self::ROLE_EX_AUTHOR])->orderBy('order');
     }
 
     public function originalTaxonName()
