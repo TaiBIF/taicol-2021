@@ -8,6 +8,8 @@ import layer from './layer';
 
 Vue.use(Vuex);
 
+const DEFAULT_LANGUAGE = 'zh-tw';
+
 const store = new Vuex.Store({
     modules: {
         auth,
@@ -18,6 +20,7 @@ const store = new Vuex.Store({
     },
     state: {
         countries: [],
+        lang: DEFAULT_LANGUAGE,
         modal: {
             component: null,
             isActive: false,
@@ -25,8 +28,7 @@ const store = new Vuex.Store({
             props: {},
         },
     },
-    actions: {
-    },
+    actions: {},
     mutations: {
         openModal(state, { component, props }) {
             state.modal.isActive = true;
@@ -38,7 +40,10 @@ const store = new Vuex.Store({
             state.modal.isActive = false;
             document.documentElement.style.overflowY = 'auto';
         },
-
+        SET_LANG(state, lang) {
+            state.modal.lang = lang;
+            Vue.i18n.set(lang);
+        },
     },
 });
 

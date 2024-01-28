@@ -89,6 +89,8 @@ class TaxonNameService
 
             if (array_key_exists('reference_id', $usage)) {
                 $this->saveReference($usage['reference_id']);
+            } else {
+                $this->saveReference();
             }
 
             $isHybrid = (bool) ($data['is_hybrid'] ?? false);
@@ -142,6 +144,10 @@ class TaxonNameService
 
         $properties['species_id'] = $data['species_id'] ?? null;
         $properties['species_layers'] = $data['species_layers'];
+
+        if (isset($data['authors_name']) && $data['authors_name']) {
+            $properties['authors_name'] = $data['authors_name'];
+        }
 
         if ($nomenclature->group === 'bacteria') {
             $properties['is_approved_list'] = $data['is_approved_list'];
@@ -274,7 +280,7 @@ class TaxonNameService
             })->get();
 
         foreach ($relatedTaxonNames as $name) {
-            $name->name = sprintf('%s x %s', $name->hybridParents[0]->name, $name->hybridParents[1]->name);
+            $name->name = sprintf('%s × %s', $name->hybridParents[0]->name, $name->hybridParents[1]->name);
             $name->save();
         }
     }

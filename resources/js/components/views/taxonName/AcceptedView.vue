@@ -3,21 +3,27 @@
         <thead>
         <tr>
             <th>
-                {{ $t('forms.taxonName.rank') }}
+                {{ $t('taxonName.rank') }}
             </th>
-            <th>類型</th>
+            <th>{{ $t('taxonName.type') }}</th>
             <th>
-                <sort-button :id="'taxon_name'" :on-click="onSortBy" :sortby="sortby" :direction="direction">
-                    學名
+                <sort-button :id="'taxon_name'"
+                             :direction="direction"
+                             :on-click="onSortBy"
+                             :sortby="sortby">
+                    {{ $t('common.taxonName') }}
                 </sort-button>
             </th>
             <th>
-                命名者
+                {{ $t('common.authors') }}
             </th>
-            <th>出處</th>
+            <th>{{ $t('common.referenceFrom') }}</th>
             <th>
-                <sort-button :id="'publish_year'" :on-click="onSortBy" :sortby="sortby" :direction="direction">
-                    年份
+                <sort-button :id="'publish_year'"
+                             :direction="direction"
+                             :on-click="onSortBy"
+                             :sortby="sortby">
+                    {{ $t('common.year') }}
                 </sort-button>
             </th>
         </tr>
@@ -29,13 +35,14 @@
             <td v-text="usage.taxonName.rank.display[$i18n.locale()]"></td>
             <td>
                 <status-with-indications
+                    :indications="usage.properties.indications || []"
                     :nomenclature="usage.taxonName.nomenclature"
-                    :status="usage.status"
-                    :indications="usage.properties.indications"/>
+                    :status="usage.status"/>
             </td>
             <!-- 學名 -->
             <td>
-                <router-link :to="`/taxon-names/${usage.taxonName.id}`" class="my-link">
+                <router-link :to="{name: 'taxon-name-page', params: {id: usage.taxonName.id}}"
+                             class="my-link">
                     <taxon-name-label :taxon-name="usage.taxonName"/>
                 </router-link>
             </td>
@@ -52,13 +59,9 @@
                 }"></author-name>
             </td>
             <td>
-                <router-link :to="`/references/${usage.reference.id}`" class="my-link">
+                <router-link :to="{name: 'reference-page', params: {id: usage.reference.id}}" class="my-link">
                     {{
-                        showReference({
-                            showPage: usage.showPage,
-                            figure: usage.figure,
-                            target: usage.reference,
-                        })
+                        showReference(usage.reference)
                     }}
                 </router-link>
             </td>
@@ -68,58 +71,63 @@
     </table>
 </template>
 <script>
-    import AuthorName from '../../AuthorName';
-    import SortButton from '../../SortButton';
-    import { factory } from '../../../utils/preview/reference';
-    import StatusWithIndications from '../../StatusWithIndications';
-    import TaxonNameLabel from '../TaxonNameLabel';
+import AuthorName from '../../AuthorName.vue';
+import SortButton from '../../SortButton.vue';
+import StatusWithIndications from '../../StatusWithIndications.vue';
+import TaxonNameLabel from '../TaxonNameLabel.vue';
+import { subTitle } from '../../../utils/preview/reference';
 
-    export default {
-        props: {
-            type: {
-                type: String,
-                required: true,
-            },
+export default {
+    props: {
+        type: {
+            type: String,
+            required: true,
         },
-        data() {
-            return {
-                direction: '',
-                sortby: '',
-                usages: [],
+    },
+    data() {
+        return {
+            direction: '',
+            sortby: '',
+            usages: [],
+        };
+    },
+    mounted() {
+        this.fetchData();
+    },
+    methods: {
+        async fetchData() {
+            try {
+                const {
+                    data: {
+                        data,
+                    },
+                } = await this.axios.get(`/taxon-names/${this.$route.params.id}/accepted?sortby=${this.sortby}&direction=${this.direction}`);
+
+                if (data.length > 0) {
+                    this.$emit('toggle', 'accepted', true);
+                }
+
+                this.usages = data;
+            } catch (e) {
+                this.$emit('toggle', 'accepted', false);
             }
         },
-        mounted() {
-            this.fetchData()
+        onSortBy(column, direction) {
+            this.sortby = column;
+            this.direction = direction;
+            this.usages = [];
+            this.currentPage = 1;
+            this.fetchData();
         },
-        methods: {
-            async fetchData() {
-                try {
-                    const {
-                        data: {
-                            data,
-                        },
-                    } = await this.axios.get(`/taxon-names/${this.$route.params.id}/accepted?sortby=${this.sortby}&direction=${this.direction}`)
-
-                    if (data.length > 0) {
-                        this.$emit('toggle', 'accepted', true);
-                    }
-
-                    this.usages = data;
-                } catch (e) {
-                    this.$emit('toggle', 'accepted', false);
-                }
-            },
-            onSortBy(column, direction) {
-                this.sortby = column;
-                this.direction = direction;
-                this.usages = [];
-                this.currentPage = 1;
-                this.fetchData();
-            },
-            showReference(v) {
-                return factory(this.type)([v]);
-            },
+        showReference(v) {
+            return subTitle(v, false);
         },
-        components: { TaxonNameLabel, StatusWithIndications, SortButton, AuthorName },
-    }
+    },
+    components: {
+        TaxonNameLabel,
+        StatusWithIndications,
+        SortButton,
+        AuthorName,
+    },
+};
 </script>

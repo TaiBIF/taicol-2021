@@ -1,11 +1,12 @@
 import AuthorName from '../components/AuthorName';
 import TaxonNameLabel from '../components/views/TaxonNameLabel';
 import AcceptedNotAccepted from '../components/views/usage/AcceptedNotAccepted';
-import TaxonNameLabelWithUndeterminedIndication from '../components/views/TaxonNameLabelWithUndeterminedIndication';
+import TaxonNameLabelWithUndeterminedIndication
+    from '../components/views/TaxonNameLabelWithUndeterminedIndication';
 import { factory as rFactory } from '../utils/preview/reference';
 import { comboLast } from '../utils/preview/person';
 
-const interleave = (arr, thing) => [].concat(...arr.map(n => [n, thing])).slice(0, -1)
+const interleave = (arr, thing) => [].concat(...arr.map((n) => [n, thing])).slice(0, -1);
 
 export class UndeterminedService {
     constructor(createElement, indication, isSimple = false) {
@@ -29,7 +30,7 @@ export class UndeterminedService {
             TaxonNameLabel,
             {
                 props: {
-                    taxonName: taxonName,
+                    taxonName,
                 },
                 class: {
                     'is-orange': true,
@@ -49,6 +50,7 @@ export class UndeterminedService {
                     type: taxonName.nomenclature.group,
                     originalTaxonName: taxonName.originalTaxonName,
                     publishYear: taxonName.publishYear,
+                    taxonName,
                 },
                 class: {
                     'is-inline': true,
@@ -68,7 +70,7 @@ export class UndeterminedService {
 
         this.referenceDOM = referencePreview ? this._c(
             'span',
-            referencePreview,
+            `${referencePreview}.`,
         ) : null;
         return this;
     }

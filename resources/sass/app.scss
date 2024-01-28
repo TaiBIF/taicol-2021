@@ -1,10 +1,35 @@
 @import 'variables';
-@import '~bulma';
-@import "~buefy/src/scss/buefy";
+@import '~bulma/sass/utilities/all';
+@import '~bulma/sass/base/all';
+@import '~bulma/sass/components/all';
+
+@import "~bulma/sass/elements/box";
+@import "~bulma/sass/elements/button";
+@import "~bulma/sass/elements/content";
+@import "~bulma/sass/elements/notification";
+@import "~bulma/sass/elements/title";
+@import "~bulma/sass/elements/other";
+
+@import '~bulma/sass/form/all';
+@import '~bulma/sass/grid/all';
+@import "~bulma/sass/helpers/color";
+@import "~bulma/sass/helpers/flexbox";
+@import "~bulma/sass/helpers/float";
+@import "~bulma/sass/helpers/overflow";
+@import "~bulma/sass/helpers/position";
+@import "~bulma/sass/helpers/visibility";
+
+@import "~buefy/src/scss/components/_loading";
+@import "~buefy/src/scss/components/_navbar";
+@import "~buefy/src/scss/components/_pagination";
+@import "~buefy/src/scss/components/_select";
+@import "~buefy/src/scss/components/_upload";
+
 @import 'form';
 @import 'layer';
 @import 'table';
 @import 'tooltip';
+@import 'toast';
 @import 'draggable';
 
 @tailwind base;
@@ -48,6 +73,7 @@ html {
     }
 
     .container {
+        margin: 0 auto;
         max-width: 85%;
 
         &.is-wide {
@@ -57,13 +83,23 @@ html {
 
     .my-link {
         color: $black;
+
+        &::after {
+            font-family: "Font Awesome 5 Free";
+            content: "  ";
+            font-weight: 900;
+            color: transparent;
+            text-shadow: none;
+        }
+
         &:hover {
             text-decoration: underline;
+            text-underline-offset: 2px;
+
             &::after {
-                font-family: "Font Awesome 5 Free";
-                content: "  ";
-                font-weight: 900;
+                color: $black;
             }
+
         }
     }
 }
@@ -72,6 +108,7 @@ html {
     width: 100%;
     height: calc(100vh - #{$navbar-height});
     margin-top: $navbar-height;
+    overflow: hidden;
 }
 
 .no-wrap {
@@ -126,7 +163,7 @@ thead {
         th {
             position: sticky;
             background-color: white;
-            z-index: 60;
+            z-index: 40;
             top: 0;
         }
 
@@ -136,4 +173,17 @@ thead {
             padding-right: 2rem;
         }
     }
+}
+
+.table {
+    button, .button {
+        border-radius: 0px;
+        border: 0;
+        background: transparent;
+        @apply py-[0px] h-auto px-[12px] hover:underline underline-offset-2 whitespace-nowrap;
+    }
+}
+
+.buttons {
+    @apply flex gap-1 align-middle ;
 }

@@ -3,19 +3,17 @@
         <table class="table is-fullwidth is-hoverable has-text-left in-tab-content">
             <thead>
             <tr>
-                <th>俗名</th>
+                <th v-text="$t('usage.commonName')"/>
                 <th>
                     <sort-button :id="'language'" :direction="direction" :on-click="onSortBy" :sortby="sortby">
-                        語言
+                        {{ $t('usage.language') }}
                     </sort-button>
                 </th>
+                <th v-text="$t('usage.area')"/>
+                <th v-text="$t('taxonName.referenceFrom')"/>
                 <th>
-                    地區
-                </th>
-                <th>出處</th>
-                <th>
-                    <sort-button :id="'publish_year'" :on-click="onSortBy" :sortby="sortby" :direction="direction">
-                        {{ $t('forms.reference.publishYear') }}
+                    <sort-button :id="'publish_year'" :direction="direction" :on-click="onSortBy" :sortby="sortby">
+                        {{ $t('usage.commonNameYear') }}
                     </sort-button>
                 </th>
             </tr>
@@ -24,11 +22,13 @@
             <tr v-for="commonName in commonNames">
                 <td>{{ commonName.name }}</td>
                 <td>
-                    {{ $t(`forms.reference.languages.${commonName.language}`) }}
+                    {{ $t(`reference.languages.${commonName.language}`) }}
                 </td>
                 <td>{{ commonName.area }}</td>
                 <td>
-                    <router-link :to="`/references/${commonName.reference.id}`" class="my-link">
+                    <router-link
+                        :to="{name: 'reference-page', params: {id: commonName.reference.id}}"
+                        class="my-link">
                         {{ commonName.reference.subtitle }}
                     </router-link>
                 </td>
@@ -36,7 +36,9 @@
             </tr>
             <tr>
                 <td colspan="8">
-                    <p v-if="lastPage < currentPage" class="text-gray-300 text-center">資料最底，共計 {{ total }} 筆</p>
+                    <p v-if="lastPage < currentPage" class="text-gray-300 text-center">
+                        {{ $t('common.bottomOfResults', total) }}
+                    </p>
                     <span class="caption"></span>
                     <loading v-if="isLoading"></loading>
                 </td>
@@ -46,8 +48,8 @@
     </div>
 </template>
 <script>
-import SortButton from '../../SortButton';
-import Loading from '../../Loading';
+import SortButton from '../../SortButton.vue';
+import Loading from '../../Loading.vue';
 
 export default {
     props: {
@@ -66,15 +68,15 @@ export default {
             total: 0,
             commonNames: [],
             isLoading: false,
-        }
+        };
     },
     mounted() {
         const app = this;
-        app.intersectionObserver = new IntersectionObserver(function (entries) {
+        app.intersectionObserver = new IntersectionObserver(((entries) => {
             if (entries[0].intersectionRatio > 0) {
                 app.fetchData();
             }
-        }, {rootMargin: '0px 0px 500px 0px'});
+        }), { rootMargin: '0px 0px 500px 0px' });
         app.intersectionObserver.observe(document.querySelector('.caption'));
     },
     methods: {
@@ -88,14 +90,14 @@ export default {
             try {
                 const page = this.currentPage + 1;
                 const {
-                    data: {data, lastPage, total}
+                    data: { data, lastPage, total },
                 } = await this.axios.get(`/taxon-names/${this.taxonNameId}/common-names`, {
                     params: {
                         page,
                         direction: this.direction,
                         sortby: this.sortby,
                         perPage: this.perPage,
-                    }
+                    },
                 });
 
                 this.total = total;
@@ -120,6 +122,6 @@ export default {
             this.fetchData();
         },
     },
-    components: {SortButton, Loading},
-}
+    components: { SortButton, Loading },
+};
 </script>

@@ -125,6 +125,7 @@ class MyNamespaceUsageController extends Controller
         $taxonNameId = $request->get('taxon_name_id');
 
         $typeSpecimens = $request->get('type_specimens');
+        $status = $request->get('status');
 
         $request->validate([
             'status' => 'required',
@@ -141,38 +142,33 @@ class MyNamespaceUsageController extends Controller
                 $underSpecies = ['aberration', 'morph', 'stirp', 'race', 'special-form', 'subform', 'form', 'nothovariety', 'subvariety', 'variety', 'nothosubspecies', 'subspecies'];
 
                 if (!$taxonName) {
-                    $fail('請選擇正確上階層');
+                    $fail('usage.wrongParent');
                 } else if ($taxonName->rank->key === 'species' && !in_array($parentTaxonName->rank->key, $speciesParentKey)) {
-                    $fail('請選擇正確上階層');
+                    $fail('usage.wrongParent');
                 } else if (in_array($taxonName->rank->key, $underSpecies) && $taxonName->properties['species_id'] != $parentTaxonNameId) {
-                    $fail('請選擇正確的種下上階層');
+                    $fail('usage.wrongRank');
+                } else if ($parentTaxonNameId === $taxonNameId) {
+                    $fail('common.selfNotAllowed');
                 }
             },
             'type_specimens.*.use' => 'required',
             'type_specimens.*.kind' => 'required|integer',
-            'type_specimens.*.country' => 'required_if:type_specimens.*.kind,1',
-            'type_specimens.*.specimens.*.herbarium' => 'required_if:type_specimens.*.kind,1',
             'type_specimens.*.collection_year' => 'max:4',
             'type_specimens.*.collection_day' => 'max:2',
-            'type_specimens.*.collector_ids' => 'required_if:type_specimens.*.kind,1|array|exists:persons,id',
+            'type_specimens.*.collector_ids' => 'array|exists:persons,id',
             'type_specimens.*.isotypes.*.herbarium' => 'required',
-            'type_specimens.*.lecto_designated_reference' => function ($attribute, $value, $fail) use ($typeSpecimens) {
-                preg_match('/.*\.(\d)\..*/', $attribute, $matches);
-                $index = $matches[1];
-                if ($typeSpecimens[$index]['use'] === 'lectotype' &&
-                    ($typeSpecimens[$index]['is_designated'] === false && !$typeSpecimens[$index]['lecto_designated_reference'])) {
-                    $fail('必填');
-                }
-            },
             'per_usages.*.reference_id' => 'required',
             'per_usages.*.show_page' => 'integer|nullable',
+            'properties.is_in_taiwan' => $status === 'accepted' ? 'required' : '',
+            'properties.common_names.*.name' => 'required',
+            'properties.common_names.*.language' => 'required',
         ], [
-            'min' => '必填',
-            'not_in' => '必填',
-            'required' => '必填',
-            'required_if' => '必填',
-            'required_without' => '必填',
-            'integer' => '須為數字',
+            'min' => 'usage.required',
+            'not_in' => 'usage.required',
+            'required' => 'usage.required',
+            'required_if' => 'usage.required',
+            'required_without' => 'usage.required',
+            'integer' => 'usage.integer',
         ]);
 
         $namespace = MyNamespace::find($namespaceId);
@@ -187,10 +183,26 @@ class MyNamespaceUsageController extends Controller
 
         $usage = $request->all();
 
+        $originUsage = MyNamespaceUsage::find($usageId);
+        $firstUsage = $namespace->usages()->orderBy('group')->orderBy('order')->first();
+
+        if ($firstUsage->id === $originUsage->id && $usage['status'] !== 'accepted') {
+            return response()->json([
+                'message' => '第一筆必須為 accepted',
+                'errors' => [
+                    'status' => ['usage.firstMustBeAccepted'],
+                ],
+            ], 422);
+        }
+
         try {
-            $originUsage = MyNamespaceUsage::find($usageId);
             $originUsage->parent_taxon_name_id = $usage['parent_taxon_name_id'] ?? null;
             $originUsage->is_for_publish = false;
+
+            if ($usage['status'] === 'not-accepted' || $usage['status'] === 'misapplied') {
+                $originUsage->is_indent = true;
+            }
+
             $originUsage->status = $usage['status'] ?? false;
             $originUsage->type_specimens = $usage['type_specimens'] ?? [];
             $originUsage->name_remark = $usage['name_remark'] ?? '';
@@ -212,6 +224,51 @@ class MyNamespaceUsageController extends Controller
             ], 500);
         }
     }
+
+    public function updateUsageProperties(Request $request, $namespaceId)
+    {
+
+        $namespace = MyNamespace::with('usages')->find($namespaceId);
+
+        if (!$namespace) {
+            return response()->setStatusCode(404);
+        }
+
+
+        DB::beginTransaction();
+        try {
+            foreach ($namespace->usages()->get() as $usage) {
+                if ($usage->isTitle) {
+                    continue;
+                }
+
+                // Only accepted names
+                if ($usage->status !== 'accepted') {
+                    continue;
+                }
+
+                $p = $request->all();
+                $usage->properties = [
+                        'is_fossil' => !isset($p['is_fossil']) ? null : (!!$p['is_fossil'] ? 1 : 0),
+                        'is_marine' => !isset($p['is_marine']) ? null : (!!$p['is_marine'] ? 1 : 0),
+                        'is_brackish' => !isset($p['is_brackish']) ? null : (!!$p['is_brackish'] ? 1 : 0),
+                        'is_in_taiwan' => !isset($p['is_in_taiwan']) ? null : (!!$p['is_in_taiwan'] ? 1 : 0),
+                        'is_freshwater' => !isset($p['is_freshwater']) ? null : (!!$p['is_freshwater'] ? 1 : 0),
+                        'is_terrestrial' => !isset($p['is_terrestrial']) ? null : (!!$p['is_terrestrial'] ? 1 : 0),
+                        'is_endemic' => !isset($p['is_endemic']) ? null : (!!$p['is_endemic'] ? 1 : 0),
+                        'distribution_in_tw' => $p['distribution_in_tw'] ?? '',
+                        'alien_type' => $p['alien_type'] ?? '',
+                    ] + $usage->properties;
+                $usage->save();
+            }
+            DB::commit();
+        } catch (\Exception) {
+            DB::rollBack();
+        }
+
+        return response([]);
+    }
+
 
     public function store(Request $request, $namespaceId)
     {
@@ -248,6 +305,12 @@ class MyNamespaceUsageController extends Controller
 
             $group = 0;
             foreach ($usages as $index => $usage) {
+                if ($index === 0 && isset($usage['is_deleted']) && $usage['is_deleted'] === false && $usage['is_title'] === false && $usage['status'] !== 'accepted' ) {
+                    return response()->json([
+                        'message' => '第一筆必須為 accepted'
+                    ], 422);
+                }
+
                 $isTitle = (bool) ($usage['is_title'] ?? false);
 
                 if (!$usage['is_indent']) {
@@ -256,6 +319,15 @@ class MyNamespaceUsageController extends Controller
 
                 if (isset($usage['id']) && $usage['id']) {
                     $currentUsage = MyNamespaceUsage::find($usage['id']);
+
+                    // update status
+                    if ($currentUsage->status !== $usage['status']) {
+                        $currentUsage->status = $usage['status'] ?? 'accepted';
+                        $usage['properties']['indications'] = [];
+                        $currentUsage->properties = $usage['properties'];
+                        $currentUsage->save();
+                    }
+
                     if ($currentUsage && isset($usage['is_deleted']) && (bool) $usage['is_deleted']) {
                         $currentUsage->delete();
                         continue;
@@ -266,7 +338,7 @@ class MyNamespaceUsageController extends Controller
 
                     $currentUsage->parent_taxon_name_id = $usage['parent_taxon_name_id'] ?? null;
                     $currentUsage->is_for_publish = false;
-                    $currentUsage->status = $usage['status'] ?? '';
+                    $currentUsage->status = $usage['status'] ?? 'accepted';
                     $currentUsage->type_specimens = $usage['type_specimens'] ?? [];
                     $currentUsage->name_remark = $usage['name_remark'] ?? '';
                     $currentUsage->custom_name_remark = $usage['custom_name_remark'] ?? '';

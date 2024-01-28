@@ -13,10 +13,10 @@ export default {
 
     mutations: {
         SET_ITEMS(state, value) {
-            state.items = value
+            state.items = value;
         },
         CLEAR_ITEMS(state) {
             state.items = [];
-        }
+        },
     },
 };

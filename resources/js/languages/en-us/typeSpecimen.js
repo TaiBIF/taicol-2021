@@ -1,0 +1,22 @@
+export default {
+    use: 'Use of Type',
+    kind: 'Kind of Type',
+    sex: 'Sex of Specimen',
+    country: 'Type Country',
+    locality: 'Type Locality',
+    localityVerbatim: 'Verbatim Type Locality',
+    collectDate: 'Collection Date',
+    collectorNumber: 'Collection Number',
+    collector: 'Collector',
+    lectoCitePage: 'Lectotype Cite Page/Figure',
+    herbarium: 'Herbarium/Collection Code',
+    shortHerbarium: 'Herbarium',
+    accessionNumber: 'Accession Number',
+    citationNoteNumber: 'Citation Note/Number',
+    lectoDesignatedReference: 'Designated Reference',
+    url: 'Type URL',
+    isoType: 'Isotype',
+    addIsotype: 'Add Isotype',
+
+    hereDesignated: 'Here Designated',
+};

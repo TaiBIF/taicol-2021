@@ -30,10 +30,10 @@ class PersonRequest extends FormRequest
     public function messages()
     {
         return [
-            'required' => '必填',
-            'min' => '最少 1100 年後',
-            'digits' => '只能為西元年',
-            'integer' => '只能為數字',
+            'required' => 'person.required',
+            'min' => 'person.min',
+            'digits' => 'person.digits',
+            'integer' => 'person.integer',
         ];
     }
 }

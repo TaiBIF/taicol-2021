@@ -9,43 +9,48 @@
               v-on:input="onUpdateValue"
     >
         <template v-slot:selected-option="{ option }">
-            <span v-text="$t(`forms.reference.languages.${option.id}`)"/>
+            <span v-text="$t(`reference.languages.${option.id}`)"/>
         </template>
         <template v-slot:option="{ option }">
-            <span v-text="$t(`forms.reference.languages.${option.id}`)"/>
+            <span v-text="$t(`reference.languages.${option.id}`)"/>
         </template>
     </t-select>
 </template>
 <script>
-    import Select from '../Select';
-    import options from '../../utils/options/languages';
+import Select from '../Select.vue';
+import options from '../../utils/options/languages';
 
-    export default {
-        props: {
-            value: {
-                type: [Object, String],
-            },
-            errors: {
-                type: Array,
-            },
-            isUseKeyId: {
-                type: Boolean,
-                default: () => false,
-            },
+export default {
+    props: {
+        value: {
+            type: [Object, String],
         },
-        data() {
-            return {
-                localValue: this.value,
-                options,
-            }
+        errors: {
+            type: Array,
         },
-        methods: {
-            onUpdateValue(value) {
-                this.$emit('input', value);
-            },
+        isUseKeyId: {
+            type: Boolean,
+            default: () => false,
         },
-        components: {
-            tSelect: Select,
+    },
+    data() {
+        return {
+            localValue: this.value,
+            options,
+        };
+    },
+    watch: {
+        value(v) {
+            this.localValue = v;
         },
-    }
+    },
+    methods: {
+        onUpdateValue(value) {
+            this.$emit('input', value);
+        },
+    },
+    components: {
+        tSelect: Select,
+    },
+};
 </script>

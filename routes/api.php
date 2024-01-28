@@ -61,6 +61,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::resource('taxon-names', 'TaxonNameController')->except('index', 'show');
     Route::get('taxon-names/{id}/info', 'TaxonNameController@info');
 
+    // reference usage edit
+    Route::get('references/{id}/usages-edit', 'ReferenceUsageController@index');
+    Route::get('references/{id}/usages-edit/{usageId}', 'ReferenceUsageController@show');
+    Route::post('reference/{id}/usages-edit', 'ReferenceUsageController@store');
+    Route::put('references/{id}/usages-edit/{usageId}', 'ReferenceUsageController@update');
+    Route::put('reference/{id}/usages-properties', 'ReferenceUsageController@updateUsageProperties');
+
     // 我的名錄
     Route::resource('namespaces', 'MyNamespaceController');
     Route::post('namespaces/import/{referenceId}', 'MyNamespaceController@import');
@@ -69,6 +76,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('namespaces/{namespaceId}/usages', 'MyNamespaceUsageController@store');
     Route::get('namespaces/{namespaceId}/usages/{usageId}', 'MyNamespaceUsageController@show');
     Route::put('namespaces/{namespaceId}/usages/{usageId}', 'MyNamespaceUsageController@update');
+    Route::put('namespaces/{namespaceId}/usages-properties', 'MyNamespaceUsageController@updateUsageProperties');
 
     Route::post('/import/namespaces/{id}/usages', 'MyNamespaceUsageController@import');
 

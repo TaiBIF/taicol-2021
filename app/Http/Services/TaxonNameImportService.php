@@ -49,7 +49,7 @@ class TaxonNameImportService
                 $taxonName = $this->saveTaxonName($row);
 
                 $logService = new LogService();
-                $logService->writeCreateLog(LogType::TAXON_NAME(), $taxonName->id);
+                $logService->writeCreateLog(LogType::TAXON_NAME, $taxonName->id);
                 $count++;
             }
             DB::commit();

@@ -2,13 +2,13 @@
  * 全名
  * @param person object
  */
-export const fullName = (person) => {
-    return [
-        person.lastName,
-        [person.firstName, person.middleName].filter(Boolean).join(' '),
-    ].join(', ');
-}
-
+export const fullName = (person) => [
+    person.lastName,
+    [person.firstName, person.middleName]
+        .filter(Boolean)
+        .join(' '),
+]
+    .join(', ');
 
 /**
  * 全名的縮寫
@@ -16,20 +16,31 @@ export const fullName = (person) => {
  * @param person object
  */
 export const fullNameAbbreviation = (person, isOpposite = false) => {
-    const firstNameAbbr = person.firstName.match(/(\w{1}).*[\s|\-](\w{1}).*/, '$1.-$2.') ?
-        person.firstName.replace(/(\w{1}).*[\s|\-](\w{1}).*/, '$1.-$2.') : person.firstName.replace(/(\w{1}).*/, '$1.');
+    const firstNameAbbr = person.firstName
+        .match(/(\w{1}).*[\s|-](\w{1}).*/, '$1.-$2.') ?
+        person.firstName.replace(/(\w{1}).*[\s|-](\w{1}).*/, '$1.-$2.')
+        : person.firstName.replace(/(\w{1}).*/, '$1.');
 
     if (isOpposite) {
         return [
-            [firstNameAbbr, person.middleName ? `${person.middleName.replace(/(\w{1}).*/, '$1.')}` : ''].filter(Boolean).join(' '),
+            [
+                firstNameAbbr,
+                person.middleName ? `${person.middleName.replace(/(\w{1}).*/, '$1.')}` : '',
+            ]
+                .filter(Boolean)
+                .join(' '),
             person.lastName,
-        ].join(' ');
+        ]
+            .join(' ');
     }
     return [
         person.lastName,
-        [firstNameAbbr, person.middleName ? `${person.middleName.replace(/(\w{1}).*/, '$1.')}` : ''].filter(Boolean).join(' '),
-    ].join(', ');
-}
+        [firstNameAbbr, person.middleName ? `${person.middleName.replace(/(\w{1}).*/, '$1.')}` : '']
+            .filter(Boolean)
+            .join(' '),
+    ]
+        .join(', ');
+};
 
 /**
  * 連續「全名縮寫」
@@ -37,11 +48,7 @@ export const fullNameAbbreviation = (person, isOpposite = false) => {
  * @returns {string}
  */
 
-export const comboFull = (persons) => {
-    return persons.map((person) => {
-        return fullNameAbbreviation(person);
-    }).join(', ');
-}
+export const comboFull = (persons) => persons.map((person) => fullNameAbbreviation(person)).join(', ');
 
 /**
  * 連續「姓氏」縮寫
@@ -52,14 +59,22 @@ export const comboFull = (persons) => {
  */
 export const comboLast = (persons) => {
     const key = 'lastName';
-    const names = (key ? persons.map(person => person[key]) : []);
+    const names = (key ? persons.map((person) => person[key]) : []);
 
     if (names.length >= 3) {
         return `${names[0]} et al.`;
     }
 
     return names.filter(Boolean).join(' & ');
-}
+};
+
+export const comboFullLast = (persons) => {
+    const key = 'lastName';
+    const names = (key ? persons.map((person) => person[key]) : []);
+    return names.filter(Boolean)
+        .join(', ')
+        .replace(/(,\s)(?!.*,\s)/, ' & ');
+};
 
 /**
  * 連續「縮寫名」
@@ -68,37 +83,61 @@ export const comboLast = (persons) => {
  */
 export const comboAbbr = (persons) => {
     const key = 'abbreviationName';
-    const names = (key ? persons.map(person => person[key]) : []);
+    const names = (key ? persons.map((person) => person[key]) : []);
 
     if (names.length >= 3) {
         return `${names[0]} et al.`;
     }
 
     return names.join(' & ');
-}
+};
+
+export const comboFullAbbr = (persons) => {
+    const key = 'abbreviationName';
+    const names = (key ? persons.map((person) => person[key]) : []);
+
+    return names.filter(Boolean)
+        .join(', ')
+        .replace(/(,\s)(?!.*,\s)/, ' & ');
+};
 
 export const factory = (type) => {
     if (type === 'animal') {
-        return comboLast;
-    } else if (type === 'plant') {
-        return comboAbbr;
-    } else {
-        return comboFull;
+        return comboFullLast;
     }
-}
+    if (type === 'plant') {
+        return comboFullAbbr;
+    }
+    if (type === 'bacteria') {
+        return comboLast;
+    }
+
+    return comboFull;
+};
 
 /**
  * 命名者邏輯
  */
 
-export const animalAuthorNames = (persons, expersons = [], originName, publishYear = '', taxonName = null) => {
+export const animalAuthorNames = (persons, expersons = [], originName = null, publishYear = '', taxonName = null) => {
     // 若有「原始組合名」以原始組合名加上括號為「命名者」
     if (originName) {
         // 同屬內變動
         if (
-            taxonName?.species?.properties?.latinGenus === originName.properties?.latinGenus ||
-            (!!taxonName?.species && !!originName?.species && taxonName?.species.properties?.latinGenus === originName.species.properties.latinGenus) ||
-            (!!taxonName && !!originName?.species && taxonName?.properties?.latinGenus === originName.species.properties.latinGenus)
+            (
+                taxonName?.species?.properties?.latinGenus &&
+                taxonName?.species?.properties?.latinGenus === originName.properties?.latinGenus
+            )
+            || (
+                !!taxonName?.species &&
+                !!originName?.species &&
+                taxonName?.species.properties?.latinGenus === originName.species.properties.latinGenus
+            )
+            || (
+                !!taxonName &&
+                !!originName?.species &&
+                taxonName?.properties?.latinGenus === originName.species.properties.latinGenus
+            )
         ) {
             return animalAuthorNames(originName.authors, originName.exAuthors, null, originName.publishYear);
         }
@@ -111,23 +150,74 @@ export const animalAuthorNames = (persons, expersons = [], originName, publishYe
         [
             factory('animal')(expersons),
             factory('animal')(persons),
-        ].filter(Boolean).join(' ex '),
-        publishYear,
+        ].filter(Boolean).join(' ex '), publishYear,
     ]
         .filter(Boolean)
         .join(', ');
-}
+};
 
-export const plantAuthorNames = (persons, expersons = [], originName) => {
-    return [
-        // 若有「原始組合名」以原始組合名加上括號為「命名者」
-        originName ? `(${plantAuthorNames(originName.authors, originName.exAuthors, null)})` : '',
-        [
-            factory('plant')(expersons),
-            factory('plant')(persons),
-        ].filter(Boolean).join(' ex '),
+export const plantAuthorNames = (persons, expersons = [], originName = null) => [// 若有「原始組合名」以原始組合名加上括號為「命名者」
+    originName ? `(${plantAuthorNames(originName.authors, originName.exAuthors, null)})` : '',
+    [
+        factory('plant')(expersons),
+        factory('plant')(persons),
+    ]
+        .filter(Boolean)
+        .join(' ex '),
+].filter(Boolean).join(' ');
+
+export const bacteriaAuthorNames = (persons, expersons = [], originName = null, publishYear = '', taxonName = null) => {
+    // 若有「原始組合名」以原始組合名加上括號為「命名者」
+    let originNamePart = '';
+    if (originName) {
+        // 同屬內變動
+        if (
+            taxonName?.species?.properties?.latinGenus === originName.properties?.latinGenus
+            || (
+                !!taxonName?.species &&
+                !!originName?.species &&
+                taxonName?.species.properties?.latinGenus === originName.species.properties.latinGenus
+            )
+            || (
+                !!taxonName &&
+                !!originName?.species &&
+                taxonName?.properties?.latinGenus === originName.species.properties.latinGenus
+            )
+        ) {
+            originNamePart
+                = bacteriaAuthorNames(
+                    originName.authors,
+                    originName.exAuthors,
+                    null,
+                    originName.publishYear,
+                );
+        }
+
+        originNamePart = `(${bacteriaAuthorNames(
+            originName.authors,
+            [], // originName.exAuthors,
+            null,
+            originName.publishYear,
+        )})`;
+    }
+
+    const exPersonsResult = [
+        factory('bacteria')(expersons) ?? '',
+        taxonName?.properties.initialYear ?? '',
     ].filter(Boolean).join(' ');
-}
+
+    // 細菌的命名者加上「年份」
+    return [
+        originNamePart,
+        [
+            exPersonsResult ? `(ex ${exPersonsResult})` : '',
+            factory('bacteria')(persons),
+        ].filter(Boolean).join(' '), publishYear,
+        taxonName?.properties?.isApprovedList ? '(Approved Lists 1980)' : '',
+    ]
+        .filter(Boolean)
+        .join(' ');
+};
 
 export const renderAuthorNames = (persons, type, originName, publishYear = '', expersons = []) => {
     // 動物的命名者加上年份，若有原始組合名以原始組合名未命名者
@@ -139,9 +229,43 @@ export const renderAuthorNames = (persons, type, originName, publishYear = '', e
         [
             factory(type)(expersons),
             factory(type)(persons),
-        ].filter(Boolean).join(' ex '),
+        ]
+            .filter(Boolean)
+            .join(' ex '),
         type === 'animal' ? publishYear : '',
     ]
         .filter(Boolean)
         .join(', ');
+};
+
+export const authorNameStringFactory = (type, authors, exAuthors, originalTaxonName, taxonName, publishYear = '') => {
+    switch (type) {
+        case 'animal':
+            return animalAuthorNames(
+                authors,
+                exAuthors,
+                originalTaxonName,
+                publishYear,
+                taxonName,
+            );
+        case 'plant':
+            return plantAuthorNames(
+                authors,
+                exAuthors,
+                originalTaxonName,
+            );
+
+        case 'bacteria':
+            return bacteriaAuthorNames(
+                authors,
+                exAuthors,
+                originalTaxonName,
+                publishYear,
+                taxonName,
+            );
+        case 'virus':
+            return '';
+        default:
+            return '';
+    }
 };

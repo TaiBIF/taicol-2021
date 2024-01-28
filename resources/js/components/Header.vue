@@ -1,81 +1,204 @@
 <template>
     <nav :class="{'has-background-grey': !isNotGrey}" class="header navbar">
         <div v-if="!isNotGrey" class="navbar-start">
-            <router-link to="/">
-                <h1 class="title" v-text="$t('title')"></h1>
+            <router-link :to="{name: 'index'}">
+                <h1 class="title" v-text="$t('header.title')"></h1>
             </router-link>
         </div>
         <div class="navbar-end ">
-            <!--            <a class="navbar-item" v-text="$t('functions.myCollection')" />-->
             <template v-if="authenticated">
-                <router-link class="navbar-item" to="/taxon-name" v-text="$t('functions.createTaxonName')"/>
+                <router-link :to="{name: 'taxon-name-create'} " class="navbar-item"
+                             v-text="$t('taxonName.create')"/>
 
-                <router-link class="navbar-item" to="/reference" v-text="$t('functions.createReference')"/>
+                <router-link :to="{name: 'reference-create'} " class="navbar-item"
+                             v-text="$t('reference.create')"/>
 
-                <router-link class="navbar-item" to="/namespaces" v-text="$t('functions.myNamespaces')"/>
+                <router-link :to="{name: 'person-create'} " class="navbar-item"
+                             v-text="$t('person.create')"/>
 
-                <router-link class="navbar-item" to="/favorite-folders" v-text="'我的收藏夾'"/>
+                <router-link :to="{name: 'namespace-list'} " class="navbar-item"
+                             v-text="$t('header.menu.myNamespaces')"/>
 
-                <router-link class="navbar-item" to="/admin/users" v-if="user.roleId === 1" v-text="'管理使用者'"/>
+                <router-link :to="{name: 'favorite-folder-list'} " class="navbar-item"
+                             v-text="$t('header.menu.myCollection')"/>
 
-                <div class="navbar-item" v-text="user ? user.name : ''"></div>
+                <a v-if="user.roleId === 1"
+                   :class="{active: showAdminSubMenu}"
+                   class="navbar-item"
+                   v-on:mouseenter="() => (showAdminSubMenu = true)"
+                   v-on:mouseleave="() => (showAdminSubMenu = false)"
+                >
+                    {{ $t('header.admin') }}
+                    <div class="submenu">
+                        <router-link :to="{name: 'admin-user-list-page'}" class="item"
+                                     v-text="$t('header.adminMenu.userManagement')"/>
+                        <router-link :to="{name: 'admin-persons-import'}" class="item"
+                                     v-text="$t('header.adminMenu.personImport')"/>
+                        <router-link :to="{name: 'admin-references-import'}" class="item"
+                                     v-text="$t('header.adminMenu.referenceImport')"/>
+                        <router-link :to="{name: 'admin-taxon-names-import'}" class="item"
+                                     v-text="$t('header.adminMenu.taxonNameImport')"/>
+                    </div>
+                </a>
 
-                <a class="navbar-item" v-on:click="onLogout" v-text="$t('functions.logout')"/>
+                <a :class="{active: showLanguageSubMenu}"
+                   class="navbar-item"
+                   v-on:mouseenter="() => (showLanguageSubMenu = true)"
+                   v-on:mouseleave="() => (showLanguageSubMenu = false)"
+                >
+                    <p>
+                        {{ $t('header.menu.language') }}
+                        <svg class="lang_icon" version="1.1" viewBox="0 0 96 96"
+                             xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+                            <g id="icon-globe">
+                                <path
+                                    d="M 48 0.21875 C 21.652344 0.21875 0.21875 21.652344 0.210938 48 C 0.21875 74.347656 21.652344 95.78125 48 95.78125 C 74.347656 95.78125 95.78125 74.339844 95.78125 48 C 95.78125 21.652344 74.347656 0.21875 48 0.21875 Z M 66.898438 63.9375 C 62.21875 62.550781 56.851562 61.621094 50.707031 61.402344 L 50.707031 50.707031 L 68.84375 50.707031 C 68.648438 55.671875 67.933594 60.046875 66.898438 63.9375 Z M 29.0625 32.054688 C 33.757812 33.449219 39.136719 34.386719 45.292969 34.605469 L 45.292969 45.292969 L 27.121094 45.292969 C 27.308594 40.320312 28.019531 35.949219 29.0625 32.054688 Z M 27.164062 50.707031 L 45.292969 50.707031 L 45.292969 61.394531 C 39.164062 61.613281 33.808594 62.535156 29.128906 63.921875 C 28.078125 60.03125 27.359375 55.664062 27.164062 50.707031 Z M 68.84375 45.292969 L 50.707031 45.292969 L 50.707031 34.597656 C 56.835938 34.378906 62.191406 33.457031 66.871094 32.070312 C 67.921875 35.96875 68.648438 40.335938 68.84375 45.292969 Z M 90.277344 45.292969 L 74.300781 45.292969 C 74.109375 39.644531 73.289062 34.664062 72.082031 30.253906 C 76.378906 28.492188 79.972656 26.363281 82.949219 24.128906 C 87.136719 30.234375 89.773438 37.46875 90.277344 45.292969 Z M 79.605469 19.859375 C 77.0625 21.742188 74.023438 23.558594 70.394531 25.078125 C 67.171875 16.648438 62.488281 10.785156 58.320312 6.90625 C 66.683594 9.007812 74.03125 13.621094 79.605469 19.859375 Z M 65.191406 26.910156 C 61.003906 28.140625 56.210938 28.972656 50.707031 29.183594 L 50.707031 7.726562 C 54.78125 10.636719 61.171875 16.574219 65.191406 26.910156 Z M 45.292969 7.664062 L 45.292969 29.183594 C 39.757812 28.972656 34.925781 28.125 30.71875 26.878906 C 34.746094 16.453125 41.191406 10.546875 45.292969 7.664062 Z M 37.679688 6.90625 C 33.515625 10.785156 28.835938 16.648438 25.613281 25.078125 C 21.984375 23.558594 18.945312 21.742188 16.402344 19.859375 C 21.96875 13.621094 29.324219 9.007812 37.679688 6.90625 Z M 13.058594 24.128906 C 16.035156 26.355469 19.636719 28.492188 23.925781 30.246094 C 22.71875 34.65625 21.898438 39.636719 21.703125 45.285156 L 5.730469 45.285156 C 6.226562 37.46875 8.871094 30.234375 13.058594 24.128906 Z M 21.703125 50.707031 C 21.898438 56.355469 22.726562 61.335938 23.925781 65.753906 C 19.628906 67.507812 16.035156 69.644531 13.058594 71.871094 C 8.871094 65.765625 6.226562 58.53125 5.722656 50.707031 Z M 16.410156 76.140625 C 18.945312 74.257812 21.984375 72.449219 25.621094 70.921875 C 28.84375 79.34375 33.515625 85.214844 37.6875 89.09375 C 29.324219 86.992188 21.96875 82.378906 16.410156 76.140625 Z M 30.808594 69.089844 C 34.996094 67.859375 39.789062 67.027344 45.285156 66.816406 L 45.285156 88.28125 C 41.226562 85.371094 34.835938 79.425781 30.808594 69.089844 Z M 50.707031 88.328125 L 50.707031 66.816406 C 56.234375 67.027344 61.050781 67.867188 65.242188 69.105469 C 61.222656 79.53125 54.808594 85.449219 50.707031 88.328125 Z M 58.328125 89.09375 C 62.488281 85.214844 67.171875 79.351562 70.394531 70.921875 C 74.023438 72.441406 77.0625 74.257812 79.597656 76.140625 C 74.03125 82.378906 66.683594 86.992188 58.328125 89.09375 Z M 82.949219 71.871094 C 79.972656 69.644531 76.371094 67.507812 72.082031 65.753906 C 73.289062 61.335938 74.109375 56.363281 74.300781 50.707031 L 90.277344 50.707031 C 89.78125 58.53125 87.136719 65.765625 82.949219 71.871094 Z M 82.949219 71.871094 "></path>
+                            </g>
+                        </svg>
+                    </p>
+                    <div class="submenu">
+                        <a class="item" v-on:click="changeLang('zh-tw')"
+                           v-text="'繁體中文'"/>
+                        <a class="item" v-on:click="changeLang('en-us')" v-text="'English'"/>
+                    </div>
+                </a>
+
+                <a :class="{active: showUserSubMenu}"
+                   class="navbar-item"
+                   v-on:mouseenter="() => (showUserSubMenu = true)"
+                   v-on:mouseleave="() => (showUserSubMenu = false)"
+                >
+                    {{ user ? user.name : '' }}
+                    <div class="submenu">
+                        <a class="item" v-on:click="onLogout" v-text="$t('header.menu.logout')"/>
+                    </div>
+                </a>
+
             </template>
+
             <template v-else>
-                <router-link class="navbar-item" to="/login" v-text="$t('functions.login')"/>
+                <a :class="{active: showLanguageSubMenu}"
+                   class="navbar-item"
+                   v-on:mouseenter="() => (showLanguageSubMenu = true)"
+                   v-on:mouseleave="() => (showLanguageSubMenu = false)"
+                >
+                    <p>
+                        {{ $t('header.menu.language') }}
+                        <svg class="lang_icon" version="1.1" viewBox="0 0 96 96"
+                             xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+                            <g id="icon-globe">
+                                <path
+                                    d="M 48 0.21875 C 21.652344 0.21875 0.21875 21.652344 0.210938 48 C 0.21875 74.347656 21.652344 95.78125 48 95.78125 C 74.347656 95.78125 95.78125 74.339844 95.78125 48 C 95.78125 21.652344 74.347656 0.21875 48 0.21875 Z M 66.898438 63.9375 C 62.21875 62.550781 56.851562 61.621094 50.707031 61.402344 L 50.707031 50.707031 L 68.84375 50.707031 C 68.648438 55.671875 67.933594 60.046875 66.898438 63.9375 Z M 29.0625 32.054688 C 33.757812 33.449219 39.136719 34.386719 45.292969 34.605469 L 45.292969 45.292969 L 27.121094 45.292969 C 27.308594 40.320312 28.019531 35.949219 29.0625 32.054688 Z M 27.164062 50.707031 L 45.292969 50.707031 L 45.292969 61.394531 C 39.164062 61.613281 33.808594 62.535156 29.128906 63.921875 C 28.078125 60.03125 27.359375 55.664062 27.164062 50.707031 Z M 68.84375 45.292969 L 50.707031 45.292969 L 50.707031 34.597656 C 56.835938 34.378906 62.191406 33.457031 66.871094 32.070312 C 67.921875 35.96875 68.648438 40.335938 68.84375 45.292969 Z M 90.277344 45.292969 L 74.300781 45.292969 C 74.109375 39.644531 73.289062 34.664062 72.082031 30.253906 C 76.378906 28.492188 79.972656 26.363281 82.949219 24.128906 C 87.136719 30.234375 89.773438 37.46875 90.277344 45.292969 Z M 79.605469 19.859375 C 77.0625 21.742188 74.023438 23.558594 70.394531 25.078125 C 67.171875 16.648438 62.488281 10.785156 58.320312 6.90625 C 66.683594 9.007812 74.03125 13.621094 79.605469 19.859375 Z M 65.191406 26.910156 C 61.003906 28.140625 56.210938 28.972656 50.707031 29.183594 L 50.707031 7.726562 C 54.78125 10.636719 61.171875 16.574219 65.191406 26.910156 Z M 45.292969 7.664062 L 45.292969 29.183594 C 39.757812 28.972656 34.925781 28.125 30.71875 26.878906 C 34.746094 16.453125 41.191406 10.546875 45.292969 7.664062 Z M 37.679688 6.90625 C 33.515625 10.785156 28.835938 16.648438 25.613281 25.078125 C 21.984375 23.558594 18.945312 21.742188 16.402344 19.859375 C 21.96875 13.621094 29.324219 9.007812 37.679688 6.90625 Z M 13.058594 24.128906 C 16.035156 26.355469 19.636719 28.492188 23.925781 30.246094 C 22.71875 34.65625 21.898438 39.636719 21.703125 45.285156 L 5.730469 45.285156 C 6.226562 37.46875 8.871094 30.234375 13.058594 24.128906 Z M 21.703125 50.707031 C 21.898438 56.355469 22.726562 61.335938 23.925781 65.753906 C 19.628906 67.507812 16.035156 69.644531 13.058594 71.871094 C 8.871094 65.765625 6.226562 58.53125 5.722656 50.707031 Z M 16.410156 76.140625 C 18.945312 74.257812 21.984375 72.449219 25.621094 70.921875 C 28.84375 79.34375 33.515625 85.214844 37.6875 89.09375 C 29.324219 86.992188 21.96875 82.378906 16.410156 76.140625 Z M 30.808594 69.089844 C 34.996094 67.859375 39.789062 67.027344 45.285156 66.816406 L 45.285156 88.28125 C 41.226562 85.371094 34.835938 79.425781 30.808594 69.089844 Z M 50.707031 88.328125 L 50.707031 66.816406 C 56.234375 67.027344 61.050781 67.867188 65.242188 69.105469 C 61.222656 79.53125 54.808594 85.449219 50.707031 88.328125 Z M 58.328125 89.09375 C 62.488281 85.214844 67.171875 79.351562 70.394531 70.921875 C 74.023438 72.441406 77.0625 74.257812 79.597656 76.140625 C 74.03125 82.378906 66.683594 86.992188 58.328125 89.09375 Z M 82.949219 71.871094 C 79.972656 69.644531 76.371094 67.507812 72.082031 65.753906 C 73.289062 61.335938 74.109375 56.363281 74.300781 50.707031 L 90.277344 50.707031 C 89.78125 58.53125 87.136719 65.765625 82.949219 71.871094 Z M 82.949219 71.871094 "></path>
+                            </g>
+                        </svg>
+                    </p>
+                    <div class="submenu">
+                        <a class="item" v-on:click="changeLang('zh-tw')"
+                           v-text="'繁體中文'"/>
+                        <a class="item" v-on:click="changeLang('en-us')" v-text="'English'"/>
+                    </div>
+                </a>
+                <router-link :to="{name: 'login'}" class="navbar-item" v-text="$t('header.menu.login')"/>
             </template>
         </div>
     </nav>
 </template>
 <script>
-    import { mapGetters } from 'vuex';
+import { mapGetters } from 'vuex';
+import store from '../store';
 
-    export default {
-        computed: {
-            ...mapGetters({
-                authenticated: 'auth/authenticated',
-                user: 'auth/user',
-            }),
-            isNotGrey() {
-                return this.$route.path === '/' || this.$route.path === '/login';
+export default {
+    data() {
+        return {
+            showAdminSubMenu: false,
+            showUserSubMenu: false,
+            showLanguageSubMenu: false,
+        };
+    },
+    computed: {
+        ...mapGetters({
+            authenticated: 'auth/authenticated',
+            user: 'auth/user',
+        }),
+        isNotGrey() {
+            return this.$route.path === '/' || this.$route.path === '/login';
+        },
+    },
+    methods: {
+        onLogout() {
+            this.$store.dispatch('auth/logout');
+            this.$router.push({ name: 'index' });
+        },
+        changeLang(lang) {
+            store.commit('SET_LANG', lang);
+            if (this.$route.name === 'index') {
+                this.$router.push({ path: `/${lang}` });
+            } else {
+                this.$router.push({ name: this.$route.name, params: { lang } });
             }
         },
-        methods: {
-            onLogout() {
-                this.$store.dispatch('auth/logout');
-                this.$router.push('/');
-            },
-
-        },
-    }
+    },
+};
 </script>
 <style lang="scss" scoped>
-    .header {
-        width: 100%;
-        z-index: 100;
-        position: fixed;
-        top: 0;
-        background-color: #f2f2f2;
-        text-align: center;
-        padding-right: 1rem;
-        height: $navbar-height;
+.lang_icon {
+    width: 1rem;
+    display: inline-block;
+    margin-top: -2px;
+    margin-left: 2px;
 
-        .title {
-            color: white;
-            font-size: 1.8rem;
-            line-height: 3rem;
-            padding-left: 1rem
+    #icon-globe {
+        fill: white;
+    }
+}
+
+.header {
+    width: 100%;
+    z-index: 100;
+    position: fixed;
+    top: 0;
+    background-color: #f2f2f2;
+    text-align: center;
+    padding-right: 1rem;
+    height: $navbar-height;
+
+    .title {
+        color: white;
+        font-size: 1.8rem;
+        line-height: 3rem;
+        padding-left: 1rem
+    }
+
+    .active {
+        .submenu {
+            display: block;
         }
+    }
 
-        &.has-background-grey {
-            .navbar-item {
-                color: white;
+    .submenu {
+        top: $navbar-height;
+        width: 120px;
+        left: 50%;
+        transform: translate(-50%, 0);
+        @apply absolute bg-white drop-shadow-md py-1;
+        display: none;
 
-                &:hover, &:focus, &:active {
-                    background: $primary;
-                }
+        .item {
+            display: block;
+            @apply text-gray-600 py-1 hover:bg-gray-100 px-1;
+        }
+    }
+
+    &.has-background-grey {
+        background: #7f7f7f;
+
+        .navbar-item {
+            color: white;
+
+            &:hover, &:focus, &:active {
+                background: $primary;
             }
         }
     }
+}
 </style>

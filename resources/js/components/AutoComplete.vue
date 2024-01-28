@@ -1,5 +1,5 @@
 <template>
-    <div class="control has-icons-left has-icons-right">
+    <div class="control">
         <v-select
             ref="select"
             v-model="keywords"
@@ -8,17 +8,18 @@
             :create-option="onCreatedOption"
             :map-keydown="onChangeKeymap"
             :options="options"
+            :placeholder="`${$t('common.enterForOptions')} ${$t('common.maxFive')}`"
             :select-on-key-codes="[13]"
-            class="select-input has-background-white custom-select"
+            class="select-input bg-white custom-select relative"
             label="name"
             multiple
-            placeholder="請輸入關鍵字"
             taggable
             v-on:search="onKeydown"
             v-on:option:selecting="onSelecting"
+            v-on:search:blur="onBlur"
         >
             <template v-slot:selected-option="option">
-                <div>
+                <div :title="option.name">
                     <i v-if="option.type === 'person'" class="fas fa-user"></i>
                     {{ option.name }}
                 </div>
@@ -36,196 +37,172 @@
                     </span>
                 </div>
             </template>
-            <template v-slot:no-options="{ search, searching, loading }">
-                請輸入關鍵字 (最多五組)
-            </template>
+            <span slot="no-options"></span>
         </v-select>
-        <a :class="{'is-large': !isSmall}" class="icon is-right"
-           v-on:click="onGoSearch">
-            <i class="fas fa-search"></i>
-        </a>
+        <div
+            class="icon-container h-full flex items-center justify-center absolute w-[35px] top-0 right-2 py-2">
+            <a :class="{'large': !isSmall}" v-on:click="onGoSearch">
+                <i class="fas fa-search"></i>
+            </a>
+        </div>
     </div>
 </template>
 <script>
-    import { debounce } from 'lodash';
-    import TaxonNameSelect from './selects/TaxonNameSelect';
+import { debounce } from 'lodash';
+import TaxonNameSelect from './selects/TaxonNameSelect.vue';
 
-    export default {
-        props: {
-            value: {
-                type: Array,
-                required: true,
-            },
-            searchType: {
-                type: String,
-                required: true,
-            },
-            isSmall: {
-                type: Boolean,
-                default: false,
-            },
+export default {
+    props: {
+        value: {
+            type: Array,
+            required: true,
         },
-        watch: {
-            keywords(value) {
-                // limit keywords
-                if (value.length > 6) {
-                    value.splice(-1, 1)
-                }
-
-                this.$emit('input', value);
-            },
-            searchType() {
-                this.keywords = [];
-                this.options = [];
-            },
+        searchType: {
+            type: String,
+            required: true,
         },
-        data() {
-            return {
-                keywords: this.value,
-                options: [],
+        isSmall: {
+            type: Boolean,
+            default: false,
+        },
+    },
+    watch: {
+        keywords(value) {
+            // limit keywords
+            if (value.length > 6) {
+                value.splice(-1, 1);
             }
+
+            this.$emit('input', value);
         },
-        methods: {
-            onCreatedOption(newOption) {
-                if (typeof newOption === 'string') {
-                    newOption = { 'name': newOption, 'type': 'text' };
-                }
-                this.$emit('option:created', newOption)
-                return newOption;
-            },
-            onKeydown(text) {
-                const app = this;
-                clearTimeout(this.typingTimer);
-                this.typingTimer = setTimeout(() => app.onTyping(text), 500);
-            },
-            onChangeKeymap(map, vm) {
-                map = {
-                    ...map, 50: function (e) {
-                        e.preventDefault();
-                        if (e.key !== '@') {
-                            vm.search = `${vm.search}${e.key}`;
-                        }
+        searchType() {
+            this.options = [];
+        },
+    },
+    data() {
+        return {
+            keywords: this.value,
+            options: [],
+        };
+    },
+    methods: {
+        onCreatedOption(newOption) {
+            let option = newOption;
+            if (typeof newOption === 'string') {
+                option = { name: newOption, type: 'text' };
+            }
+            this.$emit('option:created', option);
+            return option;
+        },
+        onKeydown(text) {
+            const app = this;
+            clearTimeout(this.typingTimer);
+            this.typingTimer = setTimeout(() => app.onTyping(text), 500);
+        },
+        onChangeKeymap(map, vm) {
+            let newMap = {
+                ...map,
+                50(e) {
+                    e.preventDefault();
+                    if (e.key !== '@') {
+                        vm.search = `${vm.search}${e.key}`;
+                    }
+                },
+            };
+
+            if (vm.search === '') {
+                newMap = {
+                    ...map,
+                    13: (e) => {
+                        this.onGoSearch();
                     },
                 };
-
-                if (vm.search === '') {
-                    map = {
-                        ...map, 13: (e) => {
-                            this.onGoSearch();
-                        },
-                    };
-                }
-                return map;
-            },
-            onSelecting(selectedOption) {
-                if (typeof selectedOption === 'string') {
-                    return {
-                        name: selectedOption,
-                        type: 'name',
-                    }
-                }
-            },
-            onTyping: debounce(function (keyword) {
-                const app = this;
-                if (keyword.length <= 2) {
-                    app.options = [];
-                    return;
-                }
-
-                this.axios.get(`/search`, {
-                    params: {
-                        keyword,
-                        type: this.searchType,
-                    },
-                })
-                    .then(({ data: { data } }) => {
-                        app.options = data.map(({ title, type }, index) => {
-                            return {
-                                index,
-                                name: title,
-                                type: type.replace(/_/, '-'),
-                            }
-                        });
-                    });
-            }),
-            markedResult(value, keyword) {
-                let c = new RegExp(keyword, 'ig');
-                return value.replace(c, '<strong class="has-text-orange">' + keyword + '</strong>');
-            },
-            onGoSearch() {
-                this.$emit('go-search');
-            },
+            }
+            return newMap;
         },
-        components: { TaxonNameSelect },
-    }
+        onSelecting(selectedOption) {
+            if (typeof selectedOption === 'string') {
+                return {
+                    name: selectedOption,
+                    type: 'name',
+                };
+            }
+
+            return null;
+        },
+        onBlur() {
+            if (this.$refs.select.search.length <= 0) {
+                return;
+            }
+
+            const newOption = {
+                name: this.$refs.select.search,
+                type: 'text',
+            };
+
+            this.$refs.select.select(newOption);
+        },
+        onTyping: debounce(function (keyword) {
+            const app = this;
+            if (keyword.length <= 2) {
+                app.options = [];
+                return;
+            }
+
+            this.axios.get('/search', {
+                params: {
+                    keyword,
+                    type: this.searchType,
+                },
+            })
+                .then(({ data: { data } }) => {
+                    app.options = data.map(({ title, type }, index) => ({
+                        index,
+                        name: title,
+                        type: type.replace(/_/, '-'),
+                    }));
+                });
+        }),
+        markedResult(value, keyword) {
+            const c = new RegExp(keyword, 'ig');
+            return value.replace(c, `<strong class="has-text-orange">${keyword}</strong>`);
+        },
+        onGoSearch() {
+            this.$emit('go-search');
+        },
+    },
+    components: { TaxonNameSelect },
+};
 </script>
 <style lang="scss" scoped>
-    /deep/ .custom-select {
-        .vs__dropdown-toggle {
-            border: 0;
-            padding: .3rem 0rem;
+.control {
+    .select-input {
+        border-radius: 2rem;
+        padding: 0rem 2rem;
 
-            .vs__selected-options {
-                ::placeholder {
-                    color: $grey;
-                }
-
-                .vs__selected {
-                    margin: 0px 2px 0px 2px;
-                }
-            }
-
-            .vs__actions {
-                display: none;
-            }
-
-            .vs__search {
-                margin: 0;
-                padding: 0;
-            }
-        }
-
-        .vs__dropdown-menu {
-            border-radius: 1rem;
-            margin-top: 1rem;
-        }
-    }
-
-
-    .control {
-        .select-input {
-            border-radius: 2rem;
+        &.is-large {
             padding: .5rem 2rem;
         }
+    }
 
-        .icon {
+    .icon-container {
+        cursor: pointer;
+
+        a {
             border-left: 1.5px solid $light-grey;
-            height: 1.5rem;
-            cursor: pointer;
-            pointer-events: inherit;
-            margin-top: .5rem;
-
-            &.is-right {
-                right: .5rem;
-            }
+            @apply mr-0 text-lg text-gray-500;
 
             i {
-                color: #7f7f7f;
-                font-size: 1rem;
+                @apply ml-2;
             }
 
-            &.is-large {
-                height: 2.3rem;
-                padding-left: .5rem;
-
+            &.large {
+                @apply mr-4 text-[28px];
                 i {
-                    font-size: 2rem;
-                }
-
-                &.is-right {
-                    right: 1rem;
+                    @apply ml-2;
                 }
             }
         }
     }
+}
 </style>

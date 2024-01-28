@@ -1,55 +1,50 @@
 <template>
-    <page :preload="onPreload">
-        <div class="form">
-            <div class="form-body box">
+    <page :preload="onPreload" class="container">
+        <div class="flex flex-col h-full py-6 mb-4">
+            <div class="box overflow-y-auto px-10 py-4 grow">
                 <simple-person-form ref="form" :on-after-submit="onAfterSubmit" :presetData="person"/>
             </div>
             <div class="form-footer">
                 <div class="buttons is-right">
                     <button class="button"
                             v-on:click="onSubmit(true)"
-                            v-text="$t('forms.actions.publish')"/>
+                            v-text="$t('common.save')"/>
                 </div>
             </div>
         </div>
     </page>
 </template>
 <script>
-    import SimplePersonForm from '../components/forms/SimplePersonForm';
-    import Page from './Page';
+import SimplePersonForm from '../components/forms/SimplePersonForm.vue';
+import Page from './Page.vue';
+import { personDetailResource } from '../utils/models/persons';
 
-    export default {
-        data() {
-            return {
-                person: null,
+export default {
+    data() {
+        return {
+            person: null,
+        };
+    },
+    methods: {
+        async onPreload() {
+            try {
+                const { data } = await this.axios.get(`/persons/${this.$route.params.id}`);
+                this.person = personDetailResource(data);
+                return 200;
+            } catch (e) {
+                return e.status;
             }
         },
-        methods: {
-            async onPreload() {
-                try {
-                    const { data } = await this.axios.get(`/persons/${this.$route.params.id}`)
-                    this.person = data;
-                    return 200;
-                } catch (e) {
-                    return e.status;
-                }
-            },
-            onAfterSubmit() {
-                this.$router.push(`/persons/${this.person.id}`);
-            },
-            onSubmit() {
-                this.$refs.form.submit(true);
-            },
+        onAfterSubmit(person) {
+            this.$router.push({ name: 'person-page', params: { id: person.id } });
         },
-        components: {
-            Page,
-            SimplePersonForm,
+        onSubmit() {
+            this.$refs.form.onSubmit(true);
         },
-    }
+    },
+    components: {
+        Page,
+        SimplePersonForm,
+    },
+};
 </script>
-<style lang="scss" scoped>
-    .form-body {
-        height: calc(100vh - #{$navbar-height} - 7rem);
-    }
-
-</style>

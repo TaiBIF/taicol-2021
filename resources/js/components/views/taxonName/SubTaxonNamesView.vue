@@ -4,22 +4,21 @@
             <thead>
             <tr>
                 <th>
-                    <sort-button :id="'rank'" :on-click="onSortBy" :sortby="sortby" :direction="direction">
-                        {{ $t('forms.taxonName.rank') }}
+                    <sort-button :id="'rank'" :direction="direction" :on-click="onSortBy" :sortby="sortby">
+                        {{ $t('taxonName.rank') }}
                     </sort-button>
                 </th>
                 <th>
                     <sort-button :id="'taxon_name'" :direction="direction" :on-click="onSortBy" :sortby="sortby">
-                        學名
+                        {{ $t('common.taxonName') }}
                     </sort-button>
                 </th>
+                <th v-text="$t('common.authors')"/>
+                <th v-text="$t('common.chineseName')"/>
+                <th v-text="$t('taxonName.publication')"/>
                 <th>
-                    命名者
-                </th>
-                <th v-text="$t('forms.taxonName.reference')">發表文獻</th>
-                <th>
-                    <sort-button :id="'publish_year'" :on-click="onSortBy" :sortby="sortby" :direction="direction">
-                        {{ $t('forms.reference.publishYear') }}
+                    <sort-button :id="'publish_year'" :direction="direction" :on-click="onSortBy" :sortby="sortby">
+                        {{ $t('common.publishYear') }}
                     </sort-button>
                 </th>
             </tr>
@@ -32,7 +31,10 @@
 
                 <!-- 學名 -->
                 <td>
-                    <router-link :to="`/taxon-names/${taxonName.id}`" class="my-link">
+                    <router-link
+                        :to="{name: 'taxon-name-page', params: {id: taxonName.id}}"
+                        class="my-link"
+                    >
                         <taxon-name-label :taxon-name="taxonName"/>
                     </router-link>
                 </td>
@@ -48,21 +50,29 @@
                         taxonName: taxonName,
                     }"></author-name>
                 </td>
+
+                <!-- 中文俗名 -->
+                <td>
+                    <span v-text="taxonName.commonNameTw"></span>
+                </td>
                 <td>
                     <router-link v-if="taxonName.reference"
-                                 :to="`/references/${taxonName.reference.id}`" class="my-link">
+                                 :to="{name: 'reference-page', params: {id: taxonName.reference.id}}"
+                                 class="my-link">
                         {{ rName(taxonName.reference, taxonName.properties.usage.showPage) }}
                     </router-link>
                     <span v-else v-text="taxonName.properties.referenceName"></span>
                 </td>
                 <td>
-                    <span v-if="taxonName.reference"
-                          v-text="taxonName.reference.publishYear"/>
+                    <span v-if="taxonName.reference" v-text="taxonName.reference.publishYear"></span>
+                    <span v-else v-text="taxonName.publishYear"/>
                 </td>
             </tr>
             <tr>
                 <td colspan="8">
-                    <p v-if="lastPage < currentPage" class="text-gray-300 text-center">資料最底，共計 {{ total }} 筆</p>
+                    <p v-if="lastPage < currentPage" class="text-gray-300 text-center">
+                        {{ $t('common.bottomOfResults', {total}) }}
+                    </p>
                     <span class="caption"></span>
                     <loading v-if="isLoading"></loading>
                 </td>
@@ -72,12 +82,12 @@
     </div>
 </template>
 <script>
-import AuthorName from '../../AuthorName';
-import SortButton from '../../SortButton';
+import AuthorName from '../../AuthorName.vue';
+import SortButton from '../../SortButton.vue';
 import { factory, taxonNameInReference, title } from '../../../utils/preview/reference';
-import StatusWithIndications from '../../StatusWithIndications';
-import TaxonNameLabel from '../TaxonNameLabel';
-import Loading from '../../Loading';
+import StatusWithIndications from '../../StatusWithIndications.vue';
+import TaxonNameLabel from '../TaxonNameLabel.vue';
+import Loading from '../../Loading.vue';
 
 export default {
     props: {
@@ -96,16 +106,16 @@ export default {
             total: 0,
             taxonNames: [],
             isLoading: false,
-        }
+        };
     },
     mounted() {
         this.fetchData();
         const app = this;
-        app.intersectionObserver = new IntersectionObserver(function (entries) {
+        app.intersectionObserver = new IntersectionObserver(((entries) => {
             if (entries[0].intersectionRatio > 0) {
                 app.fetchData();
             }
-        }, {rootMargin: '0px 0px 500px 0px'});
+        }), { rootMargin: '0px 0px 500px 0px' });
         app.intersectionObserver.observe(document.querySelector('.caption'));
     },
     methods: {
@@ -119,14 +129,14 @@ export default {
             try {
                 const page = this.currentPage + 1;
                 const {
-                    data: {data, lastPage, total}
-                } = await this.axios.get(`/taxon-names/${ this.$route.params.id }/sub-taxon-names`, {
+                    data: { data, lastPage, total },
+                } = await this.axios.get(`/taxon-names/${this.$route.params.id}/sub-taxon-names`, {
                     params: {
                         page,
                         direction: this.direction,
                         sortby: this.sortby,
                         perPage: this.perPage,
-                    }
+                    },
                 });
 
                 this.total = total;
@@ -134,7 +144,7 @@ export default {
                 this.currentPage = page;
                 this.taxonNames = this.taxonNames.concat(data);
 
-                if (taxonNames.length > 0) {
+                if (this.taxonNames.length > 0) {
                     this.$emit('toggle', 'sub-taxon-names', true);
                 }
             } catch (e) {
@@ -160,6 +170,8 @@ export default {
             ].filter(Boolean).join(': ');
         },
     },
-    components: {TaxonNameLabel, StatusWithIndications, SortButton, AuthorName, Loading},
-}
+    components: {
+        TaxonNameLabel, StatusWithIndications, SortButton, AuthorName, Loading,
+    },
+};
 </script>

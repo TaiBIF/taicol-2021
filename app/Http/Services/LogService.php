@@ -5,24 +5,20 @@ namespace App\Http\Services;
 use App\Log;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
-use MyCLabs\Enum\Enum;
 
 
-/**
- * @mixin Enum
- */
-final class LogType extends Enum
+enum LogType: int
 {
-    private const TAXON_NAME = 1;
-    private const REFERENCE = 2;
-    private const PERSON = 3;
+    case TAXON_NAME = 1;
+    case REFERENCE = 2;
+    case PERSON = 3;
 }
 
-final class LogAction extends Enum
+enum LogAction: int
 {
-    private const CREATE = 1;
-    private const UPDATE = 2;
-    private const IMPORT = 3;
+    case CREATE = 1;
+    case UPDATE = 2;
+    case IMPORT = 3;
 }
 
 class LogService
@@ -37,14 +33,14 @@ class LogService
 
     public function writeCreateLog(LogType $type, int $modelId, $columns = []): Model
     {
-        return $this->write($type, $modelId, LogAction::CREATE(), $columns);
+        return $this->write($type, $modelId, LogAction::CREATE, $columns);
     }
 
     public function write(LogType $type, int $modelId, LogAction $action, $columns): Model
     {
-        $this->log->type = $type->getValue();
+        $this->log->type = $type->value;
         $this->log->model_id = $modelId;
-        $this->log->action = $action->getValue();
+        $this->log->action = $action->value;
         $this->log->columns = implode(',', array_map(fn($column) => $this->snakeToCamel($column), $columns));
         $this->log->user_id = Auth::user()->id;
         $this->log->save();
@@ -59,7 +55,7 @@ class LogService
 
     public function writeImportLog(LogType $type, int $modelId, $columns = []): Model
     {
-        return $this->write($type, $modelId, LogAction::IMPORT(), $columns);
+        return $this->write($type, $modelId, LogAction::IMPORT, $columns);
     }
 
     public function writeUpdateLog(LogType $type, Model $model): Model
@@ -69,7 +65,7 @@ class LogService
         if (($key = array_search("updated_at", $changes)) !== false) {
             unset($changes[$key]);
         }
-        return $this->write($type, $model->id, LogAction::UPDATE(), $changes);
+        return $this->write($type, $model->id, LogAction::UPDATE, $changes);
     }
 
     public function writeUpdateLogWithComparison(LogType $type, Model $newModel, Model $oldModel, array $includeColumns = [], array $excludeColumns = []): Model
@@ -94,7 +90,7 @@ class LogService
                 $changes[$key] = str_replace("properties.usage.", "", $value);
             }
         }
-        return $this->write($type, $newModel['id'], LogAction::UPDATE(), $changes);
+        return $this->write($type, $newModel['id'], LogAction::UPDATE, $changes);
     }
 
     private function diffColumn($oldModel, $newModel): array

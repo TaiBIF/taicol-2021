@@ -35,7 +35,7 @@ class TaxonNameRequest extends FormRequest
                 'exists:taxon_names,id',
                 function ($attribute, $value, $fail) use ($id) {
                     if ($id === $value) {
-                        $fail('不能為自己');
+                        $fail('common.selfNotAllowed');
                     }
                 },
             ],
@@ -43,8 +43,8 @@ class TaxonNameRequest extends FormRequest
                 Rule::requiredIf($rank && $rank->key === 'hybrid-formula'),
                 Rule::requiredIf(count($hybridParents) === 1),
                 function ($attribute, $value, $fail) use ($id, $hybridParents) {
-                    if ($id === ($value['id'] ?? '')) {
-                        $fail('不能為自己');
+                    if ($id === $value) {
+                        $fail('common.selfNotAllowed');
                     }
                 },
                 'nullable',
@@ -54,8 +54,8 @@ class TaxonNameRequest extends FormRequest
                 Rule::requiredIf($rank && $rank->key === 'hybrid-formula'),
                 Rule::requiredIf(count($hybridParents) === 1),
                 function ($attribute, $value, $fail) use ($id, $hybridParents) {
-                    if ($id === ($value['id'] ?? '')) {
-                        $fail('不能為自己');
+                    if ($id === $value) {
+                        $fail('common.selfNotAllowed');
                     }
                 },
                 'nullable',
@@ -91,11 +91,9 @@ class TaxonNameRequest extends FormRequest
             'type_specimens' => 'array',
             'type_specimens.*.use' => 'required',
             'type_specimens.*.kind' => 'required|integer',
-            'type_specimens.*.country' => 'required_if:type_specimens.*.kind,1',
-            'type_specimens.*.specimens.*.herbarium' => 'required_if:type_specimens.*.kind,1',
             'type_specimens.*.collection_year' => 'max:4',
             'type_specimens.*.collection_day' => 'max:2',
-            'type_specimens.*.collectors' => 'required_if:type_specimens.*.kind,1|array',
+            'type_specimens.*.collectors' => 'array',
             'type_specimens.*.collectors.*.id' => 'exists:persons,id',
             'type_specimens.*.isotypes.*.herbarium' => 'required',
             'publish_year' => 'nullable|integer|regex:/[1-2][0-9]{3}/',
@@ -124,12 +122,12 @@ class TaxonNameRequest extends FormRequest
     public function messages()
     {
         return [
-            'min' => '必填',
-            'integer' => '須為數字',
-            'not_in' => '必填',
-            'required' => '必填',
-            'required_if' => '必填',
-            'required_without' => '必填',
+            'min' => 'taxonName.min',
+            'integer' => 'taxonName.integer',
+            'not_in' => 'taxonName.not_in',
+            'required' => 'taxonName.required',
+            'required_if' => 'taxonName.required_if',
+            'required_without' => 'taxonName.required_without',
         ];
     }
 }

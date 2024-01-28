@@ -1,12 +1,12 @@
 <template>
-    <div class="tab-page">
-        <div class="header">
-            <div class="title is-3">
+    <div class="h-full flex flex-col">
+        <div class="header z-10 shrink-0">
+            <div class="font-bold m-0 pb-3 text-3xl">
                 <slot name="title"/>
-                <div class="fake" v-for="tab in tabs.filter(t => t.display)"></div>
+                <div v-for="tab in tabs.filter(t => t.display)" class="fake"></div>
             </div>
             <div class="tabs is-right">
-                <slot name="tabs" ref="tabs">
+                <slot ref="tabs" name="tabs">
                     <ul>
                         <li v-for="tab in tabs"
                             v-if="tab.display"
@@ -18,83 +18,70 @@
                 </slot>
             </div>
         </div>
-        <div class="box">
+        <div class="grow box">
             <slot name="content"/>
         </div>
     </div>
 </template>
 <script>
-    export default {
-        props: {
-            tabs: {
-                default() {
-                    return [];
-                }
+export default {
+    props: {
+        tabs: {
+            default() {
+                return [];
             },
-            current: {
-                type: String,
-                required: true,
-            }
         },
-        methods: {
-            onChangeTab(key) {
-                this.$emit('change-tab', key);
-            }
-        }
-    }
+        current: {
+            type: String,
+            required: true,
+        },
+    },
+    methods: {
+        onChangeTab(key) {
+            this.$emit('change-tab', key);
+        },
+    },
+};
 </script>
 <style lang="scss" scoped>
-    .tab-page {
-        display: flex;
-        flex-flow: column;
-        height: 100%;
-        flex-flow: column;
-        flex: 1 1 auto;
-    }
+.box {
+    height: 100%;
+    padding: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+}
 
-    .box {
-        height: 100%;
-        padding: 0;
-        overflow-y: auto;
-        overflow-x: hidden;
-        position: relative;
-    }
+.fake {
+    display: inline-block;
+    width: 8rem; // tab 的寬度
+    height: 1rem;
+    content: ' ';
+}
 
-    .title {
-        margin: 0;
-        padding-bottom: 1.5rem;
-    }
+.tabs {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    display: inline-block;
 
-    .fake {
-        display: inline-block;
-        width: 8rem; // tab 的寬度
-        height: 1rem;
-        content: ' ';
-    }
+    ul {
+        border: none;
 
-    .tabs {
-        position: absolute;
-        right: 0;
-        bottom: 0;
-        display: inline-block;
+        li {
+            background: rgba(225, 225, 225, 1);
+            margin-left: 1px;
 
-        ul {
-            border: none;
+            a {
+                min-width: 3rem;
+                padding-left: 2rem;
+                padding-right: 2rem;
+            }
 
-            li {
-                background: rgba(225, 225, 225, 1);
-                margin-left: 1px;
-
-                a {
-                    min-width: 3rem;
-                    padding-left: 2rem;
-                    padding-right: 2rem;
-                }
-
-                &.is-active {
-                    background: white;
-                }
+            &.is-active {
+                background: white;
             }
         }
     }
+}
 </style>

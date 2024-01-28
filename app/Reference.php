@@ -14,6 +14,7 @@ class Reference extends Model
     const TYPE_BOOK_ARTICLE = 2;
     const TYPE_BOOK = 3;
     const TYPE_BACKBONE = 4;
+    const TYPE_CHECKLIST = 5;
 
     protected $casts = [
         'properties' => 'array'
@@ -64,5 +65,10 @@ class Reference extends Model
     public function collectable()
     {
         return $this->morphMany(FavoriteItem::class, 'collectable')->morphMany(FavoriteMineItem::class, 'collectable');
+    }
+
+    public function hasVolume(): bool
+    {
+        return $this->type === self::TYPE_JOURNAL || $this->type === self::TYPE_BOOK_ARTICLE || $this->type === self::TYPE_BOOK;
     }
 }

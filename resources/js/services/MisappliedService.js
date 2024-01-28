@@ -1,9 +1,14 @@
-import AuthorName from '../components/AuthorName';
-import TaxonNameLabel from '../components/views/TaxonNameLabel';
+import AuthorName from '../components/AuthorName.vue';
+import TaxonNameLabel from '../components/views/TaxonNameLabel.vue';
 import { factory as rFactory } from '../utils/preview/reference';
-import { animalAuthorNames, comboLast, plantAuthorNames } from '../utils/preview/person';
+import {
+    animalAuthorNames,
+    bacteriaAuthorNames,
+    comboLast,
+    plantAuthorNames,
+} from '../utils/preview/person';
 
-const interleave = (arr, thing) => [].concat(...arr.map(n => [n, thing])).slice(0, -1)
+const interleave = (arr, thing) => [].concat(...arr.map((n) => [n, thing])).slice(0, -1);
 
 export class MisappliedService {
     constructor(createElement, indication, isSimple = false) {
@@ -21,6 +26,10 @@ export class MisappliedService {
     }
 
     setAuthors(taxonName) {
+        if (taxonName) {
+            taxonName.properties.isApprovedList = false;
+        }
+
         this.authorNameDOM = this._c(
             AuthorName,
             {
@@ -30,6 +39,7 @@ export class MisappliedService {
                     type: taxonName.nomenclature.group,
                     originalTaxonName: taxonName.originalTaxonName,
                     publishYear: taxonName.publishYear,
+                    taxonName,
                 },
                 class: {
                     'is-inline': true,
@@ -45,7 +55,7 @@ export class MisappliedService {
             TaxonNameLabel,
             {
                 props: {
-                    taxonName: taxonName,
+                    taxonName,
                 },
                 class: {
                     'is-orange': true,
@@ -64,28 +74,45 @@ export class MisappliedService {
 
         this.referenceDOM = referencePreview ? this._c(
             'span',
-            referencePreview,
+            `${referencePreview}.`,
         ) : null;
         return this;
     }
 
     render() {
+        let dom;
         switch (this.indication.abbreviation) {
             case 'auct. non':
-                return this._auctNon();
+                dom = this._auctNon();
+                break;
             case 'nec':
-                return this._nec();
+                dom = this._nec();
+                break;
             case 'non':
-                return this._non();
+                dom = this._non();
+                break;
             case 'not of':
-                return this._notOf();
+                dom = this._notOf();
+                break;
             case 'sensu':
-                return this._sensu();
+                dom = this._sensu();
+                break;
             case 'sensu auct.':
-                return this._sensuAuct();
+                dom = this._sensuAuct();
+                break;
             default:
                 throw new Error();
         }
+
+        return this._c(
+            'div',
+            {
+                class: { 'is-inline': true },
+            },
+            interleave([
+                dom,
+            ], ''),
+        );
     }
 
     _auctNon() {
@@ -162,12 +189,26 @@ export class MisappliedService {
                 this.taxonName.exAuthors,
                 this.taxonName.originalTaxonName,
                 this.taxonName.publishYear,
+                this.taxonName,
             );
-        } else if (this.taxonName.nomenclature.group === 'plant') {
+        } else if (this.taxonName.nomenclature.group === 'plant'
+        ) {
             authorName = plantAuthorNames(
                 this.taxonName.authors,
                 this.taxonName.exAuthors,
                 this.taxonName.originalTaxonName,
+            );
+        } else if (
+            this.taxonName.nomenclature.group === 'bacteria'
+            || this.taxonName.nomenclature.group === 'virus'
+        ) {
+            authorName = bacteriaAuthorNames(
+                this.taxonName.authors,
+                this.taxonName.exAuthors,
+                this.taxonName.originalTaxonName,
+                this.taxonName.publishYear,
+                this.taxonName,
+                false,
             );
         }
 
@@ -222,12 +263,25 @@ export class MisappliedService {
                 this.taxonName.exAuthors,
                 this.taxonName.originalTaxonName,
                 this.taxonName.publishYear,
+                this.taxonName,
             );
         } else if (this.taxonName.nomenclature.group === 'plant') {
             authorName = plantAuthorNames(
                 this.taxonName.authors,
                 this.taxonName.exAuthors,
                 this.taxonName.originalTaxonName,
+            );
+        } else if (
+            this.taxonName.nomenclature.group === 'bacteria'
+            || this.taxonName.nomenclature.group === 'virus'
+        ) {
+            authorName = bacteriaAuthorNames(
+                this.taxonName.authors,
+                this.taxonName.exAuthors,
+                this.taxonName.originalTaxonName,
+                this.taxonName.publishYear,
+                this.taxonName,
+                false,
             );
         }
 
@@ -319,8 +373,8 @@ export class MisappliedService {
                             'non',
                         ),
                         this.authorNameDOM,
-                    ], ' ')
-                ].filter(Boolean), ', ')
+                    ], ' '),
+                ].filter(Boolean), ', '),
             ].filter(Boolean), ' '),
         );
     }
@@ -369,8 +423,8 @@ export class MisappliedService {
                             'non',
                         ),
                         this.authorNameDOM,
-                    ], ' ')
-                ], ', ')
+                    ], ' '),
+                ], ', '),
             ].filter(Boolean), ' '),
         );
     }

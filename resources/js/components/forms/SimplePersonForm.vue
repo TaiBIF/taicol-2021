@@ -3,42 +3,46 @@
         <div class="columns">
             <div class="column is-2">
                 <div class="field">
-                    <label class="label is-marked" v-text="$t('forms.person.lastName')"/>
-                    <general-input :errors="errors['lastName']" v-model="form.lastName" :disabled="isEdit" placeholder="拉丁字母填拼寫"/>
+                    <label class="label is-marked" v-text="$t('person.lastName')"/>
+                    <general-input v-model="form.lastName" :disabled="isEdit" :errors="errors['lastName']"
+                                   :placeholder="$t('person.fillInLatinAlphabet')"/>
                 </div>
             </div>
             <div class="column is-2">
                 <div class="field">
                     <label class="label is-marked">
-                        {{ $t('forms.person.firstName') }}
+                        {{ $t('person.firstName') }}
                     </label>
-                    <general-input :errors="errors['firstName']" v-model="form.firstName" :disabled="isEdit" placeholder="拉丁字母填拼寫"/>
+                    <general-input v-model="form.firstName" :disabled="isEdit" :errors="errors['firstName']"
+                                   :placeholder="$t('person.fillInLatinAlphabet')"/>
                 </div>
             </div>
             <div class="column is-2">
                 <div class="field">
-                    <label class="label" v-text="$t('forms.person.middleName')"/>
-                    <general-input :errors="errors['middleName']" v-model="form.middleName" placeholder="拉丁字母填拼寫"/>
+                    <label class="label" v-text="$t('person.middleName')"/>
+                    <general-input v-model="form.middleName" :errors="errors['middleName']"
+                                   :placeholder="$t('person.fillInLatinAlphabet')"/>
                 </div>
             </div>
         </div>
         <div class="columns">
             <div class="column is-6">
                 <div class="field">
-                    <label class="label is-marked" v-text="$t('forms.person.fullNameInNativeAlphabet')"/>
-                    <general-input :errors="errors['originalFullName']"
-                                   v-model="form.originalFullName" placeholder="完整全名包含[姓, 名 中間名]，如有中文名填入此欄"/>
+                    <label class="label is-marked" v-text="$t('person.originalFullName')"/>
+                    <general-input v-model="form.originalFullName"
+                                   :errors="errors['originalFullName']"
+                                   :placeholder="$t('person.placeholderOriginalFullName')"/>
                 </div>
             </div>
             <div class="column is-6">
                 <div class="field">
-                    <label class="label"
-                           :class="{'is-marked': form.biologyDepartments.includes('plantae')}"
-                           v-text="`${$t('forms.person.nameAbbreviation')}`"
+                    <label :class="{'is-marked': form.biologyDepartments.includes('plantae')}"
+                           class="label"
+                           v-text="`${$t('person.abbreviationName')}`"
                     />
-                    <general-input :errors="errors['abbreviationName']" v-model="form.abbreviationName"
-                                   :disabled="isEdit"
-                                   placeholder="植物學名命名者必填"
+                    <general-input v-model="form.abbreviationName" :disabled="isEdit"
+                                   :errors="errors['abbreviationName']"
+                                   :placeholder="$t('person.icnNameAuthorNeeded')"
                     />
                 </div>
             </div>
@@ -46,47 +50,46 @@
         <div class="columns">
             <div class="column is-6">
                 <div class="field">
-                    <label class="label" v-text="$t('forms.person.otherNames')"/>
-                    <general-input :errors="errors['otherNames']" v-model="form.otherNames"/>
+                    <label class="label" v-text="$t('person.otherNames')"/>
+                    <general-input v-model="form.otherNames" :errors="errors['otherNames']"/>
                 </div>
             </div>
         </div>
         <div class="columns">
             <div class="column is-2">
                 <div class="field">
-                    <label class="label" v-text="$t('forms.person.yearOfBirth')"/>
-                    <general-input :errors="errors['yearOfBirth']" v-model="form.yearOfBirth" placeholder="YYYY"/>
+                    <label class="label" v-text="$t('person.yearOfBirth')"/>
+                    <general-input v-model="form.yearOfBirth" :errors="errors['yearOfBirth']" placeholder="YYYY"/>
                 </div>
             </div>
             <div class="column is-2">
                 <div class="field">
-                    <label class="label" v-text="$t('forms.person.yearOfDeath')"/>
-                    <general-input :errors="errors['yearOfDeath']" v-model="form.yearOfDeath" placeholder="YYYY"/>
+                    <label class="label" v-text="$t('person.yearOfDeath')"/>
+                    <general-input v-model="form.yearOfDeath" :errors="errors['yearOfDeath']" placeholder="YYYY"/>
                 </div>
             </div>
             <div class="column is-2">
                 <div class="field">
                     <label class="label">
-                        {{ $t('forms.person.yearOfPublication') }}
-                        <b-tooltip
-                            position="is-bottom">
+                        {{ $t('person.yearOfPublication') }}
+                        <tooltip>
                             <i class="fas fa-info-circle"></i>
-                            <template v-slot:content>
-                                發表或採集年代，以 fl. 或 col. 接年代或年代範圍。<br/>
-                                範例：fl. 1995-2016、fl. 2013-、col. 1790-1800<br/>
-                                生卒年不詳時建議盡量填寫本欄，可供選擇人名時參考。<br/>
+                            <template v-slot:body>
+                                <div class="w-[320px]">
+                                    {{ $t('person.yearOfLifeNote') }}
+                                </div>
                             </template>
-                        </b-tooltip>
+                        </tooltip>
                     </label>
 
-                    <general-input :errors="errors['yearOfPublication']" v-model="form.yearOfPublication"/>
+                    <general-input v-model="form.yearOfPublication" :errors="errors['yearOfPublication']"/>
                 </div>
             </div>
         </div>
         <div class="columns">
             <div class="column is-6">
                 <div class="field">
-                    <label class="label" v-text="$t('forms.person.nationality')"/>
+                    <label class="label" v-text="$t('person.countryNumericCode')"/>
                     <country-select v-model="form.nationality"/>
                 </div>
             </div>
@@ -94,141 +97,139 @@
         <div class="columns">
             <div class="column is-6">
                 <div class="field">
-                    <label class="label is-marked" v-text="$t('forms.person.biologyDepartment')"/>
+                    <label class="label is-marked" v-text="$t('person.biologyDepartment')"/>
                     <div class="control">
                         <label class="checkbox">
-                            <input type="checkbox" v-model="form.biologyDepartments" value="viruses">
-                            {{ $t('forms.person.biologyDepartmentOptions.viruses') }}
+                            <input v-model="form.biologyDepartments" type="checkbox" value="viruses">
+                            {{ $t('person.biologyDepartmentOptions.viruses') }}
                         </label>
                         &nbsp;&nbsp;
                         <label class="checkbox">
-                            <input type="checkbox" v-model="form.biologyDepartments" value="bacteria">
-                            {{ $t('forms.person.biologyDepartmentOptions.bacteria') }}
+                            <input v-model="form.biologyDepartments" type="checkbox" value="bacteria">
+                            {{ $t('person.biologyDepartmentOptions.bacteria') }}
                         </label>
                         &nbsp;&nbsp;
                         <label class="checkbox">
-                            <input type="checkbox" v-model="form.biologyDepartments" value="archaea">
-                            {{ $t('forms.person.biologyDepartmentOptions.archaea') }}
+                            <input v-model="form.biologyDepartments" type="checkbox" value="archaea">
+                            {{ $t('person.biologyDepartmentOptions.archaea') }}
                         </label>
                         &nbsp;&nbsp;
                         <label class="checkbox">
-                            <input type="checkbox" v-model="form.biologyDepartments" value="protozoa">
-                            {{ $t('forms.person.biologyDepartmentOptions.protozoa') }}
+                            <input v-model="form.biologyDepartments" type="checkbox" value="protozoa">
+                            {{ $t('person.biologyDepartmentOptions.protozoa') }}
                         </label>
                         &nbsp;&nbsp;
                         <label class="checkbox">
-                            <input type="checkbox" v-model="form.biologyDepartments" value="chromista">
-                            {{ $t('forms.person.biologyDepartmentOptions.chromista') }}
+                            <input v-model="form.biologyDepartments" type="checkbox" value="chromista">
+                            {{ $t('person.biologyDepartmentOptions.chromista') }}
                         </label>
                         &nbsp;&nbsp;
                         <label class="checkbox">
-                            <input type="checkbox" v-model="form.biologyDepartments" value="fungi">
-                            {{ $t('forms.person.biologyDepartmentOptions.fungi') }}
+                            <input v-model="form.biologyDepartments" type="checkbox" value="fungi">
+                            {{ $t('person.biologyDepartmentOptions.fungi') }}
                         </label>
                         &nbsp;&nbsp;
                         <label class="checkbox">
-                            <input type="checkbox" v-model="form.biologyDepartments" value="plantae">
-                            {{ $t('forms.person.biologyDepartmentOptions.plantae') }}
+                            <input v-model="form.biologyDepartments" type="checkbox" value="plantae">
+                            {{ $t('person.biologyDepartmentOptions.plantae') }}
                         </label>
                         &nbsp;&nbsp;
                         <label class="checkbox">
-                            <input type="checkbox" v-model="form.biologyDepartments" value="animalia">
-                            {{ $t('forms.person.biologyDepartmentOptions.animalia') }}
+                            <input v-model="form.biologyDepartments" type="checkbox" value="animalia">
+                            {{ $t('person.biologyDepartmentOptions.animalia') }}
                         </label>
                     </div>
-                    <p class="is-danger" v-for="m in errors['biologyDepartments']">{{ m }}</p>
+                    <p v-for="m in errors['biologyDepartments']" class="is-danger">{{ $t(`validation.${m}`) }}</p>
                 </div>
             </div>
             <div class="column is-6">
                 <div class="field">
                     <label class="label">
-                        {{ $t('forms.person.biologicalGroup') }}
-                        <b-tooltip
-                            position="is-bottom" size="is-large" multilined>
+                        {{ $t('person.biologicalGroup') }}
+                        <tooltip>
                             <i class="fas fa-info-circle"></i>
-                            <template v-slot:content>
-                                請填入大類群，如：藻類、苔蘚植物、蕨類、裸子植物、被子植物、子囊菌、擔子菌、昆蟲、蜘蛛、軟甲類、軟體動物、魚類、兩棲類、爬蟲類、鳥類、哺乳類、海洋無脊椎、陸生無脊椎等；或填入階層學名，如：鱗翅目、桑科等。也可填入多類群，以頓號「、」分隔。總字數10字以內。
+                            <template v-slot:body>
+                                <div class="w-[365px]">
+                                    {{ $t('person.biologicalGroupNote') }}
+                                </div>
                             </template>
-                        </b-tooltip>
+                        </tooltip>
                     </label>
-                    <general-input :errors="errors['biologicalGroup']" v-model="form.biologicalGroup"/>
+                    <general-input v-model="form.biologicalGroup" :errors="errors['biologicalGroup']"/>
                 </div>
             </div>
         </div>
     </div>
 </template>
-<script>
-    import CountrySelect from '../selects/CountrySelect';
-    import GeneralInput from '../GeneralInput';
-    import { openNotify } from './../../utils';
+<script lang="ts">
+import {
+    computed, defineComponent, inject, PropType, ref,
+} from '@vue/composition-api';
 
-    export default {
-        props: {
-            presetData: {
-                type: Object,
-                required: false,
-            },
-            onAfterSubmit: {
-                type: Function,
-                required: true,
-            },
+import CountrySelect from '../selects/CountrySelect.vue';
+import GeneralInput from '../GeneralInput.vue';
+import { openNotify } from '../../utils';
+import Tooltip from '../Tooltip.vue';
+
+import { PersonDetail } from '../../types';
+import { personDetailResource } from '../../utils/models/persons';
+
+export default defineComponent({
+    name: 'SimplePersonForm',
+    props: {
+        presetData: {
+            type: Object,
+            required: false,
         },
-        data() {
-            return {
-                errors: {},
-                form: {
-                    ...{
-                        lastName: '',
-                        firstName: '',
-                        middleName: '',
-                        abbreviationName: '',
-                        originalFullName: '',
-                        otherNames: '',
-                        yearOfBirth: '',
-                        yearOfDeath: '',
-                        yearOfPublication: '',
-                        nationality: null,
-                        biologyDepartments: [],
-                        biologicalGroup: '',
-                    },
-                    ...this.presetData,
-                },
-            }
+        onAfterSubmit: {
+            type: Function as PropType<(data) => void>,
+            required: true,
         },
-        computed: {
-            formData() {
-                return {
-                    ...this.form,
-                    countryNumericCode: this.form.nationality?.numericCode,
-                }
-            },
-            isEdit() {
-                return !!this.form?.id;
-            }
-        },
-        methods: {
-            submit(isEdit = false) {
-                this.axios({
-                    method: isEdit ? 'PUT' : 'POST',
-                    url: isEdit ? `/persons/${this.presetData.id}` : '/persons',
-                    data: { ...this.formData },
+    },
+    setup(props, context) {
+        const axios: any = inject('axios');
+        const errors = ref({});
+        const app: any = context.root;
+
+        const form = ref<PersonDetail>(personDetailResource(props.presetData));
+
+        const isEdit = computed(() => !!form.value?.id);
+        const formData = computed(() => ({
+            ...form.value,
+            countryNumericCode: form.value.nationality?.numericCode,
+        }));
+
+        const onSubmit = () => {
+            axios({
+                method: isEdit.value ? 'PUT' : 'POST',
+                url: isEdit.value ? `/persons/${formData.value.id}` : '/persons',
+                data: formData.value,
+            })
+                .then(({ data }) => {
+                    props.onAfterSubmit(data);
+                    openNotify(app.$t('common.saveSuccess'));
                 })
-                    .then(({ data }) => {
-                        this.onAfterSubmit(data);
-                        openNotify(this.$t('forms.saveSuccess'));
-                    })
-                    .catch(({ errors, status }) => {
-                        if (status === 409) {
-                            openNotify(this.$t('forms.person.personExist'), 'is-danger');
-                        } else {
-                            this.errors = errors;
-                        }
-                    });
-            },
-        },
-        components: {
-            GeneralInput,
-            CountrySelect,
-        },
-    }
+                .catch(({ errors: errorMessages, status }) => {
+                    if (status === 409) {
+                        openNotify('人名已存在', 'is-danger');
+                    } else {
+                        errors.value = errorMessages;
+                    }
+                });
+        };
+
+        return {
+            isEdit,
+            errors,
+            form,
+            formData,
+            onSubmit,
+        };
+    },
+    components: {
+        Tooltip,
+        GeneralInput,
+        CountrySelect,
+    },
+});
 </script>

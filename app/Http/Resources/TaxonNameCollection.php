@@ -55,6 +55,9 @@ class TaxonNameCollection extends JsonResource
             ])->find((int) $this->properties['type_name'])
         ])[0] : null;
 
+        $commonNameUsage = $this->usages->first();
+        $commonNameTw = collect($commonNameUsage->properties['common_names'] ?? [])->where('language', 'zh-tw')->first();
+
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -100,6 +103,7 @@ class TaxonNameCollection extends JsonResource
                 return TaxonNameCollection::collection([$p])[0];
             }),
             'note' => $this->note,
+            'common_name_tw' => $commonNameTw ? $commonNameTw['name'] : '',
         ];
     }
 }

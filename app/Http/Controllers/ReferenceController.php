@@ -205,7 +205,7 @@ class ReferenceController extends Controller
             $service->saveToMyFavoriteItem();
 
             $logService = new LogService();
-            $logService->writeCreateLog(LogType::REFERENCE(), $newReference->id);
+            $logService->writeCreateLog(LogType::REFERENCE, $newReference->id);
             DB::commit();
         } catch (Exception $e) {
             DB::rollback();
@@ -265,7 +265,7 @@ class ReferenceController extends Controller
 
         if ($jsonResult == null) {
             return response([
-                'message' => '找不到資源',
+                'message' => 'resourceNotFound',
             ])->setStatusCode(404);
         }
 

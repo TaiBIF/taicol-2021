@@ -1,21 +1,42 @@
 export default [
     {
         id: 1,
-        name: '標本',
+        display: {
+            'zh-tw': '標本',
+            'en-us': 'Specimen',
+        },
+        key: 'specimen',
     },
     {
         id: 2,
-        name: '手繪圖',
+        display: {
+            'zh-tw': '手繪圖',
+            'en-us': 'Illustration',
+        },
         key: 'image',
     },
     {
         id: 3,
-        name: '生物照片',
+        display: {
+            'zh-tw': '生物照片',
+            'en-us': 'Photo',
+        },
         key: 'photo',
     },
     {
         id: 4,
-        name: 'DNA',
+        display: {
+            'zh-tw': 'DNA',
+            'en-us': 'DNA',
+        },
         key: 'DNA',
+    },
+    {
+        id: 5,
+        display: {
+            'zh-tw': '菌株',
+            'en-us': 'Strain',
+        },
+        key: 'strain',
     },
 ];

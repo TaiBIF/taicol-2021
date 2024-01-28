@@ -1,61 +1,61 @@
 <template>
-    <t-select :errors="errors"
+    <t-select v-model="localValue"
+              :disabled="disabled"
+              :errors="errors"
               :options="options"
               :searchable="false"
               label="display"
-              v-model="localValue"
               v-on:input="onUpdateValue"
-              :disabled="disabled"
     >
         <template v-slot:selected-option="{ option }">
-            {{ option.display['zh-tw'] }}
+            {{ option.display[$i18n.locale()] }}
         </template>
         <template v-slot:option="{ option }">
             <div
                 :class="{'has-text-weight-bold': option.isHighlight, 'has-text-info': option.isHighlight}">
-                {{ option.display['zh-tw'] }}
+                {{ option.display[$i18n.locale()] }}
             </div>
         </template>
     </t-select>
 </template>
 <script>
-    import tSelect from './../Select';
+import tSelect from '../Select.vue';
 
-    export default {
-        components: {
-            tSelect,
+export default {
+    components: {
+        tSelect,
+    },
+    props: {
+        options: {
+            type: Array,
+            required: true,
         },
-        props: {
-            options: {
-                type: Array,
-                required: true,
-            },
-            value: {
-                type: Object | null,
-                required: true,
-            },
-            errors: {
-                type: Array,
-            },
-            disabled: {
-                type: Boolean,
-                default: false,
-            }
+        value: {
+            type: Object | null,
+            required: true,
         },
-        watch: {
-            value(value) {
-                this.localValue = value;
-            }
+        errors: {
+            type: Array,
         },
-        data() {
-            return {
-                localValue: this.value,
-            }
+        disabled: {
+            type: Boolean,
+            default: false,
         },
-        methods: {
-            onUpdateValue(value) {
-                this.$emit('input', value);
-            },
+    },
+    watch: {
+        value(value) {
+            this.localValue = value;
         },
-    }
+    },
+    data() {
+        return {
+            localValue: this.value,
+        };
+    },
+    methods: {
+        onUpdateValue(value) {
+            this.$emit('input', value);
+        },
+    },
+};
 </script>

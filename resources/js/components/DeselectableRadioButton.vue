@@ -4,38 +4,36 @@
     </button>
 </template>
 <script>
-    export default {
-        props: {
-            label: {
-                type: String,
-                required: true,
-            },
-            value: {
-                type: [Number, String],
-            },
-            v: {
-                type: [Number, String],
-                required: true,
-            },
-            isSmall: {
-                type: Boolean,
-                default: () => false,
-            },
+export default {
+    props: {
+        label: {
+            type: String,
+            required: true,
         },
-        methods: {
-            onChangeValue() {
-                let value = this.value;
-
-                // deselect radio
-                if (value === this.v) {
-                    this.$emit('input', null);
-                    return;
-                }
-
-                this.$emit('input', this.v);
-            },
+        value: {
+            type: [Number, String],
         },
-    }
+        v: {
+            type: [Number, String],
+            required: true,
+        },
+        isSmall: {
+            type: Boolean,
+            default: () => false,
+        },
+    },
+    methods: {
+        onChangeValue() {
+            const { value } = this;
+
+            // deselect radio
+            if (value === this.v) {
+                this.$emit('input', null);
+                return;
+            }
+
+            this.$emit('input', this.v);
+        },
+    },
+};
 </script>
-
-

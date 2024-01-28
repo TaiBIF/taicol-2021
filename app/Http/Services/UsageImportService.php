@@ -5,6 +5,7 @@ namespace App\Http\Services;
 
 
 use App\MyNamespaceUsage;
+use App\Nomenclature;
 use App\Rank;
 use App\TaxonName;
 use Illuminate\Support\Collection;
@@ -74,11 +75,16 @@ class UsageImportService
 
         $group = $lastGroupUsage->group ?? 0;
         $order = 0;
+        $nomenclatures = Nomenclature::select('id', 'name')->get()->keyBy('name');
+        $ranks = Rank::select('id', 'key')->get()->keyBy('key');
         try {
             for ($row = 2; $row <= $this->sheet->getHighestRow(); $row++) {
+                $nomenclature = $this->sheet->getCell('A' . $row)->getCalculatedValue();
+                $rank = $this->sheet->getCell('B' . $row)->getCalculatedValue();
                 $name = $this->sheet->getCell('C' . $row)->getCalculatedValue();
                 $authorsString = $this->sheet->getCell('D' . $row)->getCalculatedValue();
                 $parentTaxonNameString = $this->sheet->getCell('E' . $row)->getCalculatedValue();
+                $status = $this->sheet->getCell('F' . $row)->getCalculatedValue();
                 $commonNamesString = $this->sheet->getCell('I' . $row)->getCalculatedValue();
 
                 $isInTaiwan = $this->sheet->getCell('J' . $row)->getCalculatedValue();
@@ -93,12 +99,28 @@ class UsageImportService
 
                 $isIndent = (bool) $this->sheet->getCell('H' . $row)->getCalculatedValue();
 
+                if ($row === 2 && ($isIndent === true || $status === 'not-accepted') && $group === 0) {
+                    $this->throwError($row, '第一筆不能是無效名或縮排');
+                }
+
                 $taxonNames = TaxonName::query()->where('name', $name)->get();
 
-                if ($taxonNames->count() > 1 && !$authorsString) {
+                if ($taxonNames->count() > 1) {
+                    $nomenclatureId = $nomenclatures[$nomenclature]->id;
+                    $taxonNamesQuery = TaxonName::query()
+                        ->where('nomenclature_id', $nomenclatureId)
+                        ->where('rank_id', $ranks[$rank]->id)
+                        ->where('name', $name);
+
+                    if ($authorsString) {
+                        $taxonNamesQuery->where('formatted_authors', $authorsString);
+                    }
+
+                    $taxonNames = $taxonNamesQuery->get();
+                }
+
+                if ($taxonNames->count() > 1) {
                     $this->throwError($row, '此 Taxon 有同名，請提供作者名輔助');
-                } else if ($taxonNames->count() > 1 && $authorsString) {
-                    $taxonName = TaxonName::query()->where('name', $name)->where('formatted_authors', $authorsString)->first();
                 } else if ($taxonNames->count() === 1) {
                     $taxonName = $taxonNames->first();
                 } else {
@@ -116,9 +138,19 @@ class UsageImportService
                     $order++;
                 }
 
+                $parentTaxonName = null;
                 if ($parentTaxonNameString) {
-                    $parentTaxonName = TaxonName::query()->where('name', $parentTaxonNameString)->first();
-                    if (!$parentTaxonName) {
+                    $parentTaxonNames = TaxonName::query()->where('name', $parentTaxonNameString)->get();
+
+                    if ($parentTaxonNames->count() > 1) {
+                        $nomenclatureId = $nomenclatures[$nomenclature]->id;
+                        $parentTaxonName = TaxonName::query()
+                            ->where('nomenclature_id', $nomenclatureId)
+                            ->where('name', $parentTaxonNameString)
+                            ->first();
+                    } else if ($parentTaxonNames->count() === 1) {
+                        $parentTaxonName = $parentTaxonNames->first();
+                    } else {
                         $this->throwError($row, '查無此 Parent Taxon');
                     }
                 }
@@ -142,12 +174,12 @@ class UsageImportService
                 ];
 
                 if ($isInTaiwan) {
-                    $properties['is_endemic'] = $isEndemic ? 1 : 0;
+                    $properties['is_endemic'] = !isset($isEndemic) || $isEndemic === '' ? null : ($isEndemic ? 1 : 0);
                     $properties['distribution_in_tw'] = $distributionTw;
                     $properties['alien_type'] = $alienType;
                 }
 
-                $this->saveUsages($row, $taxonName, $parentTaxonName, $properties, $group, $order);
+                $this->saveUsages($row, $taxonName, $parentTaxonName ?? null, $properties, $group, $order);
                 $count++;
             }
             DB::commit();
@@ -168,6 +200,7 @@ class UsageImportService
             $name = $sheet->getCell('C' . $row)->getCalculatedValue();
             $authorNamesString = $sheet->getCell('D' . $row)->getCalculatedValue();
             $usageStatus = $sheet->getCell('F' . $row)->getCalculatedValue();
+            $isIndent = (bool) $this->sheet->getCell('H' . $row)->getCalculatedValue();
             $commonNames = $sheet->getCell('I' . $row)->getCalculatedValue();
             $alienType = $sheet->getCell('M' . $row)->getCalculatedValue();
 
@@ -210,7 +243,7 @@ class UsageImportService
         throw new \Exception($message);
     }
 
-    private function saveUsages(int $row, $taxonName, $parentTaxonName, $properties, $group, $order)
+    private function saveUsages(int $row, $taxonName, ?object $parentTaxonName, $properties, $group, $order)
     {
         $usage = new MyNamespaceUsage();
         $usage->namespace_id = $this->namespaceId;

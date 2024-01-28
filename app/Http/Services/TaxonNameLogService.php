@@ -59,7 +59,7 @@ class TaxonNameLogService extends LogService
             }
         }
         $logService = new LogService();
-        $logService->writeUpdateLogWithComparison(LogType::TAXON_NAME(), $taxonName, $this->originTaxonName, $columnChanges, [
+        $logService->writeUpdateLogWithComparison(LogType::TAXON_NAME, $taxonName, $this->originTaxonName, $columnChanges, [
             'formatted_authors',
             'properties.reference_name',
             'properties.usage.reference_id',

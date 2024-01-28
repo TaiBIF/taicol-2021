@@ -2,7 +2,7 @@
     <div class="page">
         <!-- 筆數結果顯示 -->
         <div class="help text-center">
-            <template v-if="total">共計 {{ total }} 筆資料 · 第 {{ currentPage }} 頁</template>
+            <template v-if="total">{{ $t('common.totalRowsNumberWithPage', {total, currentPage}) }}</template>
             <span v-else-if="pageStatus === $c.PAGE_IS_SUCCESS" class="is-danger">查無結果</span>
         </div>
         <table class="table w-full  is-hoverable has-text-left table-fixed">
@@ -10,40 +10,38 @@
             <tr>
                 <th class="w-[50%]">
                     <sort-button :id="'name'" :direction="direction" :on-click="onSortBy" :sortby="sortby">
-                        人名
+                        {{ $t('common.person') }}
                     </sort-button>
                 </th>
                 <th class="w-[150px]">
                     <sort-button :id="'abbreviation_name'" :direction="direction" :on-click="onSortBy" :sortby="sortby">
-                        縮寫
+                        {{ $t('person.abbreviationName') }}
                     </sort-button>
                 </th>
-                <th class="w-[50%]">
-                    原母語完整名
-                </th>
-                <th class="w-[140px]">生卒年/活躍年代</th>
-                <th class="w-[170px]">研究領域</th>
+                <th class="w-[50%]" v-text="$t('person.originalFullName')"/>
+                <th class="w-[140px]">{{ $t('person.listYearOfLife') }}</th>
+                <th class="w-[170px]" v-text="$t('person.biologyDepartment')"/>
             </tr>
             </thead>
             <tbody>
             <tr v-for="person in persons">
                 <!-- 人名 -->
                 <td>
-                    <router-link :to="`/persons/${person.id}`" class="my-link">
+                    <router-link :to="{name: 'person-page', params: {id: person.id}}" class="my-link">
                         {{ fullName(person) }}
                     </router-link>
                 </td>
 
                 <!-- 縮寫 -->
                 <td>
-                    <router-link :to="`/persons/${person.id}`" class="my-link">
+                    <router-link :to="{name: 'person-page', params: {id: person.id}}" class="my-link">
                         {{ person.abbreviationName }}
                     </router-link>
                 </td>
 
                 <!-- 原母語完整名 -->
                 <td>
-                    <router-link :to="`/persons/${person.id}`" class="my-link">
+                    <router-link :to="{name: 'person-page', params: {id: person.id}}" class="my-link">
                         {{ person.originalFullName }}
                     </router-link>
                 </td>
@@ -58,7 +56,7 @@
                 <!-- 研究領域 -->
                 <td
                     v-text="person.biologyDepartments.map(
-                            (d) => $t(`forms.person.biologyDepartmentOptions.${d}`)
+                            (d) => $t(`person.biologyDepartmentOptions.${d}`)
                         ).join(', ')"
                 ></td>
             </tr>
@@ -69,7 +67,7 @@
                                 :total="total"
                                 v-on:change="onChangePage"
                     />
-                    <span class="caption">共計 {{ total }} 筆資料</span>
+                    <span class="caption">{{ $t('common.totalRowsNumber', {total}) }}</span>
                     <loading v-if="pageStatus === $c.PAGE_IS_LOADING"/>
                 </td>
             </tr>

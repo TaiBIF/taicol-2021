@@ -94,7 +94,7 @@
             <button :disabled="!result" class="button" v-on:click="onSetToForm">填入</button>
             <button class="button"
                     v-on:click="onClose"
-                    v-text="$t('forms.actions.close')">
+                    v-text="$t('common.close')">
             </button>
         </div>
     </div>
@@ -184,7 +184,7 @@ export default defineComponent({
         };
         const typeDisplay = (type) => {
             const typeObject = referenceTypes.find((t) => t.value === type);
-            return typeObject ? app.$t(`forms.reference.typeOptions.${typeObject.value}`) : '';
+            return typeObject ? app.$t(`reference.typeOptions.${typeObject.value}`) : '';
         };
 
         return {

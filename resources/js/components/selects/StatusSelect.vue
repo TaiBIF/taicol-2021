@@ -1,10 +1,11 @@
 <template>
-    <t-select :errors="errors"
+    <t-select v-model="localValue"
+              :errors="errors"
+              :key-id="'key'"
               :options="options"
               :searchable="false"
+              :disabled="disabled"
               label="key"
-              :key-id="'key'"
-              v-model="localValue"
               v-on:input="onUpdateValue"
     >
         <template v-slot:selected-option="{ option }">
@@ -16,38 +17,42 @@
     </t-select>
 </template>
 <script>
-    import Select from '../Select';
-    import Status from './status';
+import Select from '../Select.vue';
+import Status from './status';
 
-    export default {
-        components: {
-            tSelect: Select,
+export default {
+    components: {
+        tSelect: Select,
+    },
+    props: {
+        value: {
+            type: String,
         },
-        props: {
-            value: {
-                type: String,
-            },
-            errors: {
-                type: Array,
-            },
+        errors: {
+            type: Array,
         },
-        watch: {
-            value(value) {
-                this.localValue = this.options.find(o => o.key === value) ?? null;
-            }
+        disabled: {
+            type: Boolean,
+            default: false,
         },
-        data() {
-            const options = Status;
+    },
+    watch: {
+        value(value) {
+            this.localValue = this.options.find((o) => o.key === value) ?? null;
+        },
+    },
+    data() {
+        const options = Status;
 
-            return {
-                localValue: options.find(o => o.key === this.value) ?? null,
-                options,
-            }
+        return {
+            localValue: options.find((o) => o.key === this.value) ?? null,
+            options,
+        };
+    },
+    methods: {
+        onUpdateValue(sexObject) {
+            this.$emit('input', sexObject);
         },
-        methods: {
-            onUpdateValue(sexObject) {
-                this.$emit('input', sexObject);
-            },
-        },
-    }
+    },
+};
 </script>

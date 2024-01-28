@@ -1,17 +1,17 @@
 <template>
-    <div class="container">
-        <div class="box">
-            <p class="title is-3" v-text="$t('functions.login')"/>
+    <div class="container flex justify-center items-center">
+        <div class="box mt-[3rem] w-[768px]">
+            <p class="title is-3" v-text="$t('loginPage.login')"/>
             <div class="form">
                 <div class="field">
-                    <label class="label" v-text="$t('forms.person.email')"/>
+                    <label class="label" v-text="$t('loginPage.email')"/>
                     <div class="control">
                         <general-input v-model="email" :errors="errors.email"/>
                     </div>
                 </div>
 
                 <div class="field">
-                    <label class="label" v-text="$t('forms.person.password')"/>
+                    <label class="label" v-text="$t('loginPage.password')"/>
                     <div class="control">
                         <general-input v-model="password"
                                        :errors="errors.password"
@@ -23,73 +23,83 @@
                         <button :class="{'is-loading': isLoading}"
                                 class="button has-text-white has-background-dark is-fullwidth"
                                 v-on:click="onLogin"
-                                v-text="$t('functions.login')"
+                                v-text="$t('loginPage.login')"
                         />
-                        <router-link class="button is-text is-fullwidth is-outlined"
-                                     to="/register" v-text="$t('forms.person.createAccount')"/>
+                        <router-link :to="{name: 'register'}"
+                                     class="button is-text is-fullwidth is-outlined"
+                                     v-text="$t('loginPage.createAccount')"/>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </template>
-<script>
-    import GeneralInput from '../components/GeneralInput';
+<script lang="ts">
+import {
+    defineComponent, onBeforeUnmount, onMounted, ref,
+} from '@vue/composition-api';
 
-    export default {
-        data() {
-            return {
-                isLoading: false,
-                errors: {},
-                email: '',
-                password: '',
+import GeneralInput from '../components/GeneralInput.vue';
+
+export default defineComponent({
+    setup(props, context) {
+        const app: any = context.root;
+
+        const route = app.$route;
+        const router = app.$router;
+        const store = app.$store;
+
+        const isLoading = ref<boolean>(false);
+        const errors = ref({});
+
+        const email = ref<string>('');
+        const password = ref<string>('');
+
+        const onLogin = () => {
+            isLoading.value = true;
+
+            const params = {
+                email: email.value,
+                password: password.value,
+                device: navigator?.userAgent || 'unknown',
             };
-        },
-        mounted() {
-            window.addEventListener('keydown', this.triggerLogin);
-        },
-        beforeDestroy() {
-            window.removeEventListener('keydown', this.triggerLogin);
-        },
-        methods: {
-            triggerLogin(event) {
-                if (event.keyCode === 13) {
-                    this.onLogin();
+
+            store.dispatch('auth/login', params).then(() => {
+                const redirect = route.query.redirect || '';
+
+                if (redirect) {
+                    router.replace(redirect);
+                } else {
+                    router.replace({ name: 'index' });
                 }
-            },
-            onLogin() {
-                this.isLoading = true;
-                this.$store.dispatch('auth/login', {
-                    email: this.email,
-                    password: this.password,
-                    device: navigator?.userAgent || 'unknown',
-                }).then(() => {
-                    const redirect = this.$route.query.redirect || '';
+            }).catch(({ errors: es }) => {
+                isLoading.value = false;
+                errors.value = es;
+            });
+        };
 
-                    if (redirect) {
-                        this.$router.replace(redirect);
-                    } else {
-                        this.$router.replace({ name: 'index' });
-                    }
-                }).catch(({ errors }) => {
-                    this.isLoading = false;
-                    this.errors = errors;
-                });
-            },
-        },
-        components: { GeneralInput },
-    }
+        const triggerLogin = (event) => {
+            if (event.keyCode === 13) {
+                onLogin();
+            }
+        };
+
+        onMounted(() => {
+            window.addEventListener('keydown', triggerLogin);
+        });
+
+        onBeforeUnmount(() => {
+            window.removeEventListener('keydown', triggerLogin);
+        });
+        return {
+            isLoading,
+            errors,
+            email,
+            password,
+            triggerLogin,
+            onLogin,
+        };
+    },
+    components: { GeneralInput },
+});
 </script>
-<style lang="scss" scoped>
-    .container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-
-
-        .box {
-            width: $tablet;
-            margin-top: 3rem;
-        }
-    }
-</style>

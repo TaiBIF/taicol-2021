@@ -1,20 +1,20 @@
 <template>
     <div class="container pt-2">
         <div class="buttons is-right mb-2">
-            <button class="button" v-on:click="isShowAddRow = !isShowAddRow">建立收藏夾</button>
+            <button class="button" v-on:click="isShowAddRow = !isShowAddRow">{{ $t('collect.create') }}</button>
         </div>
         <div class="shadow-md bg-white w-full h-full overflow-y-scroll">
             <div class="border-b py-3 px-4 sticky top-0 bg-white z-10">
                 <p class="has-text-weight-bold is-inline is-size-6">
-                    <span>收藏參考區</span>
+                    <span>{{ $t('collect.myCollections') }}</span>
                 </p>
             </div>
             <ul class="z-0">
                 <li class="flex items-center px-4 py-1 hover:bg-gray-100 cursor-pointer"
-                     v-on:click="() => onOpenFolder(0)">
+                    v-on:click="() => onOpenFolder(0)">
                     <i class="fas fa-folder cursor-pointer"></i>
                     &nbsp;&nbsp;
-                    <span>我建立的學名/文獻</span>
+                    <span>{{ $t('collect.meAdd') }}</span>
                 </li>
                 <li v-for="folder in folders">
                     <div class="flex items-center px-4 py-1 hover:bg-gray-100 cursor-pointer"
@@ -25,28 +25,28 @@
                     </div>
                 </li>
             </ul>
-            <div class="sticky bottom-0 p-4 bg-white border-t" v-if="isShowAddRow">
+            <div v-if="isShowAddRow" class="sticky bottom-0 p-4 bg-white border-t">
                 <div class="flex">
                     <general-input
-                        class="w-full mr-2"
-                        :placeholder="$t('forms.namespace.titlePlaceholder')"
                         v-model="newFolderTitle"
+                        :placeholder="$t('forms.namespace.titlePlaceholder')"
+                        class="w-full mr-2"
                         v-on:pressEnter="onAddNewFolder"
                     />
                     <button class="button" v-on:click="onAddNewFolder"
-                            v-text="$t('forms.actions.submit')"></button>
+                            v-text="$t('common.submit')"></button>
                 </div>
             </div>
         </div>
     </div>
 </template>
 <script>
-import GeneralInput from '../components/GeneralInput';
-import Folders from "../components/views/favorite/Folders";
-import FolderEdit from "../components/views/favorite/FolderEdit";
+import GeneralInput from '../components/GeneralInput.vue';
+import Folders from '../components/views/favorite/Folders.vue';
+import FolderEdit from '../components/views/favorite/FolderEdit.vue';
 
 export default {
-    components: {FolderEdit, Folders, GeneralInput },
+    components: { FolderEdit, Folders, GeneralInput },
     data() {
         return {
             isShowAddRow: false,
@@ -63,32 +63,30 @@ export default {
                 return;
             }
 
-            this.axios.post(`/favorite-folders`, {title: this.newFolderTitle})
-                .then(({data: {data}}) => {
-                    const folder = {id: data.id, title: data.title, isChecked: true};
+            this.axios.post('/favorite-folders', { title: this.newFolderTitle })
+                .then(({ data: { data } }) => {
+                    const folder = { id: data.id, title: data.title, isChecked: true };
                     this.folders.push(folder);
                     this.isShowAddRow = false;
                     this.newFolderTitle = '';
                 });
         },
         onRefresh() {
-            this.axios.get(`/favorite-folders`)
-                .then(({data: {data}}) => {
-                    this.folders = data.map((f) => {
-                        return {
-                            id: f.id,
-                            title: f.title,
-                            isEdit: false,
-                        }
-                    });
+            this.axios.get('/favorite-folders')
+                .then(({ data: { data } }) => {
+                    this.folders = data.map((f) => ({
+                        id: f.id,
+                        title: f.title,
+                        isEdit: false,
+                    }));
                 });
         },
         onOpenFolder(folder) {
             this.targetFolder = folder;
-            this.$router.push(`/favorite-folders/${folder.id ?? 0}`);
+            this.$router.push({ name: 'favorite-folder', params: { id: folder.id ?? 0 } });
         },
     },
-}
+};
 </script>
 <style lang="scss" scoped>
 tbody {
@@ -101,6 +99,7 @@ tbody {
     margin-bottom: .2rem;
     margin-top: .2rem;
 }
+
 .container {
     height: calc(100vh - #{$navbar-height} - 5rem);
 }

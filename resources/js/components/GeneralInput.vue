@@ -10,52 +10,53 @@
                    v-on:keydown.enter="onPressEnter"
             />
         </div>
-        <p class="is-danger" v-for="m in errors">{{ m }}</p>
+        <p v-for="m in errors" class="is-danger">{{ $t(`validation.${m}`) }}</p>
     </div>
 </template>
 
 <script>
-    export default {
-        props: {
-            value: {
-                type: String | Number,
-                default: '',
-            },
-            type: {
-                type: String,
-                default: 'text',
-            },
-            errors: {
-                type: Array,
-            },
-            placeholder: {
-                type: String,
-                default: '',
-            },
-            disabled: {
-                type: Boolean,
-                default() {
-                    return false;
-                },
+export default {
+    props: {
+        value: {
+            type: String | Number,
+            default: '',
+        },
+        type: {
+            type: String,
+            default: 'text',
+        },
+        errors: {
+            type: Array,
+        },
+        placeholder: {
+            type: String,
+            default: '',
+        },
+        disabled: {
+            type: Boolean,
+            default() {
+                return false;
             },
         },
-        methods: {
-            onUpdateValue: function (value) {
-                this.$emit('input', value)
-            },
-            onPressEnter() {
-                this.$emit('pressEnter');
-            }
+    },
+    methods: {
+        onUpdateValue(value) {
+            this.$emit('input', value);
         },
-    }
+        onPressEnter() {
+            this.$emit('pressEnter');
+        },
+    },
+};
 </script>
 <style lang="scss" scoped>
-    .is-right {
-        text-align: right;
-    }
-    input[disabled] {
-        background-color: #f8f8f887;
-        border-color: #dbdbdb;
-        color: #b6b2b2;
-    }
+.is-right {
+    text-align: right;
+}
+
+input[disabled] {
+    background-color: #f8f8f887;
+    border-color: #dbdbdb;
+    color: #b6b2b2;
+}
 </style>

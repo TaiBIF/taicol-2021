@@ -26,6 +26,7 @@ $vs-component-line-height: 1.7;
 .vs__selected-options {
     width: 75%;
     overflow: hidden;
+    gap: 4px;
 }
 
 .vs__open-indicator {
@@ -52,5 +53,55 @@ $vs-component-line-height: 1.7;
 .vs__dropdown-option--highlight {
     .has-text-info {
         color: white !important;
+    }
+}
+
+/**
+ * custom-select
+ */
+.custom-select {
+    .vs__dropdown-toggle {
+        border: 0;
+        padding: .3rem 0rem;
+
+        .vs__selected-options {
+            ::placeholder {
+                color: $grey;
+            }
+
+            .vs__selected {
+                margin: 0px 2px 0px 2px;
+                max-width: 400px;
+
+                div {
+                    width: 100%;
+                    overflow-x: hidden;
+                    white-space: nowrap;
+                    text-overflow: ellipsis;
+                }
+            }
+        }
+
+        .vs__actions {
+            display: none;
+        }
+
+        .vs__search {
+            margin: 0;
+            padding: 0;
+        }
+    }
+
+    .vs__dropdown-menu {
+        border-radius: 1rem;
+        margin-top: 1rem;
+        padding: 0;
+        border: 0;
+    }
+}
+
+.control {
+    .select-input {
+        padding: 0 2rem;
     }
 }

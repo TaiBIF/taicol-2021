@@ -3,6 +3,7 @@ import Cookies from 'js-cookie';
 import snakeCaseKeys from 'snakecase-keys/index';
 import camelCaseKeys from 'camelcase-keys';
 import store from '../store';
+import msg from './msg';
 
 import { openNotify } from './index';
 
@@ -36,7 +37,7 @@ vAxios.interceptors.response.use((response) => ({
     if (status === 401) {
         store.dispatch('auth/clearAuth');
     } else if (status === 422) {
-        openNotify('欄位填寫錯誤', 'is-danger');
+        openNotify(msg.i18n('validation.inputsInvalid'), 'is-danger');
     } else if (status === 500) {
         openNotify('發生錯誤', 'is-danger');
     }

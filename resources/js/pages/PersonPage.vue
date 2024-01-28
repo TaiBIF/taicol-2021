@@ -1,11 +1,11 @@
 <template>
     <page :preload="preload">
-        <tab-content :tabs="tabs" v-on:change-tab="onChangeTab" :current="currentTab">
+        <tab-content :current="currentTab" :tabs="tabs" v-on:change-tab="onChangeTab">
             <template v-slot:title>
-                {{ person.fullName }}
+                <p class="leading-2 inline">{{ person.fullName }}</p>
             </template>
             <template v-slot:content>
-                <info :person="person" v-show="currentTab === 'info' || currentTab === ''"></info>
+                <info v-show="currentTab === 'info' || currentTab === ''" :person="person"></info>
                 <references v-show="currentTab === 'reference'" v-on:hide="onHideTab"></references>
                 <taxon-names v-show="currentTab === 'taxon-name'" v-on:hide="onHideTab"></taxon-names>
                 <type-specimens v-show="currentTab === 'type-specimen'" v-on:hide="onHideTab"></type-specimens>
@@ -14,77 +14,76 @@
     </page>
 </template>
 <script>
-    import AuthorName from '../components/AuthorName';
-    import Page from './Page';
-    import TabContent from '../components/layout/TabContent';
-    import Info from '../components/views/person/Info';
-    import References from '../components/views/person/References';
-    import TaxonNames from '../components/views/person/TaxonNames';
-    import TypeSpecimens from '../components/views/person/TypeSpecimens';
+import AuthorName from '../components/AuthorName.vue';
+import Page from './Page.vue';
+import TabContent from '../components/layout/TabContent.vue';
+import Info from '../components/views/person/Info.vue';
+import References from '../components/views/person/References.vue';
+import TaxonNames from '../components/views/person/TaxonNames.vue';
+import TypeSpecimens from '../components/views/person/TypeSpecimens.vue';
 
-    export default {
-        data() {
-            return {
-                person: null,
-                currentTab: null,
-                tabs: [
-                    {
-                        key: 'info',
-                        title: '人名資訊',
-                        default: true,
-                        display: true,
-                    },
-                    {
-                        key: 'taxon-name',
-                        title: '命名學名',
-                        display: true,
-                    },
-                    {
-                        key: 'reference',
-                        title: '發表文獻',
-                        display: true,
-                    },
-                    {
-                        key: 'type-specimen',
-                        title: '採集標本',
-                        display: true,
-                    },
-                ],
+export default {
+    data() {
+        return {
+            person: null,
+            currentTab: null,
+            tabs: [
+                {
+                    key: 'info',
+                    title: this.$t('person.tabs.info'),
+                    default: true,
+                    display: true,
+                },
+                {
+                    key: 'taxon-name',
+                    title: this.$t('person.tabs.taxonName'),
+                    display: true,
+                },
+                {
+                    key: 'reference',
+                    title: this.$t('person.tabs.reference'),
+                    display: true,
+                },
+                {
+                    key: 'type-specimen',
+                    title: this.$t('person.tabs.typeSpecimens'),
+                    display: true,
+                },
+            ],
+        };
+    },
+    mounted() {
+        this.currentTab = this.$route.hash.replace('#', '');
+    },
+    methods: {
+        async preload() {
+            try {
+                const { data } = await this.axios.get(`/persons/${this.$route.params.id}`);
+                this.person = data;
+                return 200;
+            } catch (e) {
+                return e.status;
             }
         },
-        mounted() {
-            this.currentTab = this.$route.hash.replace('#', '');
+        onChangeTab(key) {
+            this.currentTab = key;
+            this.$router.replace({ hash: key });
         },
-        methods: {
-            async preload() {
-                try {
-                    const { data } = await this.axios.get(`/persons/${this.$route.params.id}`)
-                    this.person = data;
-                    return 200;
-                } catch (e) {
-                    return e.status;
-                }
-            },
-            onChangeTab(key) {
-                this.currentTab = key;
-                this.$router.replace({ hash: key });
-            },
-            onHideTab(key) {
-                const tab = this.tabs.find(t => t.key === key);
-                if (tab) {
-                    tab.display = false;
-                }
-            },
+        onHideTab(key) {
+            const tab = this.tabs.find((t) => t.key === key);
+            if (tab) {
+                tab.display = false;
+            }
         },
-        components: {
-            TypeSpecimens,
-            TaxonNames,
-            References,
-            Info,
-            TabContent,
-            Page,
-            AuthorName,
-        },
-    }
+    },
+    components: {
+        TypeSpecimens,
+        TaxonNames,
+        References,
+        Info,
+        TabContent,
+        Page,
+        AuthorName,
+    },
+};
 </script>
-

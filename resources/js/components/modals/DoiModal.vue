@@ -7,7 +7,7 @@
                     http://dx.doi.org/
                 </p>
                 <general-input v-model="doi" :errors="errors.doi" class="grow"/>
-                <button class="button" v-on:click="onFetchDoi">搜尋</button>
+                <button class="button" v-on:click="onFetchDoi">{{ $t('reference.search') }}</button>
             </div>
 
             <div class="min-h-3/5 flex w-full">
@@ -17,11 +17,11 @@
                 <div v-else-if="!!result" class="py-4">
                     <table class="table">
                         <tr>
-                            <td class="no-wrap">文獻類型</td>
+                            <td class="no-wrap">{{ $t('reference.type') }}</td>
                             <td>{{ typeDisplay(result.type) }}</td>
                         </tr>
                         <tr>
-                            <td class="no-wrap">作者</td>
+                            <td class="no-wrap">{{ $t('reference.author') }}</td>
                             <td>
                                 <div class="flex-col">
                                     <div v-for="(author, key) in result.authors">
@@ -41,44 +41,46 @@
                             </td>
                         </tr>
                         <tr>
-                            <td class="no-wrap">發表年份</td>
+                            <td class="no-wrap">{{ $t('reference.publishYear') }}</td>
                             <td>{{ result.publishYear }}</td>
                         </tr>
                         <tr>
-                            <td class="no-wrap">文章標題</td>
+                            <td class="no-wrap">{{ $t('reference.articleTitle') }}</td>
                             <td>{{ result.articleTitle }}</td>
                         </tr>
                         <tr>
-                            <td class="no-wrap">期刊/書名</td>
+                            <td class="no-wrap">{{ $t('reference.journal') }}/{{ $t('reference.bookTitle') }}</td>
                             <td>{{ result.bookTitle }}</td>
                         </tr>
                         <tr>
-                            <td class="no-wrap">期刊/書名縮寫</td>
+                            <td class="no-wrap">
+                                {{ $t('reference.journalAbbreviation') }}/{{ $t('reference.bookTitleAbbreviation') }}
+                            </td>
                             <td>{{ result.bookTitleAbbreviation }}</td>
                         </tr>
                         <tr>
-                            <td class="no-wrap">卷號/部冊號</td>
+                            <td class="no-wrap">{{ $t('reference.volume') }}/{{ $t('reference.volumeBook') }}</td>
                             <td>{{ result.volume }}</td>
                         </tr>
                         <tr>
-                            <td class="no-wrap">期號</td>
+                            <td class="no-wrap">{{ $t('reference.issue') }}</td>
                             <td>{{ result.issue }}</td>
                         </tr>
                         <tr>
-                            <td class="no-wrap">頁碼範圍</td>
+                            <td class="no-wrap">{{ $t('reference.pagesRange') }}</td>
                             <td>{{ result.page }}</td>
                         </tr>
                         <tr>
-                            <td class="no-wrap">DOI</td>
+                            <td class="no-wrap">{{ $t('reference.doi') }}</td>
                             <td>{{ result.doi }}</td>
                         </tr>
                         <tr>
-                            <td class="no-wrap">連結URL</td>
+                            <td class="no-wrap">{{ $t('reference.url') }}</td>
                             <td>{{ result.url }}</td>
                         </tr>
 
                         <tr>
-                            <td class="no-wrap">語言</td>
+                            <td class="no-wrap">{{ $t('reference.language') }}</td>
                             <td>{{ result.language }}</td>
                         </tr>
                     </table>
@@ -86,8 +88,9 @@
             </div>
         </div>
         <div class="flex justify-end sticky bottom-0 p-4 bg-white border-t gap-2">
-            <button :disabled="!result" class="button" v-on:click="onSetToForm">填入</button>
-            <button class="button" v-on:click="onClose">關閉</button>
+            <button :disabled="!result" class="button" v-on:click="onSetToForm">{{ $t('reference.fillInByDoi') }}
+            </button>
+            <button class="button" v-on:click="onClose">{{ $t('common.close') }}</button>
         </div>
     </div>
 </template>
@@ -176,7 +179,7 @@ export default defineComponent({
 
         const typeDisplay = (type) => {
             const typeObject = referenceTypes.find((t) => t.value === type);
-            return typeObject ? app.$t(`forms.reference.typeOptions.${typeObject.value}`) : '';
+            return typeObject ? app.$t(`reference.typeOptions.${typeObject.value}`) : '';
         };
 
         return {

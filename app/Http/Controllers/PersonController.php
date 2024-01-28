@@ -127,7 +127,7 @@ class PersonController extends Controller
 
         $person = $service->saveAll($request->all());
         $logService = new LogService();
-        $logService->writeCreateLog(LogType::PERSON(), $person->id);
+        $logService->writeCreateLog(LogType::PERSON, $person->id);
 
         return response(PersonService::fetchById($person->id));
     }
@@ -156,7 +156,7 @@ class PersonController extends Controller
         $person = $service->saveAll($request->all());
 
         $logService = new LogService();
-        $logService->writeUpdateLog(LogType::PERSON(), $person);
+        $logService->writeUpdateLog(LogType::PERSON, $person);
 
         return response()->json([
             'id' => $person->id

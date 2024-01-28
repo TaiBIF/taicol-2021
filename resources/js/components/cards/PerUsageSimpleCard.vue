@@ -17,41 +17,41 @@
     </div>
 </template>
 <script>
-    import PerUsageView from '../views/PerUsageView';
+import PerUsageView from '../views/PerUsageView.vue';
 
-    export default {
-        computed: {
-            hasErrors() {
-                return !!Object
-                    .keys(this.errors)
-                    .find(i => !!i.match(`perUsages${this.index}`));
-            },
+export default {
+    computed: {
+        hasErrors() {
+            return !!Object
+                .keys(this.errors)
+                .find((i) => !!i.match(`perUsages${this.index}`));
         },
-        props: {
-            index: {
-                type: Number,
-                required: true,
-            },
-            taxonName: {
-                type: Object,
-                required: true,
-            },
-            perUsage: {
-                type: Object,
-                required: true,
-            },
-            errors: {
-                type: Object,
-            },
-            onRemovePerUsage: {
-                type: Function,
-                required: true,
-            },
-            onCollapsePerUsage: {
-                type: Function,
-                required: true,
-            },
+    },
+    props: {
+        index: {
+            type: Number,
+            required: true,
         },
-        components: { PerUsageView },
-    }
+        taxonName: {
+            type: Object,
+            required: true,
+        },
+        perUsage: {
+            type: Object,
+            required: true,
+        },
+        errors: {
+            type: Object,
+        },
+        onRemovePerUsage: {
+            type: Function,
+            required: true,
+        },
+        onCollapsePerUsage: {
+            type: Function,
+            required: true,
+        },
+    },
+    components: { PerUsageView },
+};
 </script>

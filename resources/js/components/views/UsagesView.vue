@@ -2,7 +2,8 @@
     <div>
         <div v-for="usages in group">
             <div
-                v-if="(usages[0].status === '' || usages[0].status === 'accepted') && usages[0].taxonName.rank.order < speciesRank.order"
+                v-if="(usages[0].status === '' || usages[0].status === 'accepted') &&
+                    usages[0].taxonName.rank.order < speciesRank.order"
                 class="inline-block border-l"
             >
                 <div class="trapezoid absolute w-full"></div>
@@ -25,8 +26,8 @@
                                         :per-usages="usage.perUsages"
                                         :status="usage.status"
                                         :taxon-name="usage.taxonName"
-                                        :type-specimens="usage.typeSpecimens"
                                         :type-name="usage.typeName"
+                                        :type-specimens="usage.typeSpecimens"
                                     />
                                 </template>
                                 <template v-else>
@@ -37,47 +38,62 @@
                                         :per-usages="usage.perUsages"
                                         :status="usage.status"
                                         :taxon-name="usage.taxonName"
-                                        :type-specimens="usage.typeSpecimens"
                                         :type-name="usage.typeName"
+                                        :type-specimens="usage.typeSpecimens"
                                     />
                                 </template>
                             </div>
                         </div>
                     </template>
 
-                    <div class="border-b border-gray-300 py-4 px-5"
-                         v-if="usages[0] && showProperties(usages[0].properties) && !isSimple">
-                        <div class="tags">
-                            <span v-if="usages[0].properties.isFossil" class="bg-gray-50 px-3">化石種</span>
-                            <span v-if="usages[0].properties.isTerrestrial" class="bg-gray-50 px-3 ml-2">陸生</span>
-                            <span v-if="usages[0].properties.isFreshwater" class="bg-gray-50 px-3 ml-2">淡水</span>
-                            <span v-if="usages[0].properties.isBrackish" class="bg-gray-50 px-3 ml-2">半鹹水域</span>
-                            <span v-if="usages[0].properties.isMarine" class="bg-gray-50 px-3 ml-2">海洋</span>
+                    <!-- 取 group 中第一個 accepted 的學名 -->
+                    <div
+                        v-for="usage in [usages.filter((u) => !u.isTitle && u.status === 'accepted')[0]]"
+                        v-if="usage &&
+                              showProperties(usage.properties) &&
+                              !isSimple"
+                        class="border-b border-gray-300 py-2 px-5 flex flex-col gap-2">
+                        <div v-if="usage.properties.commonNames && usage.properties.commonNames.length" class="px-2">
+                            <table class="text-center">
+                                <tr v-for="name in usage.properties.commonNames">
+                                    <td class="px-2">{{ name.name }}</td>
+                                    <td class="px-2">{{ $t(`reference.languages.${name.language}`) }}</td>
+                                    <td class="px-2">{{ $t(`usage.area`)}}: {{ name.area }}</td>
+                                </tr>
+                            </table>
                         </div>
-                        <table v-if="usages[0].properties.commonNames" class="text-center">
-                            <tr v-for="name in usages[0].properties.commonNames">
-                                <td class="px-4">{{ name.name }}</td>
-                                <td class="px-4">{{ $t(`forms.reference.languages.${ name.language }`) }}</td>
-                                <td class="px-4">{{ name.area }}</td>
-                            </tr>
-                        </table>
-                        <p class="px-4">
-                            {{ usages[0].properties.note }}
+                        <usage-property-tags v-bind="{
+                                    alienType: usage.properties.alienType,
+                                    isInTaiwan: usage.properties.isInTaiwan,
+                                    isEndemic: usage.properties.isEndemic,
+                                    isFossil: usage.properties.isFossil,
+                                    isTerrestrial: usage.properties.isTerrestrial,
+                                    isFreshwater: usage.properties.isFreshwater,
+                                    isBrackish: usage.properties.isBrackish,
+                                    isMarine: usage.properties.isMarine,
+                                }"/>
+                        <div v-if="usage.properties.distributionInTw" class="px-4">
+                            {{ $t('usage.distributionInTw')}}: {{ usage.properties.distributionInTw }}
+                        </div>
+                        <p v-if="usage.properties.note" class="px-4">
+                            {{ usage.properties.note }}
                         </p>
                     </div>
                 </div>
-                <div class="px-2 flex items-center group bg-gray-100 mb-3 border border-gray-300 border-l-0 z-0">
-                    <favorite-button :type="1" :id="usages[0].id"/>
+                <div class="px-2 flex items-center bg-gray-100 mb-3 border border-gray-300 border-l-0 z-0">
+                    <favorite-button :id="usages[0].id" :type="1"/>
                 </div>
             </div>
         </div>
     </div>
 </template>
 <script>
-import FavoriteButton from "../FavoriteButton";
-import { mapGetters } from "vuex";
-import UsagePreview from "../UsagePreview";
-import indications from "../selects/indications";
+import { mapGetters } from 'vuex';
+import FavoriteButton from '../FavoriteButton.vue';
+import UsagePreview from '../UsagePreview.vue';
+import UsagePropertyTags from './UsagePropertyTags.vue';
+
+import indications from '../selects/indications';
 
 export default {
     props: {
@@ -88,16 +104,26 @@ export default {
         isSimple: {
             type: Boolean,
             default: false,
-        }
+        },
     },
     methods: {
         showProperties(p) {
-            return (p.isFossil || p.isTerrestrial || p.isFreshwater || p.isBrackish || p.isMarine || p.commonNames?.length || p.note);
+            return (
+                p.isFossil
+                || p.isTerrestrial
+                || p.isFreshwater
+                || p.isBrackish
+                || p.isMarine
+                || p.commonNames?.length
+                || p.note
+                || p.isInTaiwan === 1
+            );
         },
         getIndications(indicationArray) {
-            return indicationArray ? indicationArray.map((abbreviation) => {
-                return indications.find(i => i.abbreviation === abbreviation);
-            }).filter(Boolean) : [];
+            return indicationArray ?
+                indicationArray
+                    .map((abbreviation) => indications.find((i) => i.abbreviation === abbreviation))
+                    .filter(Boolean) : [];
         },
     },
     computed: {
@@ -105,8 +131,8 @@ export default {
             speciesRank: 'rank/getSpeciesRank',
         }),
     },
-    components: {UsagePreview, FavoriteButton}
-}
+    components: { UsagePropertyTags, UsagePreview, FavoriteButton },
+};
 </script>
 <style lang="scss" scoped>
 .trapezoid {

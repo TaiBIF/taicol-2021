@@ -1,18 +1,18 @@
 <template>
-    <div>
-        <div class="min-h-4/5">
+    <div class="flex flex-col h-full">
+        <div class="grow">
             <table class="table is-fullwidth is-hoverable has-text-left in-tab-content">
                 <thead>
                 <tr>
-                    <th>作者</th>
-                    <th>文獻</th>
+                    <th>{{ $t('reference.authority') }}</th>
+                    <th v-text="$t('common.reference')"/>
                     <th>
-                        <sort-button :id="'publish_year'" :on-click="onSortBy" :sortby="sortby" :direction="direction">
-                            年份
+                        <sort-button :id="'publish_year'" :direction="direction" :on-click="onSortBy" :sortby="sortby">
+                            {{ $t('taxonName.year') }}
                         </sort-button>
                     </th>
-                    <th>文獻中處理</th>
-                    <th>文獻中屬性資訊</th>
+                    <th v-text="$t('taxonName.treatment')"/>
+                    <th v-text="$t('taxonName.referenceInformation')"/>
                 </tr>
                 </thead>
                 <tbody>
@@ -24,7 +24,9 @@
 
                     <!-- 文獻 -->
                     <td>
-                        <router-link :to="`/references/${usage.reference.id}`" class="my-link">
+                        <router-link
+                            :to="{ name: 'reference-page', params: { id: usage.reference.id }}"
+                            class="my-link">
                             {{ subTitle(usage.reference) }}
                         </router-link>
                     </td>
@@ -32,26 +34,43 @@
                     <td v-text="usage.reference.publishYear"></td>
                     <td>
                         <status-with-indications
-                            v-if="usage.properties.indications"
+                            :indications="usage.properties.indications ? usage.properties.indications : []"
                             :nomenclature="usage.taxonName.nomenclature"
-                            :status="usage.status"
-                            :indications="usage.properties.indications"/>
+                            :status="usage.status"/>
                     </td>
                     <td>
                         <div class="tags">
-                            <span v-if="usage.properties.isInTaiwan" class="bg-gray-50 px-3 ml-2">存在於臺灣</span>
-                            <span v-if="usage.properties.isEndemic" class="bg-gray-50 px-3 ml-2">臺灣特有種</span>
+                            <span v-if="usage.properties.isInTaiwan === 1" class="bg-gray-50 px-3 ml-2">
+                                {{ $t('usage.inTaiwan') }}
+                            </span>
+                            <span v-if="usage.properties.isEndemic" class="bg-gray-50 px-3 ml-2">
+                                {{ $t('usage.endemic') }}
+                            </span>
 
-                            <span v-if="usage.properties.alienType === 'native'" class="bg-gray-50 px-3 ml-2">原生</span>
-                            <span v-if="usage.properties.alienType === 'naturalized'" class="bg-gray-50 px-3 ml-2">歸化</span>
-                            <span v-if="usage.properties.alienType === 'invasive'" class="bg-gray-50 px-3 ml-2">入侵</span>
-                            <span v-if="usage.properties.alienType === 'vultured'" class="bg-gray-50 px-3 ml-2">栽培豢養</span>
+                            <span v-if="usage.properties.alienType === 'native'"
+                                  class="bg-gray-50 px-3 ml-2">{{ $t('usage.alienTypeOptions.native') }}</span>
+                            <span v-if="usage.properties.alienType === 'naturalized'"
+                                  class="bg-gray-50 px-3 ml-2">{{ $t('usage.alienTypeOptions.naturalized') }}</span>
+                            <span v-if="usage.properties.alienType === 'invasive'"
+                                  class="bg-gray-50 px-3 ml-2">{{ $t('usage.alienTypeOptions.invasive') }}</span>
+                            <span v-if="usage.properties.alienType === 'cultured'"
+                                  class="bg-gray-50 px-3 ml-2">{{ $t('usage.alienTypeOptions.cultured') }}</span>
 
-                            <span v-if="usage.properties.isFossil" class="bg-gray-50 px-3 ml-2">化石種</span>
-                            <span v-if="usage.properties.isTerrestrial" class="bg-gray-50 px-3 ml-2">陸生</span>
-                            <span v-if="usage.properties.isFreshwater" class="bg-gray-50 px-3 ml-2">淡水</span>
-                            <span v-if="usage.properties.isBrackish" class="bg-gray-50 px-3 ml-2">半鹹水域</span>
-                            <span v-if="usage.properties.isMarine" class="bg-gray-50 px-3 ml-2">海洋</span>
+                            <span v-if="usage.properties.isFossil" class="bg-gray-50 px-3 ml-2">
+                                {{ $t('usage.fossil') }}
+                            </span>
+                            <span v-if="usage.properties.isTerrestrial" class="bg-gray-50 px-3 ml-2">
+                                {{ $t('usage.terrestrial') }}
+                            </span>
+                            <span v-if="usage.properties.isFreshwater" class="bg-gray-50 px-3 ml-2">
+                                {{ $t('usage.freshWater') }}
+                            </span>
+                            <span v-if="usage.properties.isBrackish" class="bg-gray-50 px-3 ml-2">
+                                {{ $t('usage.brackish') }}
+                            </span>
+                            <span v-if="usage.properties.isMarine" class="bg-gray-50 px-3 ml-2">
+                                {{ $t('usage.marine') }}
+                            </span>
                         </div>
                     </td>
                 </tr>
@@ -60,58 +79,63 @@
         </div>
         <div class="sticky bottom-0 border-t p-4 bg-white">
             <div class="buttons is-right">
-                <router-link class="button" :to="`/taxon-names/${$route.params.id}/compare`">前往異名表比較</router-link>
+                <router-link
+                    :to="{'name': 'taxon-name-usages-compare', params:{id: $route.params.id}}"
+                    class="button">{{ $t('taxonName.goCompareReference') }}
+                </router-link>
             </div>
         </div>
     </div>
 </template>
 <script>
-    import AuthorName from '../../AuthorName';
-    import SortButton from '../../SortButton';
-    import { factory, subTitle } from '../../../utils/preview/reference';
-    import { comboLast } from '../../../utils/preview/person';
-    import StatusWithIndications from '../../StatusWithIndications';
+import AuthorName from '../../AuthorName.vue';
+import SortButton from '../../SortButton.vue';
+import { factory, subTitle } from '../../../utils/preview/reference';
+import { comboLast } from '../../../utils/preview/person';
+import StatusWithIndications from '../../StatusWithIndications.vue';
 
-    export default {
-        data() {
-            return {
-                direction: '',
-                sortby: '',
-                usages: [],
+export default {
+    data() {
+        return {
+            direction: '',
+            sortby: '',
+            usages: [],
+        };
+    },
+    mounted() {
+        this.fetchData();
+    },
+    methods: {
+        subTitle: (r) => subTitle(r, false),
+        async fetchData() {
+            try {
+                const { data: { data } } = await this.axios.get(
+                    `/taxon-names/${this.$route.params.id}/references?sortby=${this.sortby}&direction=${this.direction}`,
+                );
+
+                if (data.length > 0) {
+                    this.$emit('toggle', 'in-reference', true);
+                }
+
+                this.usages = data;
+            } catch (e) {
+                this.$emit('toggle', 'in-reference', false);
             }
         },
-        mounted() {
-            this.fetchData()
+        onSortBy(column, direction) {
+            this.sortby = column;
+            this.direction = direction;
+            this.usages = [];
+            this.currentPage = 1;
+            this.fetchData();
         },
-        methods: {
-            subTitle: (r) => subTitle(r, false),
-            async fetchData() {
-                try {
-                    const { data: { data } } = await this.axios.get(`/taxon-names/${this.$route.params.id}/references?sortby=${this.sortby}&direction=${this.direction}`);
-
-                    if (data.length > 0) {
-                        this.$emit('toggle', 'in-reference', true);
-                    }
-
-                    this.usages = data;
-                } catch (e) {
-                    this.$emit('toggle', 'in-reference', false);
-                }
-            },
-            onSortBy(column, direction) {
-                this.sortby = column;
-                this.direction = direction;
-                this.usages = [];
-                this.currentPage = 1;
-                this.fetchData();
-            },
-            showReference(v) {
-                return factory(this.type)([v]);
-            },
-            showAuthors(authors) {
-                return comboLast(authors);
-            },
+        showReference(v) {
+            return factory(this.type)([v]);
         },
-        components: { StatusWithIndications, SortButton, AuthorName },
-    }
+        showAuthors(authors) {
+            return comboLast(authors);
+        },
+    },
+    components: { StatusWithIndications, SortButton, AuthorName },
+};
 </script>

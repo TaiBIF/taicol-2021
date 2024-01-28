@@ -78,6 +78,7 @@ class MyNamespaceController extends Controller
 
         $namespace = new MyNamespace();
         $namespace->title = $request->get('title');
+        $namespace->type = $request->get('type');
 
         $request->user()->namespaces()->save($namespace);
 
@@ -110,8 +111,7 @@ class MyNamespaceController extends Controller
                 $reference->usages()->delete();
             }
 
-            $latestUsage = ReferenceUsage::where('reference_id', $referenceId)
-                ->orderBy('order')
+            $latestUsage = ReferenceUsage::select('group')->where('reference_id', $referenceId)
                 ->orderBy('group', 'desc')
                 ->first();
 
@@ -120,8 +120,10 @@ class MyNamespaceController extends Controller
             foreach ($groupUsages as $groupUsage) {
 
                 foreach ($groupUsage as $usage) {
+                    $acceptedTaxonName = $importUsages->where('status', '=', 'accepted')->where('group', $usage->group)->first();
                     $referenceUsage = new ReferenceUsage();
                     $referenceUsage->parent_taxon_name_id = $usage->parent_taxon_name_id;
+                    $referenceUsage->accepted_taxon_name_id = $acceptedTaxonName ? $acceptedTaxonName->taxon_name_id : null;
                     $referenceUsage->is_for_publish = false;
                     $referenceUsage->status = $usage->status;
                     $referenceUsage->type_specimens = $usage->type_specimens;

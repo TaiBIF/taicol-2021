@@ -1,13 +1,16 @@
-import { TYPE_BOOK, TYPE_BOOK_ARTICLE, TYPE_JOURNAL } from '../consts/reference';
+import { ReferenceTypes } from '../consts/reference';
 
 export default [
     {
-        'value': TYPE_JOURNAL,
+        value: ReferenceTypes.TYPE_JOURNAL,
     },
     {
-        'value': TYPE_BOOK_ARTICLE,
+        value: ReferenceTypes.TYPE_BOOK_ARTICLE,
     },
     {
-        'value': TYPE_BOOK,
+        value: ReferenceTypes.TYPE_BOOK,
+    },
+    {
+        value: ReferenceTypes.TYPE_CHECKLIST,
     },
 ];

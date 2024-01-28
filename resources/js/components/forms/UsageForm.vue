@@ -5,23 +5,26 @@
                 <div class="columns">
                     <div class="column is-6">
                         <div class="field">
-                            <label class="label" v-text="'上階層'"/>
+                            <label class="label" v-text="$t('usage.parentTaxon')"/>
                             <taxon-name-select v-model="parentTaxonName" :errors="errors['parentTaxonNameId']"/>
                         </div>
                     </div>
-                    <div class="column is-2">
+                    <div class="column is-2" v-show="!isUsageFormSimple">
                         <div class="field">
                             <label class="label is-marked">
-                                地位
+                                {{ $t('taxonName.status') }}
                             </label>
-                            <status-select v-model="status" :errors="errors['status']"/>
+                            <status-select v-model="status"
+                                           :errors="errors['status']"
+                                           :disabled="isUsageFormSimple"
+                            />
                         </div>
                     </div>
-                    <div class="column is-4">
+                    <div class="column is-4" v-if="!isUsageFormSimple">
                         <div class="field">
                             <label :class="{'is-marked': status=== 'misapplied' || status === 'undetermined' }"
                                    class="label"
-                                   v-text="`標註`"/>
+                                   v-text="$t('usage.indication')"/>
                             <indication-select v-model="properties.indications"
                                                :errors="errors['propertiesIndications']"
                                                :status="status"
@@ -32,26 +35,26 @@
                 <br/>
 
                 <!-- 文獻 -->
-                <section>
+                <section v-if="!isUsageFormSimple">
                     <div class="title is-5">
-                        文獻
+                        &nbsp;{{ $t('usage.usageReferences') }}
                         <div class="is-pulled-right buttons">
                             <button :disabled="!taxonName.reference"
                                     :title="!taxonName.reference ? `尚無歸檔文獻` : ''"
                                     class="button is-outlined is-small"
                                     v-on:click="onAddPublishReference"
                             >
-                                帶入發表文獻
+                                {{ $t('usage.addPublishReference') }}
                             </button>
                         </div>
                     </div>
                     <hr/>
 
                     <!-- 其他引用文獻 -->
-                    <draggable v-bind="dragOptions" :list="perUsages"
-                               class="per-usage-container"
+                    <draggable :list="perUsages" class="per-usage-container"
                                data-type="per-usage"
                                tag="div"
+                               v-bind="dragOptions"
                     >
                         <template v-for="(perUsage, index) in perUsages">
                             <per-usage-simple-card v-if="perUsagesIsSimpleViews[index]"
@@ -74,16 +77,16 @@
                     <button class="button is-text"
                             v-on:click="onAddReference">
                         <i class="fa fa-plus-circle"></i>
-                        &nbsp;增加文獻
+                        &nbsp;{{ $t('usage.appendReference') }}
                     </button>
                 </section>
 
                 <!-- 模式 --->
-                <section>
+                <section v-if="!isUsageFormSimple">
                     <!-- 模式標本 --->
                     <template v-if="taxonName.rank.order > 30">
                         <div class="title is-5">
-                            模式標本
+                            {{ $t('taxonName.specimenType') }}
                             <div class="is-pulled-right buttons">
                             </div>
                         </div>
@@ -103,9 +106,22 @@
                                     </a>
                                     &nbsp;
                                     <span
-                                        :class="{'has-text-danger': Object.keys(errors).find(i => !!i.match(`typeSpecimens${index}`))}"
+                                        v-if="taxonName.nomenclature.group === 'bacteria'"
+                                        :class="{
+                                            'has-text-danger':
+                                                Object.keys(errors).find(i => !!i.match(`typeSpecimens${index}`))
+                                        }"
+                                        v-text="comboTypeStrain([typeSpecimen])"
+                                    />
+                                    <span
+                                        v-else
+                                        :class="{
+                                            'has-text-danger':
+                                                Object.keys(errors).find(i => !!i.match(`typeSpecimens${index}`))
+                                        }"
                                         v-text="Scombo([typeSpecimen])"
                                     />
+
                                 </div>
                             </template>
                             <template v-else>
@@ -130,13 +146,13 @@
 
                         <button class="button is-text" v-on:click="onAddTypeSpecimens">
                             <i class="fa fa-plus-circle"></i>
-                            &nbsp;&nbsp;{{ $t('forms.taxonName.specimenType') }}
+                            &nbsp;&nbsp;{{ $t('taxonName.specimenType') }}
                         </button>
                     </template>
 
                     <!-- 模式學名 --->
                     <template v-else>
-                        <h3 class="title is-5">{{ $t('forms.taxonName.typeName') }}</h3>
+                        <h3 class="title is-5">{{ $t('taxonName.typeName') }}</h3>
                         <hr/>
                         <div class="columns is-multiline">
                             <div class="column is-12">
@@ -148,14 +164,14 @@
 
                 <!-- 屬性資訊 -->
                 <section v-if="status === 'accepted'">
-                    <div class="title is-5">屬性資訊</div>
+                    <div class="title is-5">{{ $t('usage.additionalData') }}</div>
                     <hr/>
-                    <usage-additional-info-form :preset="properties" v-on:input="onUpdateAdditionalInfo"/>
+                    <usage-additional-info-form :preset="properties" v-on:input="onUpdateAdditionalInfo" :errors="errors"/>
                 </section>
             </div>
-            <div class="column is-3">
+            <div class="column is-3" v-show="!isUsageFormSimple">
                 <div class="field">
-                    <label class="label">建議寫法</label>
+                    <label class="label">{{ $t('usage.usageSuggestion') }}</label>
                     <div>
                         <usage-preview
                             ref="nameRemark"
@@ -172,11 +188,11 @@
                 <br/>
                 <div class="field">
                     <label class="label">
-                        文獻發表寫法
+                        {{ $t('usage.writingInReference') }}
                         <button class="button is-small is-pulled-right"
                                 type="button"
                                 v-on:click="onCopyNameRemark">
-                            <i class="fas fa-arrow-down"></i>&nbsp;複製建議寫法至此
+                            <i class="fas fa-arrow-down"></i>&nbsp;{{ $t('usage.insertSuggestedWriting') }}
                         </button>
                     </label>
                     <div class="control">
@@ -188,230 +204,233 @@
     </div>
 </template>
 <script>
-    import { cloneDeep } from 'lodash';
-    import StatusSelect from '../selects/StatusSelect';
-    import IndicationSelect from '../selects/IndicationSelect';
-    import TypeSpecimen from './TypeSpecimen';
-    import { factory as rFactory } from '../../utils/preview/reference';
-    import TaxonNameSelect from '../selects/TaxonNameSelect';
-    import indicationOptions from '../selects/indications';
-    import sexs from '../selects/sexs';
-    import UsagePreview from '../UsagePreview';
-    import { openNotify } from '../../utils';
-    import { combo as Scombo } from '../../utils/preview/typeSpecimen';
-    import PerUsageForm from './PerUsageForm';
-    import PerUsageSimpleCard from '../cards/PerUsageSimpleCard';
-    import draggable from 'vuedraggable';
-    import UsageAdditionalInfoForm from './UsageAdditionalInfoForm';
+import { cloneDeep } from 'lodash';
+import draggable from 'vuedraggable';
+import StatusSelect from '../selects/StatusSelect.vue';
+import IndicationSelect from '../selects/IndicationSelect.vue';
+import TypeSpecimen from './TypeSpecimen.vue';
+import TaxonNameSelect from '../selects/TaxonNameSelect.vue';
+import indicationOptions from '../selects/indications';
+import sexs from '../selects/sexs';
+import UsagePreview from '../UsagePreview.vue';
+import { openNotify } from '../../utils';
+import { combo as Scombo, comboTypeStrain } from '../../utils/preview/typeSpecimen';
+import PerUsageForm from './PerUsageForm.vue';
+import PerUsageSimpleCard from '../cards/PerUsageSimpleCard.vue';
+import UsageAdditionalInfoForm from './UsageAdditionalInfoForm.vue';
+import { NamespaceType } from '../../constants/namespace';
 
-    export default {
-        props: {
-            presetData: {
-                type: Object,
-            },
-            onAfterSubmit: {
-                type: Function,
-                required: true,
-            },
+export default {
+    props: {
+        presetData: {
+            type: Object,
         },
-        created() {
-            this.rCombo = rFactory(this.presetData?.taxonName?.nomenclature?.group);
+        onAfterSubmit: {
+            type: Function,
+            required: true,
         },
-        computed: {
-            taxonNameId() {
-                return this.taxonName?.id;
-            },
-            parentTaxonNameId() {
-                return this.parentTaxonName?.id;
-            },
-            formData() {
-                return {
-                    id: this.presetData.id,
-                    taxonNameId: this.taxonNameId,
-                    parentTaxonNameId: this.parentTaxonNameId,
-                    status: this.status,
-                    properties: {
-                        ...this.properties,
-                        indications: this.properties.indications?.map(i => i.abbreviation),
-                        typeName: this.typeName?.id,
-                    },
-                    perUsages: cloneDeep(this.perUsages).map(r => {
-                        return {
-                            referenceId: r.target?.id,
-                            showPage: r.showPage,
-                            figure: r.figure,
-                            nameInReference: r.nameInReference,
-                            proParte: r.proParte,
-                            isFromPublishedRef: r.isFromPublishedRef,
-                        }
-                    }),
-                    typeSpecimens: cloneDeep(this.typeSpecimens).map(t => {
-                        return {
-                            ...t,
-                            sexId: t.sex?.id,
-                            countryId: t.country?.numericCode,
-                            collectorIds: t.collectors.map(c => c.id),
-                        };
-                    }),
-                    customNameRemark: this.customNameRemark,
-                    nameRemark: this.$refs.nameRemark.$el.innerHTML,
-                }
-            },
-            dragOptions() {
-                return {
-                    animation: 0,
-                    group: {
-                        name: 'per-usage',
-                        pull: false,
-                        put: ['favorite-reference']
-                    },
-                    disabled: false,
-                    threshold: 0,
-                    multiDrag: false,
-                    selectedClass: 'selected',
-
-                };
-            },
+    },
+    computed: {
+        taxonNameId() {
+            return this.taxonName?.id;
         },
-        data() {
-            const indications = indicationOptions
-                .filter(i => i.status === this.presetData.status)
-                .filter(i => this.presetData.properties.indications?.includes(i.abbreviation));
-
-            return {
-                isLoading: true,
-
-                typeSpecimensIsSimpleViews: Object.keys(this.presetData?.typeSpecimens).map(() => true),
-                perUsagesIsSimpleViews: Object.keys(this.presetData?.perUsages).map(() => true),
-
-                taxonName: this.presetData.taxonName,
-                parentTaxonName: this.presetData.parentTaxonName || this.presetData.taxonName.species,
-                status: this.presetData.status ?? null,
-                properties: this.presetData?.properties ? {
-                    ...this.presetData.properties,
-                    indications,
-                } : {},
-                description: '',
-                perUsages: this.presetData.perUsages || [],
-                typeSpecimens: this.presetData?.typeSpecimens ? this.presetData?.typeSpecimens.map((t) => {
-                    t.sex = sexs.find(s => s.id === t.sexId);
-                    return t;
-                }) : [],
-                typeName: this.presetData.typeName ?? null,
-                errors: {},
-                nameRemark: this.presetData.nameRemark ?? '',
-                customNameRemark: this.presetData.customNameRemark ?? '',
+        parentTaxonNameId() {
+            return this.parentTaxonName?.id;
+        },
+        isUsageFormSimple() {
+            if (this.$route.meta.type === 'namespace') {
+                return this.presetData.namespace.type === NamespaceType.SIMPLE;
             }
+            return false;
         },
-        watch: {
-            presetData: {
-                deep: true,
-                handler(value) {
-                    this.taxonName = value.taxonName;
+        formData() {
+            return {
+                id: this.presetData.id,
+                taxonNameId: this.taxonNameId,
+                parentTaxonNameId: this.parentTaxonNameId,
+                status: this.status,
+                properties: {
+                    ...this.properties,
+                    indications: this.properties.indications?.map((i) => i.abbreviation),
+                    typeName: this.typeName?.id,
                 },
-            },
+                perUsages: cloneDeep(this.perUsages).map((r) => ({
+                    referenceId: r.target?.id,
+                    showPage: r.showPage,
+                    figure: r.figure,
+                    nameInReference: r.nameInReference,
+                    proParte: r.proParte,
+                    isFromPublishedRef: r.isFromPublishedRef,
+                })),
+                typeSpecimens: cloneDeep(this.typeSpecimens).map((t) => ({
+                    ...t,
+                    sexId: t.sex?.id,
+                    countryId: t.country?.numericCode,
+                    collectorIds: t.collectors.map((c) => c.id),
+                })),
+                customNameRemark: this.customNameRemark,
+                nameRemark: this.$refs.nameRemark.$el.innerHTML,
+            };
         },
-        methods: {
-            Scombo: Scombo,
-            onUpdateAdditionalInfo(v) {
-                this.properties = { ...this.properties, ... v };
-            },
-            onCopyNameRemark() {
-                this.customNameRemark = this.$refs.nameRemark.$el.innerText;
-            },
-            onAddTypeSpecimens() {
-                this.typeSpecimens.push({});
-                this.typeSpecimensIsSimpleViews.push(false);
-            },
-            onAddPublishReference() {
-                this.perUsages.unshift({
-                    target: this.taxonName.reference,
-                    figure: this.taxonName.properties.usage?.figure,
-                    showPage: this.taxonName.properties.usage?.showPage,
-                    nameInReference: this.taxonName.properties.usage?.nameInReference,
-                    proParte: false,
-                    isFromPublishedRef: true,
-                });
-                this.perUsagesIsSimpleViews.push(true);
-            },
-            onAddReference() {
-                this.perUsages.push({
-                    target: null,
-                    showPage: '',
-                    figure: '',
-                    nameRemark: '',
-                    proParte: false,
-                    isFromPublishedRef: false,
-                });
-                this.perUsagesIsSimpleViews.push(false);
-            },
-            onRemovePerUsage(index) {
-                this.perUsagesIsSimpleViews.splice(index, 1);
-                this.perUsages.splice(index, 1);
-            },
-            onRemoveTypeSpecimen(index) {
-                this.typeSpecimensIsSimpleViews.splice(index, 1);
-                this.typeSpecimens.splice(index, 1);
-            },
-            onCollapsePerUsage(index, status) {
-                this.$set(this.perUsagesIsSimpleViews, index, status);
-            },
-            submit() {
-                const { id:namespaceId, usageId } = this.$route.params;
+        dragOptions() {
+            return {
+                animation: 0,
+                group: {
+                    name: 'per-usage',
+                    pull: false,
+                    put: ['favorite-reference'],
+                },
+                disabled: false,
+                threshold: 0,
+                multiDrag: false,
+                selectedClass: 'selected',
 
-                this.axios
-                    .put(`namespaces/${namespaceId}/usages/${usageId}`, this.formData)
-                    .then(() => {
-                        this.isLoading = false;
-                        openNotify(this.$t('forms.saveSuccess'));
-                        this.onAfterSubmit(this.formData);
-                    })
-                    .catch(({ errors }) => {
-                        this.errors = errors;
-                    });
+            };
+        },
+    },
+    data() {
+        const indications = indicationOptions
+            .filter((i) => i.status === this.presetData.status)
+            .filter((i) => this.presetData.properties.indications?.includes(i.abbreviation));
+
+        return {
+            isLoading: true,
+
+            typeSpecimensIsSimpleViews: Object.keys(this.presetData?.typeSpecimens).map(() => true),
+            perUsagesIsSimpleViews: Object.keys(this.presetData?.perUsages).map(() => true),
+
+            taxonName: this.presetData.taxonName,
+            parentTaxonName: this.presetData.parentTaxonName || this.presetData.taxonName.species,
+            status: this.presetData.status ?? null,
+            properties: this.presetData?.properties ? {
+                ...this.presetData.properties,
+                indications,
+            } : {},
+            description: '',
+            perUsages: this.presetData.perUsages || [],
+            typeSpecimens: this.presetData?.typeSpecimens ? this.presetData?.typeSpecimens.map((t) => {
+                t.sex = sexs.find((s) => s.id === t.sexId);
+                return t;
+            }) : [],
+            typeName: this.presetData.typeName ?? null,
+            errors: {},
+            nameRemark: this.presetData.nameRemark ?? '',
+            customNameRemark: this.presetData.customNameRemark ?? '',
+        };
+    },
+    watch: {
+        presetData: {
+            deep: true,
+            handler(value) {
+                this.taxonName = value.taxonName;
             },
         },
-        components: {
-            UsageAdditionalInfoForm,
-            PerUsageSimpleCard,
-            PerUsageForm,
-            UsagePreview,
-            TaxonNameSelect,
-            TypeSpecimen,
-            IndicationSelect,
-            StatusSelect,
-            draggable,
+    },
+    methods: {
+        Scombo,
+        comboTypeStrain,
+        onUpdateAdditionalInfo(v) {
+            this.properties = { ...this.properties, ...v };
         },
-    }
+        onCopyNameRemark() {
+            this.customNameRemark = this.$refs.nameRemark.$el.innerText;
+        },
+        onAddTypeSpecimens() {
+            this.typeSpecimens.push({});
+            this.typeSpecimensIsSimpleViews.push(false);
+        },
+        onAddPublishReference() {
+            this.perUsages.unshift({
+                target: this.taxonName.reference,
+                figure: this.taxonName.properties.usage?.figure,
+                showPage: this.taxonName.properties.usage?.showPage,
+                nameInReference: this.taxonName.properties.usage?.nameInReference,
+                proParte: false,
+                isFromPublishedRef: true,
+            });
+            this.perUsagesIsSimpleViews.push(true);
+        },
+        onAddReference() {
+            this.perUsages.push({
+                target: null,
+                showPage: '',
+                figure: '',
+                nameRemark: '',
+                proParte: false,
+                isFromPublishedRef: false,
+            });
+            this.perUsagesIsSimpleViews.push(false);
+        },
+        onRemovePerUsage(index) {
+            this.perUsagesIsSimpleViews.splice(index, 1);
+            this.perUsages.splice(index, 1);
+        },
+        onRemoveTypeSpecimen(index) {
+            this.typeSpecimensIsSimpleViews.splice(index, 1);
+            this.typeSpecimens.splice(index, 1);
+        },
+        onCollapsePerUsage(index, status) {
+            this.$set(this.perUsagesIsSimpleViews, index, status);
+        },
+        submit() {
+            const { id, usageId } = this.$route.params;
+
+            const url = this.$route.meta.type === 'namespace' ?
+                `namespaces/${id}/usages/${usageId}` : `references/${id}/usages-edit/${usageId}`;
+
+            this.axios
+                .put(url, this.formData)
+                .then(() => {
+                    this.isLoading = false;
+                    openNotify(this.$t('common.saveSuccess'));
+                    this.onAfterSubmit(this.formData);
+                })
+                .catch(({ errors }) => {
+                    this.errors = errors;
+                });
+        },
+    },
+    components: {
+        UsageAdditionalInfoForm,
+        PerUsageSimpleCard,
+        PerUsageForm,
+        UsagePreview,
+        TaxonNameSelect,
+        TypeSpecimen,
+        IndicationSelect,
+        StatusSelect,
+        draggable,
+    },
+};
 
 </script>
 <style lang="scss" scoped>
-    .form {
-        section {
-            margin-bottom: 1.5rem;
-        }
+.form {
+    section {
+        margin-bottom: 1.5rem;
+    }
+}
+
+.box {
+    &.is-simple {
+        border: 1px solid $light-grey;
     }
 
-    .box {
-        &.is-simple {
-            border: 1px solid $light-grey;
-        }
-
-        &.is-danger {
-            border: 1px solid $danger;
-        }
-
-        &.is-marked {
-            border-left: 5px solid $orange;
-        }
+    &.is-danger {
+        border: 1px solid $danger;
     }
 
-    .per-usage-container {
-        margin-bottom: 1rem;
+    &.is-marked {
+        border-left: 5px solid $orange;
     }
+}
 
-    .left-line {
-        border-right: 1px solid $light-grey;
-        overflow-y: auto;
-    }
+.per-usage-container {
+    margin-bottom: 1rem;
+}
+
+.left-line {
+    border-right: 1px solid $light-grey;
+    overflow-y: auto;
+}
 </style>

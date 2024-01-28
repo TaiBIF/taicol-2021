@@ -270,7 +270,7 @@ class ReferenceImportService
         $service->saveBook($bookTitle, $bookAbbreviation ?? '');
 
         $logService = new LogService();
-        $logService->writeImportLog(LogType::REFERENCE(), $reference->id);
+        $logService->writeImportLog(LogType::REFERENCE, $reference->id);
     }
 
     public function getErrorRows()

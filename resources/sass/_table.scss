@@ -1,13 +1,48 @@
 .table {
+    color: #555555;
+    @apply bg-white;
+
+    th, td {
+        @apply px-2 py-2;
+        border: 1px solid #dbdbdb;
+        vertical-align: top;
+    }
+
+    thead {
+        text-align: left;
+        z-index: 40;
+
+        th {
+            border-width: 0 0 2px;
+        }
+    }
+
     tbody {
-        tr {
-            &:hover {
-                text-shadow: -0.02ex 0 $primary, 0.02ex 0 $primary;
-            }
+        background-color: transparent;
+
+        td {
+            background-color: transparent;
+            border-width: 0 0 1px;
+            vertical-align: top;
         }
 
-        th,td {
-            vertical-align: middle;
+        tr:last-child {
+            td {
+                border-bottom-width: 0;
+            }
+        }
+    }
+
+    &.is-fullwidth {
+        width: 100%;
+    }
+
+    &.is-hoverable {
+        tr {
+            &:hover {
+                background-color: #fafafa;
+                text-shadow: -0.02ex 0 $primary, 0.02ex 0 $primary;
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
 <template>
-    <t-select :clear-search-on-blur="() => true"
+    <t-select v-model="localValue"
+              :clear-search-on-blur="() => true"
               :create-option="value => ({ title: value, bookTitleAbbreviation: '' })"
               :errors="errors"
               :filterable="false"
@@ -8,7 +9,6 @@
               clearable
               label="title"
               taggable
-              v-model="localValue"
               v-on:input="onUpdateValue"
               v-on:typing="fetchFilteredBook"
     >
@@ -24,42 +24,47 @@
     </t-select>
 </template>
 <script>
-    import { debounce } from 'lodash';
-    import Select from '../Select';
+import { debounce } from 'lodash';
+import Select from '../Select.vue';
 
-    export default {
-        components: {
-            tSelect: Select,
+export default {
+    components: {
+        tSelect: Select,
+    },
+    props: {
+        value: {
+            type: Object | String,
         },
-        props: {
-            value: {
-                type: Object | String,
-            },
-            errors: {
-                type: Array,
-            },
+        errors: {
+            type: Array,
         },
-        data() {
-            return {
-                filteredBooks: [],
-                localValue: this.value ?? 0,
+    },
+    data() {
+        return {
+            filteredBooks: [],
+            localValue: this.value ?? null,
+        };
+    },
+    watch: {
+        value(v) {
+            this.localValue = v;
+        },
+    },
+    methods: {
+        onUpdateValue(value) {
+            this.$emit('input', value);
+        },
+        fetchFilteredBook: debounce(function ({ value, keyword }) {
+            if (keyword === '') {
+                return [];
             }
-        },
-        methods: {
-            onUpdateValue(value) {
-                this.$emit('input', value);
-            },
-            fetchFilteredBook: debounce(function ({ value, keyword }) {
-                if (keyword === '') {
-                    return [];
-                }
 
-                this.axios.get('books', {
-                    params: { keyword },
-                }).then(({ data }) => {
-                    this.filteredBooks = data;
-                })
-            }),
-        },
-    }
+            this.axios.get('books', {
+                params: { keyword },
+            }).then(({ data }) => {
+                this.filteredBooks = data;
+            });
+        }),
+    },
+};
 </script>

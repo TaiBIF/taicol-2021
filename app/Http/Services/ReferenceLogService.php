@@ -2,6 +2,7 @@
 
 namespace App\Http\Services;
 
+use App\Reference;
 use Illuminate\Database\Eloquent\Model;
 
 class ReferenceLogService extends LogService
@@ -26,10 +27,7 @@ class ReferenceLogService extends LogService
             })->toArray();
     }
 
-    /**
-     * @param Model $rewReference
-     */
-    public function saveUpdateLog(Model $rewReference, array $authors): void
+    public function saveUpdateLog(Reference $rewReference, array $authors): void
     {
         $columnChanges = [];
         $newAttributes = $rewReference->getAttributes();
@@ -39,7 +37,7 @@ class ReferenceLogService extends LogService
             if ($newAttributes['cover_path'] != $oldAttributes['cover_path']) {
                 array_push($columnChanges, 'cover_path');
             }
-            $this->write(LogType::REFERENCE(), $rewReference['id'], LogAction::UPDATE(), $columnChanges);
+            $this->write(LogType::REFERENCE, $rewReference['id'], LogAction::UPDATE, $columnChanges);
         } else {
             //handle authors
             if (count($authors) != count($this->originAuthors) || count(array_diff($this->originAuthors, $authors)) > 0) {
@@ -57,14 +55,14 @@ class ReferenceLogService extends LogService
                 }
             }
             //handle volume
-            if ($newProperties->volume != $oldProperties->volume) {
-                if ($rewReference->type == 1) { // Journal
+            if ($rewReference->hasVolume() && $newProperties->volume != $oldProperties->volume) {
+                if ($rewReference->type === Reference::TYPE_JOURNAL) { // Journal
                     array_push($columnChanges, 'volume');
-                } else {  // BookArticle BookReference
+                } else if ($rewReference->type === Reference::TYPE_BOOK_ARTICLE || $rewReference->type === Reference::TYPE_BOOK) {  // BookArticle BookReference
                     array_push($columnChanges, 'volume_book');
                 }
             }
-            $this->writeUpdateLogWithComparison(LogType::REFERENCE(), $rewReference, $this->originReference, $columnChanges, [
+            $this->writeUpdateLogWithComparison(LogType::REFERENCE, $rewReference, $this->originReference, $columnChanges, [
                 "title",
                 "subtitle",
                 "book_id",

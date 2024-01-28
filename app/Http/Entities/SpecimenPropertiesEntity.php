@@ -20,7 +20,7 @@ class SpecimenPropertiesEntity implements Jsonable, Arrayable
     public function setProperties(array $data)
     {
         $this->sexId = $data['sex_id'] ?? '';
-        $this->countryId = (int) $data['country']['numeric_code'];
+        $this->countryId = isset($data['country']['numeric_code']) ? (int) $data['country']['numeric_code'] : null;
         $this->locality = $data['locality'] ?? '';
         $this->localityVerbatim = $data['locality_verbatim'];
         $this->collectionYear = $data['collection_year'] ?? '';

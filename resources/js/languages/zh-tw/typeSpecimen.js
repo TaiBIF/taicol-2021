@@ -1,0 +1,22 @@
+export default {
+    use: '模式類別',
+    kind: '模式類型',
+    sex: '標本性別',
+    country: '採集國家',
+    locality: '採集地',
+    localityVerbatim: '文獻使用採集地名',
+    collectDate: '採集日期',
+    collectorNumber: '採集號',
+    collector: '採集者',
+    lectoCitePage: '頁碼/圖號',
+    herbarium: '存放標本館/蒐藏',
+    shortHerbarium: '存放標本館',
+    accessionNumber: '館號',
+    citationNoteNumber: '引用註解/編號',
+    lectoDesignatedReference: '選定模式文獻',
+    url: '連結URL',
+    isoType: '同模式',
+    addIsotype: '新增同模式',
+
+    hereDesignated: '在此被指定',
+};

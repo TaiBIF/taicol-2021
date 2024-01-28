@@ -19,9 +19,9 @@ export default {
         },
         TAXON_NAME(state, { onAfterSubmit, defaultValue = null }) {
             state.items.push({
-                template: () => import('./../components/layers/TaxonNameLayer'),
+                template: () => import('../components/layers/TaxonNameLayer.vue'),
                 default: defaultValue,
-                title: typeof defaultValue?.id === 'undefined' ? Vue.i18n.translate('forms.taxonName.create') : Vue.i18n.translate('functions.editTaxonName'),
+                title: typeof defaultValue?.id === 'undefined' ? Vue.i18n.translate('taxonName.create') : Vue.i18n.translate('taxonName.edit'),
                 events: {
                     onAfterSubmit,
                 },

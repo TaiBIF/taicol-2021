@@ -12,6 +12,7 @@ use App\Http\Services\LogType;
 use App\Http\Services\TaxonNameImportService;
 use App\Http\Services\TaxonNameLogService;
 use App\Http\Services\TaxonNameService;
+use App\Rank;
 use App\Reference;
 use App\ReferenceUsage;
 use App\TaxonName;
@@ -263,7 +264,7 @@ class TaxonNameController extends Controller
             $currentTaxonNameId = $currentTaxonName ? $currentTaxonName->parent_taxon_name_id : null;
         }
 
-        $parents = TaxonName::with('authors', 'exauthors')
+        $parents = TaxonName::with('authors', 'exauthors', 'originalTaxonName.authors', 'originalTaxonName.exauthors')
             ->whereIn('id', $taxonNameIds)
             ->get();
 
@@ -279,17 +280,25 @@ class TaxonNameController extends Controller
                     ->first();
 
                 $commonName = $usage ? collect($usage->properties['common_names'])->where('language', 'zh-tw')->first()['name'] : '';
+                $speciesLayer = isset($p->properties['species_layers']) ? $p->properties['species_layers'] : [];
 
                 return [
                     'id' => $p->id,
                     'nomenclature' => $p->nomenclature,
                     'rank' => $p->rank,
                     'name' => $p->name,
+                    'original_taxon_name' => $p->originalTaxonName ? TaxonNameCollection::collection([$p->originalTaxonName])[0] : null,
                     'authors' => PersonCollection::collection($p->authors),
                     'ex_authors' => PersonCollection::collection($p->exAuthors),
                     'publish_year' => $p->publish_year,
                     'properties' => $p->properties,
                     'common_name_tw' => $commonName,
+                    'species_layers' => collect($speciesLayer)->map(function ($s) {
+                        return [
+                            'rank' => Rank::where('abbreviation', ($s['rank_abbreviation']))->first(),
+                            'latin_name' => $s['latin_name']
+                        ];
+                    }),
                 ];
             })->sortBy(function ($parent) {
                 return $parent['rank']->order;
@@ -475,12 +484,12 @@ class TaxonNameController extends Controller
             }
         }
 
-        $synonyms = $synonymsQuery->paginate();
+        $synonyms = $synonymsQuery->paginate(50);
 
         $result = $synonyms->map(function ($usage) {
             return [
                 'status' => $usage->status,
-                'indications' => $usage->properties['indications'],
+                'indications' => $usage->properties['indications'] ?? [],
                 'taxon_name' => $usage->taxonName ? TaxonNameCollection::collection([$usage->taxonName])[0] : null,
                 'reference' => $usage->reference,
             ];
@@ -546,14 +555,23 @@ class TaxonNameController extends Controller
 
         $allIds = $taxonNameIds->merge($subTaxonNameIds);
 
-        $taxonNamesQuery = TaxonName::select('taxon_names.*')
+        $taxonNamesQuery = TaxonName::query()
+            ->select('taxon_names.*')
+            ->selectRaw('IF(references.publish_year is null, taxon_names.publish_year, references.publish_year) as year')
             ->with([
                 'authors',
                 'exAuthors',
                 'reference',
                 'nomenclature', 'rank',
                 'originalTaxonName.authors',
-                'originalTaxonName.exauthors'
+                'originalTaxonName.exauthors',
+                'usages' => function ($query) {
+                    $query->select(['reference_usages.*', 'references.publish_year', 'references.id'])
+                        ->where('status', 'accepted')
+                        ->leftJoin('references', 'references.id', '=', 'reference_usages.reference_id')
+                        ->where('reference_usages.properties->common_names', 'like', '%zh-tw%')
+                        ->orderBy('references.publish_year');
+                },
             ])
             ->leftJoin('references', 'references.id', 'taxon_names.reference_id')
             ->whereIn('taxon_names.id', $allIds);
@@ -563,7 +581,7 @@ class TaxonNameController extends Controller
             $taxonNamesQuery->orderBy('name');
         } else {
             if ($request->get('sortby') === 'publish_year') {
-                $taxonNamesQuery->orderBy('references.publish_year', $direction);
+                $taxonNamesQuery->orderBy('year', $direction);
             }
 
             if ($request->get('sortby') === 'taxon_name') {
@@ -682,10 +700,11 @@ class TaxonNameController extends Controller
             'latin_name' => $request->get('latin_name'),
             'latin_s1' => $request->get('latin_s1'),
             'reference_name' => $request->get('reference_name'),
+            'authors_name' => $request->get('authors_name'),
             'species_id' => $request->get('species_id'),
             'species_layers' => $request->get('species_layers'),
             'type_name' => $request->get('type_name'),
-            'usage' => $request->get('usage'),
+            'usage' => $referenceId ? $request->get('usage') : [],
 
             // ICNP
             'is_approved_list' => $request->get('is_approved_list', false),
@@ -739,6 +758,7 @@ class TaxonNameController extends Controller
             'latin_name' => $request->get('latin_name'),
             'latin_s1' => $request->get('latin_s1'),
             'reference_name' => $request->get('reference_name'),
+            'authors_name' => $request->get('authors_name'),
             'species_id' => $request->get('species_id'),
             'species_layers' => $request->get('species_layers'),
             'type_name' => $request->get('type_name'),
@@ -759,7 +779,7 @@ class TaxonNameController extends Controller
 
         $service->saveToMyFavoriteItem();
         $logService = new LogService();
-        $logService->writeCreateLog(LogType::TAXON_NAME(), $taxonName->id);
+        $logService->writeCreateLog(LogType::TAXON_NAME, $taxonName->id);
 
         return response(TaxonNameCollection::collection([$taxonName])[0]);
     }

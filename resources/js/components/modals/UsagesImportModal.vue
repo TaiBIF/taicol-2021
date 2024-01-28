@@ -2,7 +2,7 @@
     <div>
         <div class="px-16 py-12 min-w-400">
             <div>
-                <p class="title text-center">匯入分類群</p>
+                <p class="title text-center">{{ $t('namespace.importUsages') }}</p>
             </div>
             <div class="py-4 min-h-3/5">
                 <div class="w-full">
@@ -19,8 +19,10 @@
                 <div class="p-2">
                     <ul class="list-decimal ml-2">
                         <li>
-                            欄位內容請依照範本填寫 <a class="text-blue-700 underline" download="usage-import.xlsx"
-                                           href="/example/usage-import.xlsx">範本下載</a></li>
+                            欄位內容請依照範本填寫
+                            <a class="text-blue-700 underline" download="usage-import.xlsx"
+                               href="/example/usage-import.xlsx">{{ $t('namespace.exampleDownload') }}</a>
+                        </li>
                         <li>支援檔案格式 xlsx, xls</li>
                         <li>命名規約、階層、學名為必填</li>
                         <li>
@@ -40,9 +42,9 @@
         <div class="sticky bottom-0 p-4 bg-white border-t">
             <div class="buttons is-right">
                 <button class="button mr-2" v-on:click="onImportExcel">
-                    匯入
+                    {{ $t('common.import') }}
                 </button>
-                <button class="button mr-2" v-on:click="close">關閉</button>
+                <button class="button mr-2" v-on:click="close">{{ $t('common.close') }}</button>
             </div>
         </div>
     </div>

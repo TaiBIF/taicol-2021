@@ -12,7 +12,7 @@
                 </p>
                 <div class="field is-horizontal">
                     <div class="field-label has-text-left is-small">
-                        <label class="label" v-text="$t('forms.reference.publishYear')"/>
+                        <label class="label" v-text="$t('reference.publishYear')"/>
                     </div>
                     <div class="field-body">
                         <small v-text="publishYear"/>
@@ -20,10 +20,10 @@
                 </div>
                 <div class="field is-horizontal">
                     <div class="field-label has-text-left is-small">
-                        <label class="label" v-text="$t('forms.reference.author')"/>
+                        <label class="label" v-text="$t('reference.author')"/>
                     </div>
                     <div class="field-body">
-                        <small v-html="authors.map(a => fullNameAbbreviation(a)).join(', ')" />
+                        <small v-html="authors.map(a => fullNameAbbreviation(a)).join(', ')"/>
                     </div>
                 </div>
             </div>
@@ -31,76 +31,77 @@
     </article>
 </template>
 <script>
-    import BookView from './BookDetailView';
-    import referenceTypes from '../../utils/options/referenceTypes';
-    import { fullNameAbbreviation } from '../../utils/preview/person';
+import BookView from './BookDetailView.vue';
+import referenceTypes from '../../utils/options/referenceTypes';
+import { fullNameAbbreviation } from '../../utils/preview/person';
 
-    export default {
-        props: {
-            type: {
-                type: Number,
-                required: true,
-            },
-            publishYear: {
-                type: String,
-                required: true,
-            },
-            properties: {
-                type: Object,
-                required: true,
-            },
-            title: {
-                type: String,
-                required: true,
-            },
-            subtitle: {
-                type: String,
-            },
-            authors: {
-                type: Array,
-                required: true,
-            },
-            coverPath: {
-                type: String,
-            },
+export default {
+    props: {
+        type: {
+            type: Number,
+            required: true,
         },
-        components: {
-            BookView,
+        publishYear: {
+            type: String,
+            required: true,
         },
-        data() {
-            return {
-                showBook: false,
-            }
+        properties: {
+            type: Object,
+            required: true,
         },
-        computed: {
-            typeDisplay() {
-                const typeObject = referenceTypes.find(type => type.value === this.type);
-                return typeObject ? this.$t(`forms.reference.typeOptions.${typeObject.value}`) : '';
-            },
+        title: {
+            type: String,
+            required: true,
         },
-        methods: {
-            fullNameAbbreviation: (author) => fullNameAbbreviation(author),
+        subtitle: {
+            type: String,
         },
-    }
+        authors: {
+            type: Array,
+            required: true,
+        },
+        coverPath: {
+            type: String,
+        },
+    },
+    components: {
+        BookView,
+    },
+    data() {
+        return {
+            showBook: false,
+        };
+    },
+    computed: {
+        typeDisplay() {
+            const typeObject = referenceTypes.find((type) => type.value === this.type);
+            return typeObject ? this.$t(`reference.typeOptions.${typeObject.value}`) : '';
+        },
+    },
+    methods: {
+        fullNameAbbreviation: (author) => fullNameAbbreviation(author),
+    },
+};
 </script>
 <style lang="scss" scoped>
-    .media-content {
-        .field {
-            margin-bottom: 0;
-            .field-body {
-                padding-top: 0.375rem;
-            }
+.media-content {
+    .field {
+        margin-bottom: 0;
+
+        .field-body {
+            padding-top: 0.375rem;
         }
     }
+}
 
-    .cover {
-        box-shadow: $shadow;
+.cover {
+    box-shadow: $shadow;
 
-        img {
-            object-fit: cover;
-            position: absolute;
-            width: 100%;
-            height: 100%;
-        }
+    img {
+        object-fit: cover;
+        position: absolute;
+        width: 100%;
+        height: 100%;
     }
+}
 </style>

@@ -256,10 +256,14 @@ class SearchController extends Controller
                 switch ($type) {
                     case $type === 'text' || $type === 'taxon-name':
                         $query->where(function ($query) use ($word) {
-                            $query->whereRaw('name like ? ', '%' . $word . '%')
-                                ->orWhereHas('usages', function ($query) use ($word) {
+                            $query->whereRaw('name like ? ', '%' . $word . '%');
+
+                            // Check if the word contains Chinese
+                            if (preg_match('/\p{Han}+/u', $word)) {
+                                $query->orWhereHas('usages', function ($query) use ($word) {
                                     $query->whereRaw('JSON_EXTRACT(properties, "$.common_names[*].name") like ?', '%' . $word . '%');
                                 });
+                            }
                         });
                         break;
                     case $type === 'person':
@@ -345,7 +349,8 @@ class SearchController extends Controller
                     case $type === 'text' || $type === 'person':
                         $query->whereRaw('CONCAT(last_name, \', \', first_name, \' \', middle_name) like ?', '%' . $word . '%')
                             ->orWhere('abbreviation_name', 'like', "%{$word}%")
-                            ->orWhere('original_full_name', 'like', "%{$word}%");
+                            ->orWhere('original_full_name', 'like', "%{$word}%")
+                            ->orWhere('other_names', 'like', "%{$word}%");
                         break;
                     default:
                         throw new \Exception('not exist type');

@@ -1,33 +1,41 @@
 <template>
-    <div>
-        <div class="loading"></div>
-        <br/>
-        <p class="has-text-centered has-text-grey-lighter">載入中</p>
+    <div class="flex items-center justify-center h-full">
+        <div class="flex flex-col gap-8">
+            <div class="w-[60px] h-[60px]">
+                <div class="lds-dual-ring"></div>
+            </div>
+            <p class="text-center text-gray-300 text-3xl">{{ $t('common.loading') }}</p>
+        </div>
     </div>
 </template>
 <style lang="scss" scoped>
-    @keyframes rotate {
-        from {
-            transform: rotate(0deg);
-        }
-        to {
-            transform: rotate(360deg);
-        }
-    }
 
-    .loading {
-        width: 100px;
-        height: 100px;
-        margin: 110px auto 0;
-        border: solid 10px $light-grey;
-        border-radius: 50%;
-        border-right-color: transparent;
-        border-bottom-color: transparent;
+.lds-dual-ring {
+    display: inline-block;
+    width: 60px;
+    height: 60px;
+    transform: scale(0.8);
+    transform-origin: center center;
+}
 
-        transition: all 0.5s ease-in;
-        animation-name: rotate;
-        animation-duration: 1.0s;
-        animation-iteration-count: infinite;
-        animation-timing-function: linear;
+.lds-dual-ring:after {
+    content: ' ';
+    display: block;
+    width: 64px;
+    height: 64px;
+    margin: 8px;
+    border-radius: 50%;
+    border: 6px solid #e5e7eb;
+    border-color: #e5e7eb transparent #e5e7eb transparent;
+    animation: lds-dual-ring 1.2s linear infinite;
+}
+
+@keyframes lds-dual-ring {
+    0% {
+        transform: rotate(0deg);
     }
+    100% {
+        transform: rotate(360deg);
+    }
+}
 </style>

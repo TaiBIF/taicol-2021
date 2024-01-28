@@ -1,6 +1,15 @@
+import { groupBy } from 'lodash';
 import { comboLast, fullNameAbbreviation } from './person';
 import typeSpecimenKind from '../options/typeSpecimenKind';
-import { groupBy } from 'lodash';
+
+const isoString = (use) => {
+    switch (use) {
+        case 'holotype':
+            return 'isotype';
+        default:
+            return `iso${use}`;
+    }
+};
 
 /**
  * 標本顯示邏輯
@@ -18,7 +27,7 @@ const renderGeneralTypeSpecimen = (typeSpecimen) => {
     const sexCountry = [
         s.sex?.name,
         s.country?.display['en-us'].toUpperCase(),
-    ].filter(Boolean).join(' ')
+    ].filter(Boolean).join(' ');
 
     // [type_locality]([type_locality_verbatim]),
     const locality = [
@@ -34,18 +43,28 @@ const renderGeneralTypeSpecimen = (typeSpecimen) => {
     ].filter(Boolean).join(' ');
 
     // [collector] [collector_number] ([herbarium] [[accession_number]],
-    const collectors = s.collectors.map(c => fullNameAbbreviation(c, true)).join(', ');
+    const collectors = s.collectors.map((c) => fullNameAbbreviation(c, true)).join(', ');
     const collectorsInfo = [
         collectors,
         s.collectorNumber,
     ].filter(Boolean).join(' ');
 
     // 模式標本 ([herbarium] [[accession_number]], iso[type_use] [[accession_number]]).
-    const ss = s.specimens.map((s, i) => {
-        return [s.herbarium, `${s.accessionNumber ? `[${s.accessionNumber}]` : ''}`].filter(Boolean).join(' ');
-    });
+    const ss = s.specimens.map(
+        (s, i) => [
+            s.herbarium,
+            `${s.accessionNumber ? `[${s.accessionNumber}]` : ''}`,
+        ]
+            .filter(Boolean)
+            .join(' '),
+    );
+
     const useString = typeSpecimen.use.toLowerCase();
-    const specimens = ss.length ? `(${(ss.slice(0, 2).join(`, iso${useString}: `) + ss.slice(2).join(' '))})` : '';
+    const specimens = ss.length ?
+        [
+            ss.slice(0, 2).join(`; ${isoString(useString)}: `),
+            ss.slice(2).join(', '),
+        ].filter(Boolean).join(', ') : '';
 
     return [
         [
@@ -54,18 +73,18 @@ const renderGeneralTypeSpecimen = (typeSpecimen) => {
             collectionInfo,
             collectorsInfo,
         ].filter(Boolean).join(', '),
-        specimens,
+        specimens ? `(${specimens})` : '',
     ].filter(Boolean).join(' ');
-}
+};
 
 const renderGeneralOtherTypeSpecimen = (typeSpecimen) => {
     // [citation_note_number] [type_kind]
-    const kindObject = typeSpecimenKind.find(k => typeSpecimen.kind === k.id) || null;
+    const kindObject = typeSpecimenKind.find((k) => typeSpecimen.kind === k.id) || null;
     return [
         typeSpecimen.citationNoteNumber,
         kindObject ? `[${kindObject.key}]` : '',
     ].join(' ');
-}
+};
 
 /**
  * Lectotype 顯示邏輯
@@ -74,7 +93,7 @@ const renderGeneralOtherTypeSpecimen = (typeSpecimen) => {
  * @param typeSpecimen
  */
 const renderLectotypeOtherTypeSpecimen = (typeSpecimen) => {
-    const kindObject = typeSpecimenKind.find(k => typeSpecimen.kind === k.id) || null;
+    const kindObject = typeSpecimenKind.find((k) => typeSpecimen.kind === k.id) || null;
 
     if (typeSpecimen.isDesignated) {
         return [
@@ -84,19 +103,20 @@ const renderLectotypeOtherTypeSpecimen = (typeSpecimen) => {
         ].join(' ');
     }
 
+    const refString = [
+        [
+            comboLast(typeSpecimen.lectoDesignatedReference?.authors || []),
+            typeSpecimen.lectoDesignatedReference?.publishYear,
+        ].filter(Boolean).join(', '),
+        typeSpecimen.lectoCitePage,
+    ].filter(Boolean).join(': ');
+
     return [
         typeSpecimen.citationNoteNumber,
         kindObject ? `[${kindObject.key}]` : '',
-        'designated by',
-        [
-            [
-                comboLast(typeSpecimen.lectoDesignatedReference?.authors || []),
-                typeSpecimen.lectoDesignatedReference?.publishYear,
-            ].join(', '),
-            typeSpecimen.lectoCitePage,
-        ].filter(Boolean).join(': '),
+        refString ? `designated by ${refString}` : '',
     ].filter(Boolean).join(' ');
-}
+};
 
 const renderLectotypeTypeSpecimen = (typeSpecimen) => {
     if (typeSpecimen.isDesignated) {
@@ -106,18 +126,27 @@ const renderLectotypeTypeSpecimen = (typeSpecimen) => {
         ].join(' ');
     }
 
+    const refString = [
+        [
+            comboLast(typeSpecimen.lectoDesignatedReference?.authors || []),
+            typeSpecimen.lectoDesignatedReference?.publishYear,
+        ].filter(Boolean).join(', '),
+        typeSpecimen.lectoCitePage,
+    ].filter(Boolean).join(': ');
+
     return [
         renderGeneralTypeSpecimen(typeSpecimen),
-        'designated by',
-        [
-            [
-                comboLast(typeSpecimen.lectoDesignatedReference?.authors || []),
-                typeSpecimen.lectoDesignatedReference?.publishYear,
-            ].join(', '),
-            typeSpecimen.lectoCitePage,
-        ].filter(Boolean).join(': '),
+        refString ? `designated by ${refString}` : '',
     ].filter(Boolean).join(' ');
-}
+};
+
+export const comboTypeStrain = (typeSpecimens) => {
+    if (!typeSpecimens.length) {
+        return '';
+    }
+    const typeSpecimensString = typeSpecimens.map((typeSpecimen) => typeSpecimen.citationNoteNumber).join('; ');
+    return `Type Strain: ${typeSpecimensString}.`;
+};
 
 export const combo = (typeSpecimens) => {
     if (!typeSpecimens.length) {
@@ -133,26 +162,29 @@ export const combo = (typeSpecimens) => {
             let typeSpecimensString = '';
             if (useKey === 'lectotype') {
                 typeSpecimensString = typeSpecimens
-                    .map(typeSpecimen => {
+                    .map((typeSpecimen) => {
                         // [kind] 「標本」與其他類型的差別
                         if (typeSpecimen.kind === 1) {
                             return renderLectotypeTypeSpecimen(typeSpecimen);
-                        } else {
-                            return renderLectotypeOtherTypeSpecimen(typeSpecimen);
                         }
+                        return renderLectotypeOtherTypeSpecimen(typeSpecimen);
                     }).join('; ');
+            } else if (useKey === 'type') {
+                typeSpecimensString = comboTypeStrain(typeSpecimens);
             } else {
                 typeSpecimensString = typeSpecimens
-                    .map(typeSpecimen => {
+                    .map((typeSpecimen) => {
                         // [kind] 「標本」與其他類型的差別
                         if (typeSpecimen.kind === 1) {
                             return renderGeneralTypeSpecimen(typeSpecimen);
-                        } else {
-                            return renderGeneralOtherTypeSpecimen(typeSpecimen);
                         }
+                        return renderGeneralOtherTypeSpecimen(typeSpecimen);
                     }).join('; ');
             }
 
-            return `${useString}: ${typeSpecimensString}`;
+            return [
+                useString,
+                typeSpecimensString,
+            ].filter(Boolean).join(': ');
         }).join('. ');
 };

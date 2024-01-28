@@ -1,5 +1,7 @@
 import { comboLast } from '../person';
-import { TYPE_BOOK, TYPE_BOOK_ARTICLE, TYPE_JOURNAL } from '../../consts/reference';
+import {
+    TYPE_BOOK, TYPE_BOOK_ARTICLE, TYPE_CHECKLIST, TYPE_JOURNAL,
+} from '../../consts/reference';
 
 import comboPlant from './comboPlant';
 import comboAnimal from './comboAnimal';
@@ -43,6 +45,8 @@ export const title = (reference) => {
         }
         case TYPE_BOOK:
             return renderBookTitle(reference);
+        case TYPE_CHECKLIST:
+            return reference.properties?.bookTitle;
         default:
             return '';
     }
@@ -97,22 +101,28 @@ export const subTitle = (reference, isWithAuthors = true) => {
 
     if (isWithAuthors) {
         const lastNames = comboLast(reference.authors || []);
-        let subTitle = '';
+        let subTitleResult = '';
         switch (reference.type) {
             case TYPE_JOURNAL:
-                subTitle = renderJournalSubtitle(reference);
+                subTitleResult = renderJournalSubtitle(reference);
                 break;
             case TYPE_BOOK_ARTICLE:
-                subTitle = renderBookArticleSubtitle(reference);
+                subTitleResult = renderBookArticleSubtitle(reference);
                 break;
             case TYPE_BOOK:
-                subTitle = renderBookSubtitle(reference);
+                subTitleResult = renderBookSubtitle(reference);
+                break;
+            case TYPE_CHECKLIST:
+                subTitleResult = reference.properties?.bookTitleAbbreviation;
+                break;
+            default:
+                subTitleResult = ':Error:';
         }
 
         return [
             lastNames,
             reference.publishYear,
-            subTitle,
+            subTitleResult,
         ].filter(Boolean).join(', ');
     }
 
@@ -123,6 +133,8 @@ export const subTitle = (reference, isWithAuthors = true) => {
             return renderBookArticleSubtitle(reference);
         case TYPE_BOOK:
             return renderBookSubtitle(reference);
+        case TYPE_CHECKLIST:
+            return reference.properties?.bookTitleAbbreviation;
         default:
             break;
     }
@@ -142,6 +154,8 @@ export const taxonNameInReference = (reference) => {
             return renderBookArticleSubtitle(reference);
         case TYPE_BOOK:
             return renderBookSubtitle(reference);
+        case TYPE_CHECKLIST:
+            return reference.properties?.bookTitleAbbreviation;
     }
 };
 
