@@ -38,7 +38,8 @@ class TaxonNameCollection extends JsonResource
 
             $parent = TaxonName::select('rank_id', 'id')->find($currentTaxonNameId);
 
-            if ($currentTaxonName && $parent->rank_id == 3 && $currentTaxonName->parent_taxon_name_id == null)
+            // if ($currentTaxonName && $parent->rank_id == 3 && $currentTaxonName->parent_taxon_name_id == null)
+            if ($currentTaxonName && $parent->rank_id == 3)
                 $rootId = $currentTaxonNameId;
 
             $currentTaxonNameId = $currentTaxonName ? $currentTaxonName->parent_taxon_name_id : null;

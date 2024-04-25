@@ -36,7 +36,8 @@ class TaxonNameListCollection extends JsonResource
 
             if ($parent && in_array($parent->rank_id, [3, 12, 18, 22, 26]) && $parentGroupId == null && $currentTaxonNameId != $this->id)
                 $parentGroupId = $parent->id;
-            if ($currentTaxonName && $parent->rank_id == 3 && $currentTaxonName->parent_taxon_name_id == null)
+            // if ($currentTaxonName && $parent->rank_id == 3 && $currentTaxonName->parent_taxon_name_id == null)
+            if ($currentTaxonName && $parent->rank_id == 3)
                 $rootId = $currentTaxonNameId;
 
             $currentTaxonNameId = $currentTaxonName ? $currentTaxonName->parent_taxon_name_id : null;
