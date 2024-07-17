@@ -20,6 +20,7 @@ export default {
     exampleDownload: 'Example Download',
 
     listSimple: 'View Simplified Lists',
+    listDetail: 'View Details',
 
     // Checklist Page
     checklistEditArea: 'Checklist Editing',
