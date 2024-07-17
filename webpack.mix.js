@@ -2,6 +2,8 @@ const mix = require('laravel-mix');
 const path = require('path');
 
 const tailwindcss = require('tailwindcss');
+
+require('laravel-mix-eslint');
 /*
  |--------------------------------------------------------------------------
  | Mix Asset Management
@@ -13,7 +15,11 @@ const tailwindcss = require('tailwindcss');
  |
  */
 
-mix.js('resources/js/app.js', 'public/js')
+mix
+    // .eslint({
+    //     extensions: ['js', 'vue', 'ts'], overrideConfigFile: './.eslintrc.js',
+    // })
+    .ts('resources/js/app.js', 'public/js')
     .vue({ version: 2 })
     .sass('resources/sass/app.scss', 'public/css')
     .js('resources/js/services/computeReference.js', 'public/js')
@@ -27,19 +33,19 @@ mix.js('resources/js/app.js', 'public/js')
             },
         },
         module: {
-            rules: [
-                {
-                    test: /\.scss$/,
+            rules: [{
+                test: /\.scss$/,
+                use: [{
                     loader: 'sass-loader',
                     options: {
-                        data: `
-                                @import "~@/_variables.scss";
-                          `,
+                        implementation: require('node-sass'),
+                        additionalData: '@import "~@/_variables.scss";',
                     },
-                },
-            ],
+                }],
+            }],
         },
         output: {
             chunkFilename: mix.inProduction() ? 'js/chunks/[name].[chunkhash].js' : 'js/chunks/[name].js',
         },
-    }).version();
+    })
+    .version();
