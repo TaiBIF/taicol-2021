@@ -83,7 +83,7 @@ export default {
             // render sub layers
             const layers = t.speciesLayers?.map((layer, index) => {
                 // 動物不用 s2rank (只要 s2latinName)
-                if (index === 0 && t.nomenclature.group === 'animal') {
+                if (index === 0 && t.nomenclature.group === 'animal' && layer.rank.abbreviation === "subsp.") {
                     return layer.latinName ? `_${layer.latinName}_` : '';
                 }
 

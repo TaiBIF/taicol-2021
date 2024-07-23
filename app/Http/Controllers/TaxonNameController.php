@@ -175,6 +175,7 @@ class TaxonNameController extends Controller
             ->from(DB::raw('(SELECT reference_usages.*, references.type FROM reference_usages left join `references` on reference_usages.reference_id = references.id) t'))
             ->where('taxon_name_id', $id)
             ->where('type', '!=', Reference::TYPE_BACKBONE)
+            ->where('type', '!=', Reference::TYPE_SUPER_BACKBONE)
             ->count();
 
         $subTaxonNameCount = ReferenceUsage::where('parent_taxon_name_id', $taxonName->id)
@@ -484,7 +485,10 @@ class TaxonNameController extends Controller
             }
         }
 
-        $synonyms = $synonymsQuery->paginate(50);
+        $synonyms = $synonymsQuery
+                    ->where('references.type', '!=', Reference::TYPE_BACKBONE)
+                    ->where('references.type', '!=', Reference::TYPE_SUPER_BACKBONE)
+                    ->paginate(50);
 
         $result = $synonyms->map(function ($usage) {
             return [
@@ -511,6 +515,7 @@ class TaxonNameController extends Controller
             ->leftjoin('references', 'references.id', 't.reference_id')
             ->where('taxon_name_id', $id)
             ->where('references.type', '!=', Reference::TYPE_BACKBONE)
+            ->where('references.type', '!=', Reference::TYPE_SUPER_BACKBONE)
             ->where('is_title', false);
 
         $direction = $request->get('direction');
