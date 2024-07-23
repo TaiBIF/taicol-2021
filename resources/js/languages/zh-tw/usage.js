@@ -13,6 +13,7 @@ export default {
     isEndemic: '臺灣特有',
     distributionInTw: '臺灣分布地',
     alienType: '原生/外來類型',
+    alienStatusNote: '原生/外來備註',
     inTaiwan: '存在於臺灣',
     endemic: '臺灣特有',
     alienTypeOptions: {

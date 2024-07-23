@@ -47,6 +47,11 @@
 
                     </div>
                 </div>
+                <div class="field p-2">
+                    <label class="label"
+                           v-text="$t('usage.alienStatusNote')"/>
+                    <general-input v-model="alienStatusNote"/>
+                </div>
             </template>
         </div>
         <div class="flex">
@@ -166,6 +171,7 @@ export default {
             isEndemic: this.preset.isEndemic ?? null,
             distributionInTw: this.preset.distributionInTw ?? '',
             alienType: this.preset.alienType ?? null,
+            alienStatusNote: this.preset.alienStatusNote ?? '',
             isFossil: this.preset.isFossil ?? null,
             isTerrestrial: this.preset.isTerrestrial ?? null,
             isFreshwater: this.preset.isFreshwater ?? null,
@@ -191,6 +197,7 @@ export default {
                     this.isEndemic = null;
                     this.distributionInTw = '';
                     this.alienType = null;
+                    this.alienStatusNote = '';
                 }
             },
         },

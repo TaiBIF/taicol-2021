@@ -254,6 +254,7 @@ class ReferenceUsageController extends Controller
                         'is_endemic' => !isset($p['is_endemic']) ? null : (!!$p['is_endemic'] ? 1 : 0),
                         'distribution_in_tw' => $p['distribution_in_tw'] ?? '',
                         'alien_type' => $p['alien_type'] ?? '',
+                        'alien_status_note' => $p['alien_status_note'] ?? '',
                     ] + $usage->properties;
                 $usage->save();
             }

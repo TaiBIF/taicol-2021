@@ -13,6 +13,7 @@ export default {
     isEndemic: 'Endemic to Taiwan',
     distributionInTw: 'Distribution in Taiwan',
     alienType: 'Alien-type in Taiwan',
+    alienStatusNote: 'Alien-type Note',
     inTaiwan: 'Exist in Taiwan',
     endemic: 'Endemic to Taiwan',
     alienTypeOptions: {

@@ -75,6 +75,9 @@
                         <div v-if="usage.properties.distributionInTw" class="px-4">
                             {{ $t('usage.distributionInTw')}}: {{ usage.properties.distributionInTw }}
                         </div>
+                        <div v-if="usage.properties.alienStatusNote" class="px-4">
+                            {{ $t('usage.alienStatusNote')}}: {{ usage.properties.alienStatusNote }}
+                        </div>
                         <p v-if="usage.properties.note" class="px-4">
                             {{ usage.properties.note }}
                         </p>

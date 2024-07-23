@@ -132,6 +132,7 @@ export default defineComponent({
             isBrackish: number | null,
             isMarine: number | null,
             distributionInTw: string,
+            alienStatusNote: string,
         } | null>({
             isInTaiwan: null,
             isEndemic: null,
@@ -142,6 +143,7 @@ export default defineComponent({
             isBrackish: null,
             isMarine: null,
             distributionInTw: '',
+            alienStatusNote: '',
         });
 
         const onClose = () => {
