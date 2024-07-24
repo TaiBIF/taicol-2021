@@ -17,6 +17,8 @@ class ReferenceUsage extends Model
         'properties' => 'array',
     ];
 
+    use SoftDeletes;
+
     public function taxonName()
     {
         return $this->belongsTo(TaxonName::class);
