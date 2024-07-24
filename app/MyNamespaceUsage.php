@@ -3,7 +3,6 @@
 namespace App;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class MyNamespaceUsage extends Model
 {
@@ -16,7 +15,6 @@ class MyNamespaceUsage extends Model
         'properties' => 'array',
     ];
 
-    use SoftDeletes;
 
     public function taxonName()
     {

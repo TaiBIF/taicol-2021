@@ -172,10 +172,12 @@ class TaxonNameController extends Controller
             ->get();
 
         $referenceCount = ReferenceUsage::query()
-            ->from(DB::raw('(SELECT reference_usages.*, references.type FROM reference_usages left join `references` on reference_usages.reference_id = references.id) t'))
-            ->where('taxon_name_id', $id)
-            ->where('type', '!=', Reference::TYPE_BACKBONE)
-            ->where('type', '!=', Reference::TYPE_SUPER_BACKBONE)
+            // ->from(DB::raw('(SELECT reference_usages.*, references.type FROM reference_usages left join `references` on reference_usages.reference_id = references.id) t'))
+            ->select('reference_usages.*', 'references.type')
+            ->leftJoin('references', 'references.id', '=', 'reference_usages.reference_id')
+            ->where('reference_usages.taxon_name_id', $id)
+            ->where('references.type', '!=', Reference::TYPE_BACKBONE)
+            ->where('references.type', '!=', Reference::TYPE_SUPER_BACKBONE)
             ->count();
 
         $subTaxonNameCount = ReferenceUsage::where('parent_taxon_name_id', $taxonName->id)
@@ -509,10 +511,10 @@ class TaxonNameController extends Controller
 
     public function references(Request $request, $id)
     {
-        $referenceQuery = ReferenceUsage::select(DB::raw('t.*'))
+        $referenceQuery = ReferenceUsage::select(DB::raw('reference_usages.*'))
             ->with(['reference.authors', 'taxonName.rank', 'taxonName.nomenclature'])
-            ->from(DB::raw('(SELECT * FROM reference_usages ORDER BY created_at DESC) t'))
-            ->leftjoin('references', 'references.id', 't.reference_id')
+            ->from(DB::raw('(SELECT * FROM reference_usages ORDER BY created_at DESC) reference_usages'))
+            ->leftjoin('references', 'references.id', 'reference_usages.reference_id')
             ->where('taxon_name_id', $id)
             ->where('references.type', '!=', Reference::TYPE_BACKBONE)
             ->where('references.type', '!=', Reference::TYPE_SUPER_BACKBONE)
