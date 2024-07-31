@@ -136,12 +136,18 @@ class TaxonNameController extends Controller
         $hasAcceptedUsages = (boolean) ReferenceUsage::where('status', 'not-accepted')
             ->where('taxon_name_id', $id)
             ->where('is_indent', 1)
+            ->leftJoin('references', 'references.id', '=', 'reference_usages.reference_id')
+            ->where('references.type', '!=', Reference::TYPE_BACKBONE)
+            ->where('references.type', '!=', Reference::TYPE_SUPER_BACKBONE)
             ->count();
 
         // 異名數量
         $u = ReferenceUsage::where('status', 'accepted')
             ->where('taxon_name_id', $id)
             ->where('is_indent', 0)
+            ->leftJoin('references', 'references.id', '=', 'reference_usages.reference_id')
+            ->where('references.type', '!=', Reference::TYPE_BACKBONE)
+            ->where('references.type', '!=', Reference::TYPE_SUPER_BACKBONE)
             ->get();
 
         if ($u->count() == 0) {
@@ -168,6 +174,8 @@ class TaxonNameController extends Controller
             ->where('taxon_name_id', $id)
             ->leftJoin('references', 'references.id', '=', 'reference_usages.reference_id')
             ->whereJsonLength('reference_usages.properties->common_names', '>', 0)
+            ->where('references.type', '!=', Reference::TYPE_BACKBONE)
+            ->where('references.type', '!=', Reference::TYPE_SUPER_BACKBONE)
             ->orderBy('references.publish_year', 'desc')
             ->get();
 
@@ -356,6 +364,9 @@ class TaxonNameController extends Controller
     {
         $u = ReferenceUsage::where('status', 'not-accepted')
             ->where('taxon_name_id', $id)
+            ->leftJoin('references', 'references.id', '=', 'reference_usages.reference_id')
+            ->where('references.type', '!=', Reference::TYPE_BACKBONE)
+            ->where('references.type', '!=', Reference::TYPE_SUPER_BACKBONE)
             ->get();
 
         if ($u->count() === 0) {
@@ -619,6 +630,8 @@ class TaxonNameController extends Controller
             ->where('taxon_name_id', $id)
             ->where('references.id', '!=', 153)
             ->leftJoin('references', 'references.id', '=', 'reference_usages.reference_id')
+            ->where('references.type', '!=', Reference::TYPE_BACKBONE)
+            ->where('references.type', '!=', Reference::TYPE_SUPER_BACKBONE)
             ->whereJsonLength('reference_usages.properties->common_names', '>', 0);
 
         $direction = $request->get('direction');
