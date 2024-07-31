@@ -169,13 +169,11 @@ class TaxonNameController extends Controller
 
         // 俗名顯示
         $commonNames = ReferenceUsage::query()
-            ->select('reference_id', 'reference_usages.properties', 'references.publish_year')
+            ->select('reference_id', 'reference_usages.properties', 'references.publish_year',  'references.type')
             ->where('status', 'accepted')
             ->where('taxon_name_id', $id)
             ->leftJoin('references', 'references.id', '=', 'reference_usages.reference_id')
             ->whereJsonLength('reference_usages.properties->common_names', '>', 0)
-            ->where('references.type', '!=', Reference::TYPE_BACKBONE)
-            ->where('references.type', '!=', Reference::TYPE_SUPER_BACKBONE)
             ->orderBy('references.publish_year', 'desc')
             ->get();
 
@@ -231,8 +229,9 @@ class TaxonNameController extends Controller
                 ],
                 [
                     'key' => 'common-name',
-                    'display' => (boolean) !!$commonNames->filter(function ($n) {
-                        return $n->reference_id !== 153;
+                    'display' => (boolean) !! $commonNames->filter(function ($n) {
+                        if ($n->type !== Reference::TYPE_SUPER_BACKBONE && $n->type !== Reference::TYPE_BACKBONE )
+                        return true;
                     })->count(),
                 ],
             ]
@@ -628,7 +627,6 @@ class TaxonNameController extends Controller
             ->select(['reference_usages.properties->common_names as common_names', 'reference_usages.taxon_name_id', 'reference_usages.id', 'references.publish_year', 'references.id as reference_id'])
             ->where('status', 'accepted')
             ->where('taxon_name_id', $id)
-            ->where('references.id', '!=', 153)
             ->leftJoin('references', 'references.id', '=', 'reference_usages.reference_id')
             ->where('references.type', '!=', Reference::TYPE_BACKBONE)
             ->where('references.type', '!=', Reference::TYPE_SUPER_BACKBONE)
