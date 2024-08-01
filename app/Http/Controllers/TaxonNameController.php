@@ -136,12 +136,18 @@ class TaxonNameController extends Controller
         $hasAcceptedUsages = (boolean) ReferenceUsage::where('status', 'not-accepted')
             ->where('taxon_name_id', $id)
             ->where('is_indent', 1)
+            ->leftJoin('references', 'references.id', '=', 'reference_usages.reference_id')
+            ->where('references.type', '!=', Reference::TYPE_BACKBONE)
+            ->where('references.type', '!=', Reference::TYPE_SUPER_BACKBONE)
             ->count();
 
         // 異名數量
         $u = ReferenceUsage::where('status', 'accepted')
             ->where('taxon_name_id', $id)
             ->where('is_indent', 0)
+            ->leftJoin('references', 'references.id', '=', 'reference_usages.reference_id')
+            ->where('references.type', '!=', Reference::TYPE_BACKBONE)
+            ->where('references.type', '!=', Reference::TYPE_SUPER_BACKBONE)
             ->get();
 
         if ($u->count() == 0) {
@@ -163,7 +169,7 @@ class TaxonNameController extends Controller
 
         // 俗名顯示
         $commonNames = ReferenceUsage::query()
-            ->select('reference_id', 'reference_usages.properties', 'references.publish_year')
+            ->select('reference_id', 'reference_usages.properties', 'references.publish_year',  'references.type')
             ->where('status', 'accepted')
             ->where('taxon_name_id', $id)
             ->leftJoin('references', 'references.id', '=', 'reference_usages.reference_id')
@@ -172,9 +178,12 @@ class TaxonNameController extends Controller
             ->get();
 
         $referenceCount = ReferenceUsage::query()
-            ->from(DB::raw('(SELECT reference_usages.*, references.type FROM reference_usages left join `references` on reference_usages.reference_id = references.id) t'))
-            ->where('taxon_name_id', $id)
-            ->where('type', '!=', Reference::TYPE_BACKBONE)
+            // ->from(DB::raw('(SELECT reference_usages.*, references.type FROM reference_usages left join `references` on reference_usages.reference_id = references.id) t'))
+            ->select('reference_usages.*', 'references.type')
+            ->leftJoin('references', 'references.id', '=', 'reference_usages.reference_id')
+            ->where('reference_usages.taxon_name_id', $id)
+            ->where('references.type', '!=', Reference::TYPE_BACKBONE)
+            ->where('references.type', '!=', Reference::TYPE_SUPER_BACKBONE)
             ->count();
 
         $subTaxonNameCount = ReferenceUsage::where('parent_taxon_name_id', $taxonName->id)
@@ -220,8 +229,9 @@ class TaxonNameController extends Controller
                 ],
                 [
                     'key' => 'common-name',
-                    'display' => (boolean) !!$commonNames->filter(function ($n) {
-                        return $n->reference_id !== 153;
+                    'display' => (boolean) !! $commonNames->filter(function ($n) {
+                        if ($n->type !== Reference::TYPE_SUPER_BACKBONE && $n->type !== Reference::TYPE_BACKBONE )
+                        return true;
                     })->count(),
                 ],
             ]
@@ -353,6 +363,9 @@ class TaxonNameController extends Controller
     {
         $u = ReferenceUsage::where('status', 'not-accepted')
             ->where('taxon_name_id', $id)
+            ->leftJoin('references', 'references.id', '=', 'reference_usages.reference_id')
+            ->where('references.type', '!=', Reference::TYPE_BACKBONE)
+            ->where('references.type', '!=', Reference::TYPE_SUPER_BACKBONE)
             ->get();
 
         if ($u->count() === 0) {
@@ -484,7 +497,10 @@ class TaxonNameController extends Controller
             }
         }
 
-        $synonyms = $synonymsQuery->paginate(50);
+        $synonyms = $synonymsQuery
+                    ->where('references.type', '!=', Reference::TYPE_BACKBONE)
+                    ->where('references.type', '!=', Reference::TYPE_SUPER_BACKBONE)
+                    ->paginate(50);
 
         $result = $synonyms->map(function ($usage) {
             return [
@@ -505,12 +521,13 @@ class TaxonNameController extends Controller
 
     public function references(Request $request, $id)
     {
-        $referenceQuery = ReferenceUsage::select(DB::raw('t.*'))
+        $referenceQuery = ReferenceUsage::select(DB::raw('reference_usages.*'))
             ->with(['reference.authors', 'taxonName.rank', 'taxonName.nomenclature'])
-            ->from(DB::raw('(SELECT * FROM reference_usages ORDER BY created_at DESC) t'))
-            ->leftjoin('references', 'references.id', 't.reference_id')
+            ->from(DB::raw('(SELECT * FROM reference_usages ORDER BY created_at DESC) reference_usages'))
+            ->leftjoin('references', 'references.id', 'reference_usages.reference_id')
             ->where('taxon_name_id', $id)
             ->where('references.type', '!=', Reference::TYPE_BACKBONE)
+            ->where('references.type', '!=', Reference::TYPE_SUPER_BACKBONE)
             ->where('is_title', false);
 
         $direction = $request->get('direction');
@@ -610,8 +627,9 @@ class TaxonNameController extends Controller
             ->select(['reference_usages.properties->common_names as common_names', 'reference_usages.taxon_name_id', 'reference_usages.id', 'references.publish_year', 'references.id as reference_id'])
             ->where('status', 'accepted')
             ->where('taxon_name_id', $id)
-            ->where('references.id', '!=', 153)
             ->leftJoin('references', 'references.id', '=', 'reference_usages.reference_id')
+            ->where('references.type', '!=', Reference::TYPE_BACKBONE)
+            ->where('references.type', '!=', Reference::TYPE_SUPER_BACKBONE)
             ->whereJsonLength('reference_usages.properties->common_names', '>', 0);
 
         $direction = $request->get('direction');

@@ -20,6 +20,7 @@ export default {
     exampleDownload: '範本下載',
 
     listSimple: '檢視簡易異名表',
+    listDetail: '檢視詳細異名表',
 
     // Checklist Page
     checklistEditArea: '名錄編輯區',

@@ -15,6 +15,7 @@ class MyNamespaceUsage extends Model
         'properties' => 'array',
     ];
 
+
     public function taxonName()
     {
         return $this->belongsTo(TaxonName::class);

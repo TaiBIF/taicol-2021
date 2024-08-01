@@ -15,4 +15,5 @@ export const CheckListTypes = {
     THESIS: 2,
     GROUP_LIST: 3,
     PERSONAL_LIST: 4,
+    GOVERMENT_DOCUMENT: 5,
 };

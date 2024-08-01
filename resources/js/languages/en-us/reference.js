@@ -58,6 +58,7 @@ export default {
         2: 'Thesis',
         3: 'Group List',
         4: 'Personal List',
+        5: 'Goverment Document',
     },
     exist: 'Reference already exists',
     publishTitle: 'Reference',

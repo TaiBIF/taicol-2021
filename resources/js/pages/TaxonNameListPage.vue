@@ -8,7 +8,7 @@
         <table class="table w-full is-hoverable has-text-left table-fixed min-w-[1280px]">
             <thead>
             <tr>
-                <th class="w-[100px]">{{ $t('common.kingdom') }}</th>
+                <th class="w-[130px]">{{ $t('common.kingdom') }}</th>
                 <th class="w-[160px]">{{ $t('taxonName.group') }}</th>
                 <th class="w-[80px]">
                     <sort-button :id="'rank'" :direction="direction" :on-click="onSortBy" :sortby="sortby">

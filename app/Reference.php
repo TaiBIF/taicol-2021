@@ -15,6 +15,7 @@ class Reference extends Model
     const TYPE_BOOK = 3;
     const TYPE_BACKBONE = 4;
     const TYPE_CHECKLIST = 5;
+    const TYPE_SUPER_BACKBONE = 6;
 
     protected $casts = [
         'properties' => 'array'

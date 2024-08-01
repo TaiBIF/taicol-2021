@@ -13,4 +13,7 @@ export default [
     {
         value: CheckListTypes.PERSONAL_LIST,
     },
+    {
+        value: CheckListTypes.GOVERMENT_DOCUMENT,
+    },
 ];

@@ -96,6 +96,7 @@ class UsageImportService
                 $isFreshwater = $this->sheet->getCell('P' . $row)->getCalculatedValue();
                 $isBrackish = $this->sheet->getCell('Q' . $row)->getCalculatedValue();
                 $isMarine = $this->sheet->getCell('R' . $row)->getCalculatedValue();
+                $alienStatusNote = $this->sheet->getCell('S' . $row)->getCalculatedValue();
 
                 $isIndent = (bool) $this->sheet->getCell('H' . $row)->getCalculatedValue();
 
@@ -177,6 +178,7 @@ class UsageImportService
                     $properties['is_endemic'] = !isset($isEndemic) || $isEndemic === '' ? null : ($isEndemic ? 1 : 0);
                     $properties['distribution_in_tw'] = $distributionTw;
                     $properties['alien_type'] = $alienType;
+                    $properties['alien_status_note'] = $alienStatusNote;
                 }
 
                 $this->saveUsages($row, $taxonName, $parentTaxonName ?? null, $properties, $group, $order);

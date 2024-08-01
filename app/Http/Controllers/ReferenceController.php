@@ -55,6 +55,7 @@ class ReferenceController extends Controller
 
         $references = $referenceQuery
             ->where('type', '!=', Reference::TYPE_BACKBONE)
+            ->where('type', '!=', Reference::TYPE_SUPER_BACKBONE)
             ->paginate(20);
 
         return response()->json([
@@ -68,7 +69,9 @@ class ReferenceController extends Controller
 
     public function show($id)
     {
-        $reference = Reference::with(['authors', 'book'])->where('type', '!=', Reference::TYPE_BACKBONE)
+        $reference = Reference::with(['authors', 'book'])
+            ->where('type', '!=', Reference::TYPE_BACKBONE)
+            ->where('type', '!=', Reference::TYPE_SUPER_BACKBONE)
             ->where('id', $id)
             ->first();
         if (!$reference) {
