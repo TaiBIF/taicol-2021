@@ -97,6 +97,7 @@ class UsageImportService
                 $isBrackish = $this->sheet->getCell('Q' . $row)->getCalculatedValue();
                 $isMarine = $this->sheet->getCell('R' . $row)->getCalculatedValue();
                 $alienStatusNote = $this->sheet->getCell('S' . $row)->getCalculatedValue();
+                $isNewRecord = $this->sheet->getCell('T' . $row)->getCalculatedValue();
 
                 $isIndent = (bool) $this->sheet->getCell('H' . $row)->getCalculatedValue();
 
@@ -177,6 +178,7 @@ class UsageImportService
                 if ($isInTaiwan) {
                     $properties['is_endemic'] = !isset($isEndemic) || $isEndemic === '' ? null : ($isEndemic ? 1 : 0);
                     $properties['distribution_in_tw'] = $distributionTw;
+                    $properties['is_new_record'] = !isset($isNewRecord) || $isNewRecord === '' ? null : ($isNewRecord ? true : false);
                     $properties['alien_type'] = $alienType;
                     $properties['alien_status_note'] = $alienStatusNote;
                 }

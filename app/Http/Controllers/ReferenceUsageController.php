@@ -253,6 +253,7 @@ class ReferenceUsageController extends Controller
                         'is_terrestrial' => !isset($p['is_terrestrial']) ? null : (!!$p['is_terrestrial'] ? 1 : 0),
                         'is_endemic' => !isset($p['is_endemic']) ? null : (!!$p['is_endemic'] ? 1 : 0),
                         'distribution_in_tw' => $p['distribution_in_tw'] ?? '',
+                        'is_new_record' => !isset($p['is_new_record']) ? null : (!!$p['is_new_record'] ? 1 : 0),
                         'alien_type' => $p['alien_type'] ?? '',
                         'alien_status_note' => $p['alien_status_note'] ?? '',
                     ] + $usage->properties;

@@ -12,6 +12,8 @@ export default {
     isInTaiwan: '存在於臺灣？',
     isEndemic: '臺灣特有',
     distributionInTw: '臺灣分布地',
+    newRecord: '新紀錄',
+    newRecordNote: '不包含新種，新種請使用「標註」',
     alienType: '原生/外來類型',
     alienStatusNote: '原生/外來備註',
     inTaiwan: '存在於臺灣',

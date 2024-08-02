@@ -132,6 +132,7 @@ export default defineComponent({
             isBrackish: number | null,
             isMarine: number | null,
             distributionInTw: string,
+            isNewRecord: boolean | null,
             alienStatusNote: string,
         } | null>({
             isInTaiwan: null,
@@ -143,6 +144,7 @@ export default defineComponent({
             isBrackish: null,
             isMarine: null,
             distributionInTw: '',
+            isNewRecord: null,
             alienStatusNote: '',
         });
 

@@ -12,6 +12,8 @@ export default {
     isInTaiwan: 'Exist in Taiwan?',
     isEndemic: 'Endemic to Taiwan',
     distributionInTw: 'Distribution in Taiwan',
+    newRecord: 'New Record',
+    newRecordNote: 'Excluding new species. For new species, please use \'Indication\' above and choose \'sp. nov.\'',
     alienType: 'Alien-type in Taiwan',
     alienStatusNote: 'Alien-type Note',
     inTaiwan: 'Exist in Taiwan',

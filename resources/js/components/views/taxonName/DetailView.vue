@@ -102,6 +102,30 @@
                     </div>
                 </div>
 
+                <div v-if="replacementName" class="columns">
+                    <div class="column is-3">
+                        <p class="has-text-weight-bold"
+                           v-text="$t('taxonName.replacementName')"/>
+                    </div>
+                    <div class="column is-9">
+                        <router-link :to="{name: 'taxon-name-page', params: {id: replacementName.id}}" class="my-link">
+                            <taxon-name-full-label :taxon-name="replacementName"></taxon-name-full-label>
+                        </router-link>
+                    </div>
+                </div>
+
+                <div v-if="orthographicVariation" class="columns">
+                    <div class="column is-3">
+                        <p class="has-text-weight-bold"
+                           v-text="$t('taxonName.orthographicVariation')"/>
+                    </div>
+                    <div class="column is-9">
+                        <router-link :to="{name: 'taxon-name-page', params: {id: orthographicVariation.id}}" class="my-link">
+                            <taxon-name-full-label :taxon-name="orthographicVariation"></taxon-name-full-label>
+                        </router-link>
+                    </div>
+                </div>
+
                 <div v-if="typeName" class="columns">
                     <div class="column is-3">
                         <p class="has-text-weight-bold"
@@ -224,6 +248,12 @@ export default {
         typeSpecimens: {
             type: Array,
             required: true,
+        },
+        replacementName: {
+            type: Object,
+        },
+        orthographicVariation: {
+            type: Object,
         },
         typeName: {
             type: Object,

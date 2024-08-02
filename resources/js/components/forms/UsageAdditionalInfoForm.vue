@@ -31,6 +31,25 @@
                     <label class="label"
                            v-text="$t('usage.distributionInTw')"/>
                     <general-input v-model="distributionInTw"/>
+
+                            <label class="label">
+                                <label class="label">
+                                    <input id="isNewRecord" v-model="isNewRecord"
+                                           class="checkbox"
+                                           type="checkbox"/>
+                                    <span v-text="$t('usage.newRecord')"/>
+                                    <tooltip>
+                                        <i class="fas fa-info-circle"></i>
+                                        <template v-slot:body>
+                                            <div class="w-[320px]">
+                                                {{ $t('usage.newRecordNote') }}
+                                            </div>
+                                        </template>
+                                    </tooltip>
+                                </label>
+                            </label>
+
+
                 </div>
                 <div class="field p-2">
                     <label class="label"
@@ -155,6 +174,7 @@
 import GeneralInput from '../GeneralInput.vue';
 import DeselectableRadioButton from '../DeselectableRadioButton.vue';
 import LanguageSelect from '../selects/LanguageSelect.vue';
+import Tooltip from '../Tooltip.vue';
 
 export default {
     props: {
@@ -170,6 +190,7 @@ export default {
             isInTaiwan: this.preset.isInTaiwan ?? null,
             isEndemic: this.preset.isEndemic ?? null,
             distributionInTw: this.preset.distributionInTw ?? '',
+            isNewRecord: this.preset.isNewRecord ?? null,
             alienType: this.preset.alienType ?? null,
             alienStatusNote: this.preset.alienStatusNote ?? '',
             isFossil: this.preset.isFossil ?? null,
@@ -196,6 +217,7 @@ export default {
                 if (!value) {
                     this.isEndemic = null;
                     this.distributionInTw = '';
+                    this.isNewRecord = null;
                     this.alienType = null;
                     this.alienStatusNote = '';
                 }
@@ -220,7 +242,8 @@ export default {
     components: {
         LanguageSelect,
         DeselectableRadioButton,
-        GeneralInput
+        GeneralInput,
+        Tooltip,
     },
 };
 </script>

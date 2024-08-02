@@ -721,6 +721,8 @@ class TaxonNameController extends Controller
             'authors_name' => $request->get('authors_name'),
             'species_id' => $request->get('species_id'),
             'species_layers' => $request->get('species_layers'),
+            'replacement_name' => $request->get('replacement_name'),
+            'orthographic_variation' => $request->get('orthographic_variation'),
             'type_name' => $request->get('type_name'),
             'usage' => $referenceId ? $request->get('usage') : [],
 
@@ -779,6 +781,8 @@ class TaxonNameController extends Controller
             'authors_name' => $request->get('authors_name'),
             'species_id' => $request->get('species_id'),
             'species_layers' => $request->get('species_layers'),
+            'replacement_name' => $request->get('replacement_name'),
+            'orthographic_variation' => $request->get('orthographic_variation'),
             'type_name' => $request->get('type_name'),
             'usage' => $request->get('usage'),
 

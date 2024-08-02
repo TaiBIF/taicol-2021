@@ -71,6 +71,7 @@
                                     isFreshwater: usage.properties.isFreshwater,
                                     isBrackish: usage.properties.isBrackish,
                                     isMarine: usage.properties.isMarine,
+                                    isNewRecord: usage.properties.isNewRecord,
                                 }"/>
                         <div v-if="usage.properties.distributionInTw" class="px-4">
                             {{ $t('usage.distributionInTw')}}: {{ usage.properties.distributionInTw }}

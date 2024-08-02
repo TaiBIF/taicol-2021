@@ -351,6 +351,30 @@
             </reference-container>
         </template>
 
+
+        <!-- 替代名 -->
+        <template v-if="isNeedType">
+            <br/>
+            <template>
+                <h3 class="subtitle is-4">&nbsp;&nbsp;{{ $t('taxonName.relatedName') }}</h3>
+                <hr/>
+                <div class="columns is-multiline">
+                    <div class="column is-6">
+                        <label class="label" v-text="$t('taxonName.replacementName')"/>
+                        <taxon-name-select v-model="replacementName"></taxon-name-select>
+                    </div>
+                </div>
+                <hr/>
+                
+                <div class="columns is-multiline">
+                    <div class="column is-6">
+                        <label class="label" v-text="$t('taxonName.orthographicVariation')"/>
+                        <taxon-name-select v-model="orthographicVariation"></taxon-name-select>
+                    </div>
+                </div>
+            </template>
+        </template>
+
         <!-- 模式標本 -->
         <template v-if="isNeedType">
             <br/>
@@ -384,7 +408,6 @@
                     </div>
                 </div>
             </template>
-
             <!-- 模式學名 --->
             <template v-else>
                 <h3 class="subtitle is-4">&nbsp;&nbsp;{{ $t('taxonName.typeName') }}</h3>
@@ -488,6 +511,8 @@ export default {
             hybridParents: presetData?.hybridParents || [],
             typeSpecimens: typeSpecimens || [],
             typeName: presetData?.typeName,
+            replacementName: presetData?.replacementName,
+            orthographicVariation: presetData?.orthographicVariation,
             speciesLayers: presetData?.speciesLayers || [],
             note: presetData?.note || '',
 
@@ -667,6 +692,8 @@ export default {
                 })),
                 speciesId: this.species?.id,
                 isHybrid: this.isHybrid,
+                replacementName: this.replacementName ? this.replacementName.id : null,
+                orthographicVariation: this.orthographicVariation ? this.orthographicVariation.id : null,
                 typeName: this.typeName ? this.typeName.id : null,
                 typeSpecimens: this.typeSpecimens.map((t) => {
                     if (t.sex) {

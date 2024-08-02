@@ -117,6 +117,16 @@ class TaxonNameService
 
         $properties = [];
 
+        // 替代名 / 字尾變異學名
+        if ($nomenclature->group !== 'virus') {
+            if ($data['replacement_name']){
+                $properties['replacement_name'] = $data['replacement_name'];
+            }
+            if ($data['orthographic_variation']){
+                $properties['orthographic_variation'] = $data['orthographic_variation'];
+            }
+        }
+
         // 屬以下(模式標本)
         if ($rank->order > $rankGenus->order) {
             $typeSpecimens = $this->formatTypeSpecimens($data['type_specimens'] ?? []);
