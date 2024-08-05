@@ -2,6 +2,8 @@
     <div class="flex gap-1">
         <span v-if="isInTaiwan === 1"
               class="c-tag">{{ $t('usage.inTaiwan') }}</span>
+        <span v-if="isNewRecord === true"
+              class="c-tag">{{ $t('usage.newRecord') }}</span>
         <span v-if="isEndemic"
               class="c-tag">{{ $t('usage.endemic') }}</span>
 
@@ -32,9 +34,13 @@ export default {
     props: {
         alienType: {
             type: String,
-            default: false,
+            default: '',
         },
         isInTaiwan: {
+            type: [Boolean, Number],
+            default: false,
+        },
+        isNewRecord: {
             type: [Boolean, Number],
             default: false,
         },
