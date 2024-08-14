@@ -57,11 +57,12 @@
                 <div class="column is-3">
                     <label class="label is-inline"
                            v-text="this.$t(`reference.${referenceBookTitleKey(type)}`)"/>
-                    <a v-if="book" class="is-inline"
+                    <!-- 書籍詳細資訊 此功能先暫時拿掉 -->
+                    <!-- <a v-if="book" class="is-inline"
                        v-on:click="() => showBook = !showBook">
                         <i v-if="!showBook" class="fas fa-caret-down"></i>
                         <i v-else class="fas fa-caret-down"></i>
-                    </a>
+                    </a> -->
                 </div>
                 <div class="column is-9">
                             <span v-if="properties.bookTitleAbbreviation"
@@ -177,6 +178,62 @@
                 </div>
             </div>
         </div>
+        <!-- 文獻編輯紀錄  -->
+        <div class="row">
+            <p class="text-[14px] mt-8 mb-2 font-bold is-5 is-inline-block"
+                v-on:click="toggleEditLog('reference')">
+                {{ $t('common.editReferenceHistory') }} <a><i class="fas" :class="{'fa-chevron-down': referenceEditLogHidden, 'fa-chevron-up': !referenceEditLogHidden}"></i></a>
+            </p>
+            <div :class="{ hidden: referenceEditLogHidden }">
+                <table class="table text-[14px] is-fullwidth is-hoverable max-w-full">
+                    <thead class="font-bold">
+                    <tr>
+                        <th class="w-[80px]" v-text="$t('common.editDate')"/>
+                        <th class="w-[70px]" v-text="$t('common.editAction')"/>
+                        <th class="w-[270px]" v-text="$t('common.editItem')"/>
+                        <th class="w-[90px]" v-text="$t('common.editBy')"/>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr v-for="editLog in referenceEditLogs">
+                        <td>{{ editLog.createdAt }}</td>
+                        <td>{{ editLog.action }}</td>
+                        <td>{{ editLog.item }}</td>
+                        <td>{{ editLog.by }}</td>
+                    </tr>
+                    </tbody>
+                </table>
+                <button v-if=" referenceLogMore === true " v-on:click="fetchEditLog('reference',referenceLogOffset)"  class="button is-small"> more +</button>
+            </div>
+        </div>
+        <!-- 異名表編輯紀錄  -->
+        <div class="row">
+            <p class="text-[14px] mt-8 mb-2 font-bold is-5 is-inline-block"
+                v-on:click="toggleEditLog('usage')">
+                {{ $t('common.editUsageHistory') }} <a><i class="fas" :class="{'fa-chevron-down': usageEditLogHidden, 'fa-chevron-up': !usageEditLogHidden}"></i></a>
+            </p>
+            <div :class="{ hidden: usageEditLogHidden }">
+                <table class="table text-[14px] is-fullwidth is-hoverable max-w-full">
+                    <thead class="font-bold">
+                    <tr>
+                        <th class="w-[80px]" v-text="$t('common.editDate')"/>
+                        <th class="w-[70px]" v-text="$t('common.editAction')"/>
+                        <th class="w-[270px]" v-text="$t('common.editItem')"/>
+                        <th class="w-[90px]" v-text="$t('common.editBy')"/>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr v-for="editLog in usageEditLogs">
+                        <td>{{ editLog.createdAt }}</td>
+                        <td>{{ editLog.action }}</td>
+                        <td><span v-if=" editLog.editedName !== null ">{{ editLog.editedName }} ({{ editLog.nameStatus }})</span><span v-if=" editLog.item !== null ">: {{ editLog.item }}</span></td>
+                        <td>{{ editLog.by }}</td>
+                    </tr>
+                    </tbody>
+                </table>
+                <button v-if=" usageLogMore === true " v-on:click="fetchEditLog('usage',usageLogOffset)"  class="button is-small"> more +</button>
+            </div>
+        </div>
     </div>
 </template>
 <script>
@@ -238,6 +295,14 @@ export default {
     data() {
         return {
             showBook: false,
+            usageEditLogs: [],
+            usageLogMore: false,
+            usageLogOffset: 0,
+            usageEditLogHidden: true,
+            referenceEditLogs: [],
+            referenceLogMore: false,
+            referenceLogOffset: 0,
+            referenceEditLogHidden: true,
         };
     },
     computed: {
@@ -256,7 +321,23 @@ export default {
             return typeObject ? this.$t(`reference.typeOptions.${typeObject.value}`) : '';
         },
     },
+    mounted() {
+        this.fetchEditLog('usage', 0);
+        this.fetchEditLog('reference', 0);
+    },
     methods: {
+        toggleEditLog(log_type){
+            this[`${log_type}EditLogHidden`] = !this[`${log_type}EditLogHidden`];
+        },
+        fetchEditLog(log_type, offset) {
+
+            this.axios.get(`/edit-logs?log_type=${log_type}&log_id=${this.$route.params.id}&offset=${offset}`)
+                .then(({ data: { editLogs, logMore, logOffset }  }) => {
+                    this[`${log_type}EditLogs`].push(...editLogs);
+                    this[`${log_type}LogMore`] = logMore;
+                    this[`${log_type}LogOffset`] = logOffset;
+                });
+        },
         onShowImportUsage() {
             this.$store.commit('openModal', {
                 component: () => import('../modals/NamespaceImport.vue'),

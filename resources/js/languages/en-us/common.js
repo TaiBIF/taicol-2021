@@ -49,4 +49,15 @@ export default {
 
     // API
     resourceNotFound: 'Resource Not Found',
+
+    // 編輯紀錄
+    editUsageHistory: 'Edit Usage History',
+    editReferenceHistory: 'Edit Reference History',
+    editHistory: 'Edit History',
+    editDate: 'Date',
+    editAction: 'Action',
+    editItem: 'Item',
+    editBy: 'By',
+    editName: 'Name',
+
 };

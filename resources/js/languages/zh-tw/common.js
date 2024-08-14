@@ -49,4 +49,14 @@ export default {
 
     // API
     resourceNotFound: '找不到資源',
+
+    // 編輯紀錄
+    editUsageHistory: '異名表編輯紀錄',
+    editReferenceHistory: '文獻編輯紀錄',
+    editHistory: '編輯紀錄',
+    editDate: '時間',
+    editAction: '操作類型',
+    editItem: '編輯項目',
+    editBy: '編輯者',
+    editName: '學名',
 };

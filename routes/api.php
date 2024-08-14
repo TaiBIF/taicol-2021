@@ -24,6 +24,7 @@ Route::get('/search-persons', 'SearchController@person');
 Route::get('/countries', 'CountryController@index');
 Route::get('/nomenclatures', 'NomenclatureController@index');
 Route::get('/ranks', 'RankController@index');
+Route::get('/edit-logs', 'EditLogController@logs');
 
 Route::get('/persons/{id}', 'PersonController@show');
 Route::get('/persons/{id}/references', 'PersonController@references');

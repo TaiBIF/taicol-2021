@@ -34,7 +34,7 @@ export default {
     inputsInvalid: '欄位填寫錯誤',
 
     // usage
-    'usage.wrongRank': '請選擇正確的種下上階層',
+    // 'usage.wrongRank': '請選擇正確的種下上階層',
     'usage.wrongParent': '請選擇正確上階層',
     'usage.firstMustBeAccepted': '第一張卡片必須為有效學名',
     'usage.min': '必填',

@@ -108,12 +108,40 @@ class MyNamespaceController extends Controller
         try {
             DB::beginTransaction();
             if ($overwrite) {
+                foreach ($reference->usages()->get() as $usage) {
+                    $edit_log = new ImportUsageLog();
+                    $edit_log->reference_usage_id = $usage->id;
+                    $edit_log->reference_id = $referenceId;
+                    $edit_log->taxon_name_id = $usage->taxon_name_id;
+                    $edit_log->action = ImportUsageLog::ACTION_USAGE_DELETE;
+                    $edit_log->user_id = $request->user()->id;
+                    $edit_log->save();
+                }
                 $reference->usages()->delete();
             }
 
             $latestUsage = ReferenceUsage::select('group')->where('reference_id', $referenceId)
                 ->orderBy('group', 'desc')
                 ->first();
+
+
+            $log = new ImportUsageLog();
+            $log->reference_id = $reference->id;
+            
+            // 先判斷這個referernce_id是否已經有任何的usages
+            if (!ImportUsageLog::where('reference_id', $reference->id)->exists()){
+                // 沒有的話是第一次匯入
+                $nowAction = ImportUsageLog::ACTION_FIRST_IMPORT;
+            } else if ($overwrite){
+                $nowAction = ImportUsageLog::ACTION_OVERWRITE;
+            } else {
+                $nowAction = ImportUsageLog::ACTION_APPEND;
+            }
+
+            $log->action = $nowAction;
+            $log->user_id = Auth::user()->id;
+            $log->note = $note;
+            $log->save();
 
             $groupLast = $latestUsage ? $latestUsage->group + 1 : 0;
             $groupUsages = $importUsages->groupBy('namespace_id');
@@ -138,17 +166,20 @@ class MyNamespaceController extends Controller
                     $referenceUsage->is_title = $usage->is_title;
                     $referenceUsage->is_indent = (bool) $usage->is_indent;
                     $reference->usages()->save($referenceUsage);
+
+                    $edit_log = new ImportUsageLog();
+                    $edit_log->reference_usage_id = $referenceUsage->id;
+                    $edit_log->reference_id = $referenceId;
+                    $edit_log->taxon_name_id = $referenceUsage->taxon_name_id;
+                    $edit_log->action = ImportUsageLog::ACTION_USAGE_CREATE;
+                    $edit_log->user_id = $request->user()->id;
+                    $edit_log->save();
+    
                 }
 
                 $groupLast = $usage->group + $groupLast;
             }
 
-            $log = new ImportUsageLog();
-            $log->reference_id = $reference->id;
-            $log->action = $overwrite ? ImportUsageLog::ACTION_OVERWRITE : ImportUsageLog::ACTION_APPEND;
-            $log->user_id = Auth::user()->id;
-            $log->note = $note;
-            $log->save();
 
             DB::commit();
 

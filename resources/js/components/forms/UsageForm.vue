@@ -300,7 +300,8 @@ export default {
             perUsagesIsSimpleViews: Object.keys(this.presetData?.perUsages).map(() => true),
 
             taxonName: this.presetData.taxonName,
-            parentTaxonName: this.presetData.parentTaxonName || this.presetData.taxonName.species,
+            parentTaxonName: this.presetData.parentTaxonName,
+            // parentTaxonName: this.presetData.parentTaxonName || this.presetData.taxonName.species,
             status: this.presetData.status ?? null,
             properties: this.presetData?.properties ? {
                 ...this.presetData.properties,

@@ -6,7 +6,7 @@
                     {{ $t('reference.editNameArea') }}
                 </template>
                 <template v-else>
-                    {{ $t('namespace.checklistEditArea') }}
+                    {{ $t('namespace.checklistEditArea') }} 
                 </template>
                 <tooltip>
                     <i class="fas fa-info-circle"></i>
@@ -30,7 +30,7 @@
                 >
                     {{ $t('namespace.insertNameCard') }}
                 </button>
-                <button class="button is-small"
+                <button v-if="configs.type === 'namespace'" class="button is-small"
                         v-on:click="onOpenPropertiesModal">
                     {{ $t('namespace.setAllProperties') }}
                 </button>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Resources\MyNamespaceCollection;
+use App\Http\Resources\ParentNameResource;
 use App\Http\Resources\PersonCollection;
 use App\Http\Resources\TaxonNameCollection;
 use App\Http\Resources\UsageCollection;
@@ -145,8 +146,16 @@ class MyNamespaceUsageController extends Controller
                     $fail('usage.wrongParent');
                 } else if ($taxonName->rank->key === 'species' && !in_array($parentTaxonName->rank->key, $speciesParentKey)) {
                     $fail('usage.wrongParent');
-                } else if (in_array($taxonName->rank->key, $underSpecies) && $taxonName->properties['species_id'] != $parentTaxonNameId) {
-                    $fail('usage.wrongRank');
+                // 種下
+                } else if (in_array($taxonName->rank->key, $underSpecies) && count($taxonName->properties['species_layers']) == 1 && $taxonName->properties['species_id'] != $parentTaxonNameId) {
+                    $fail('usage.wrongParent');
+                // 種下下
+                } else if (in_array($taxonName->rank->key, $underSpecies) && count($taxonName->properties['species_layers']) == 2) {
+                    $correctParentTaxonNameString = $taxonName->properties['latin_genus'] . ' '  . $taxonName->properties['latin_s1'];
+                    $correctParentTaxonNameString .= ' ' . $taxonName->properties['species_layers'][0]['rank_abbreviation'] . ' ' . $taxonName->properties['species_layers'][0]['latin_name'];
+                    if ($parentTaxonName->name != $correctParentTaxonNameString){
+                        $fail('usage.wrongParent');
+                    }
                 } else if ($parentTaxonNameId === $taxonNameId) {
                     $fail('common.selfNotAllowed');
                 }
@@ -338,7 +347,6 @@ class MyNamespaceUsageController extends Controller
                     $currentUsage = new MyNamespaceUsage();
                     $currentUsage->namespace_id = $namespaceId;
 
-                    $currentUsage->parent_taxon_name_id = $usage['parent_taxon_name_id'] ?? null;
                     $currentUsage->is_for_publish = false;
                     $currentUsage->status = $usage['status'] ?? 'accepted';
                     $currentUsage->type_specimens = $usage['type_specimens'] ?? [];
@@ -347,6 +355,34 @@ class MyNamespaceUsageController extends Controller
                     $currentUsage->properties = $usage['properties'] ?? [];
                     $currentUsage->per_usages = $usage['per_usages'] ?? [];
                     $currentUsage->taxon_name_id = (int) $usage['taxon_name_id'];
+                    
+                    // 自動帶入上階層 優先採用usage
+                    $parent = $usage['parent_taxon_name_id'] ?? DB::table('accepted_usages')
+                    ->select('parent_taxon_name_id')
+                    ->where('taxon_name_id', $currentUsage->taxon_name_id)
+                    ->first();
+
+                    $parent = $parent->parent_taxon_name_id ?? null;
+
+                    if (empty($parent)){
+
+                        $nowName = TaxonName::find($currentUsage->taxon_name_id);
+                        $speciesLayer = $nowName->properties['species_layers'];
+
+                        if (count($speciesLayer) == 1) {
+                            $parent = $nowName->properties['species_id'];
+                        } else if (count($speciesLayer) == 2){
+                            $parentTaxonNameString = $nowName->properties['latin_genus'] . ' '  . $nowName->properties['latin_s1'];
+                            $parentTaxonNameString .= ' ' . $speciesLayer[0]['rank_abbreviation'] . ' ' . $speciesLayer[0]['latin_name'];
+                            $nomenclatureId = $nowName->nomenclature_id;
+                    
+                            $parent = TaxonName::where('name', $parentTaxonNameString)
+                                                ->where('nomenclature_id', $nomenclatureId)
+                                                ->first()->id;
+                        }                                        
+                    }
+
+                    $currentUsage->parent_taxon_name_id = $parent;
                 }
 
                 $currentUsage->group = $group;

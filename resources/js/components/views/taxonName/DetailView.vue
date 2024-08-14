@@ -184,6 +184,36 @@
                         </router-link>
                     </div>
                 </div>
+                <!-- 編輯紀錄 -->
+                <div class="columns">
+                <div class="column is-12">
+                <p class="text-[15px] mb-2 is-5 is-inline-block"
+                    v-on:click="toggleEditLog('taxonname')">
+                    {{ $t('common.editHistory') }} <a><i class="fas" :class="{'fa-chevron-down': editLogHidden, 'fa-chevron-up': !editLogHidden}"></i></a>
+                </p>
+                <div :class="{ hidden: editLogHidden }">
+                    <table class="table text-[14px] is-fullwidth is-hoverable max-w-full">
+                        <thead class="font-bold">
+                        <tr>
+                            <th class="w-[80px]" v-text="$t('common.editDate')"/>
+                            <th class="w-[80px]" v-text="$t('common.editAction')"/>
+                            <th class="w-[270px]" v-text="$t('common.editItem')"/>
+                            <th class="w-[90px]" v-text="$t('common.editBy')"/>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr v-for="editLog in editLogs">
+                            <td>{{ editLog.createdAt }}</td>
+                            <td>{{ editLog.action }}</td>
+                            <td>{{ editLog.item }}</td>
+                            <td>{{ editLog.by }}</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                    <button v-if=" logMore === true " v-on:click="fetchEditLog('taxonname',logOffset)"  class="button is-small"> more +</button>
+                </div>
+                </div>
+                </div>
             </div>
             <div class="column is-6">
                 <div>
@@ -277,6 +307,10 @@ export default {
         return {
             showBook: false,
             parents: [],
+            editLogs: [],
+            logMore: false,
+            logOffset: 0,
+            editLogHidden: true,
         };
     },
     mounted() {
@@ -284,8 +318,21 @@ export default {
             .then(({ data: { data } }) => {
                 this.parents = data;
             });
+        this.fetchEditLog('taxonname', 0);
     },
     methods: {
+        toggleEditLog(){
+            this[`editLogHidden`] = !this[`editLogHidden`];
+        },
+        fetchEditLog(log_type, offset) {
+            this.axios.get(`/edit-logs?log_type=${log_type}&log_id=${this.$route.params.id}&offset=${offset}`)
+                .then(({ data: { editLogs, logMore, logOffset }  }) => {
+                    console.log(editLogs, logMore, logOffset)
+                    this[`editLogs`].push(...editLogs);
+                    this[`logMore`] = logMore;
+                    this[`logOffset`] = logOffset;
+                });
+        },
         showTypeSpecimen: (specimen) => combo([specimen]),
         renderPersonFullName(person, type) {
             return fullName(person);

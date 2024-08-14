@@ -34,7 +34,7 @@ export default {
     inputsInvalid: 'Input not valid',
 
     // usage
-    'usage.wrongRank': 'Please select the correct rank',
+    // 'usage.wrongRank': 'Please select the correct rank',
     'usage.wrongParent': 'Please select the correct parent',
     'usage.firstMustBeAccepted': 'First card should be accepted.',
     'usage.min': 'Required',
