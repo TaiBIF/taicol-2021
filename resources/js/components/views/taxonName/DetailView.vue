@@ -114,14 +114,14 @@
                     </div>
                 </div>
 
-                <div v-if="orthographicVariation" class="columns">
+                <div v-if="spellingVariation" class="columns">
                     <div class="column is-3">
                         <p class="has-text-weight-bold"
-                           v-text="$t('taxonName.orthographicVariation')"/>
+                           v-text="$t('taxonName.spellingVariation')"/>
                     </div>
                     <div class="column is-9">
-                        <router-link :to="{name: 'taxon-name-page', params: {id: orthographicVariation.id}}" class="my-link">
-                            <taxon-name-full-label :taxon-name="orthographicVariation"></taxon-name-full-label>
+                        <router-link :to="{name: 'taxon-name-page', params: {id: spellingVariation.id}}" class="my-link">
+                            <taxon-name-full-label :taxon-name="spellingVariation"></taxon-name-full-label>
                         </router-link>
                     </div>
                 </div>
@@ -282,7 +282,7 @@ export default {
         replacementName: {
             type: Object,
         },
-        orthographicVariation: {
+        spellingVariation: {
             type: Object,
         },
         typeName: {

@@ -271,6 +271,10 @@
                                         $t(`taxonName.authors`)
                                 }}
                             </label>
+                                                    <!-- <button  class="button is-small is-outlined">
+                            帶入文獻作者
+                        </button>
+ -->
                             <person-select
                                 v-model="targetAuthors"
                                 :errors="errors.authors"
@@ -368,8 +372,8 @@
                 
                 <div class="columns is-multiline">
                     <div class="column is-6">
-                        <label class="label" v-text="$t('taxonName.orthographicVariation')"/>
-                        <taxon-name-select v-model="orthographicVariation"></taxon-name-select>
+                        <label class="label" v-text="$t('taxonName.spellingVariation')"/>
+                        <taxon-name-select v-model="spellingVariation"></taxon-name-select>
                     </div>
                 </div>
             </template>
@@ -512,7 +516,7 @@ export default {
             typeSpecimens: typeSpecimens || [],
             typeName: presetData?.typeName,
             replacementName: presetData?.replacementName,
-            orthographicVariation: presetData?.orthographicVariation,
+            spellingVariation: presetData?.spellingVariation,
             speciesLayers: presetData?.speciesLayers || [],
             note: presetData?.note || '',
 
@@ -693,7 +697,7 @@ export default {
                 speciesId: this.species?.id,
                 isHybrid: this.isHybrid,
                 replacementName: this.replacementName ? this.replacementName.id : null,
-                orthographicVariation: this.orthographicVariation ? this.orthographicVariation.id : null,
+                spellingVariation: this.spellingVariation ? this.spellingVariation.id : null,
                 typeName: this.typeName ? this.typeName.id : null,
                 typeSpecimens: this.typeSpecimens.map((t) => {
                     if (t.sex) {

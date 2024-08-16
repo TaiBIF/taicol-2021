@@ -28,7 +28,7 @@ export default {
     specimenType: '模式標本',
     relatedName: '關聯學名',
     replacementName: '替代名',
-    orthographicVariation: '字尾變異學名',
+    spellingVariation: '拼法相異學名',
     typeName: '模式學名',
     latinGenus: '屬名',
     species: '種名',

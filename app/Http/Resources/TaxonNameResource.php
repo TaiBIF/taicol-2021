@@ -46,7 +46,7 @@ class TaxonNameResource extends JsonResource
             ])->find((int) $this->properties['replacement_name'])
         ])[0] : null;
 
-        $orthographicVariation = ($this->properties['orthographic_variation'] ?? '') ? TaxonNameCollection::collection([
+        $spellingVariation = ($this->properties['spelling_variation'] ?? '') ? TaxonNameCollection::collection([
             TaxonName::with([
                 'authors',
                 'exAuthors',
@@ -54,7 +54,7 @@ class TaxonNameResource extends JsonResource
                 'nomenclature',
                 'originalTaxonName.authors',
                 'originalTaxonName.exauthors'
-            ])->find((int) $this->properties['orthographic_variation'])
+            ])->find((int) $this->properties['spelling_variation'])
         ])[0] : null;
 
         return [
@@ -96,7 +96,7 @@ class TaxonNameResource extends JsonResource
             }),
             'properties' => $this->properties,
             'replacement_name' => $replacementName,
-            'orthographic_variation' => $orthographicVariation,
+            'spelling_variation' => $spellingVariation,
             'type_name' => $typeName,
             'publish_year' => $this->publish_year,
             'hybrid_parents' => TaxonNameSimpleSubResource::collection($this->hybridParents),

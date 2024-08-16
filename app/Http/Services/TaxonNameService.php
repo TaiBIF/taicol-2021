@@ -117,13 +117,13 @@ class TaxonNameService
 
         $properties = [];
 
-        // 替代名 / 字尾變異學名
+        // 替代名 / 拼法相異學名
         if ($nomenclature->group !== 'virus') {
             if ($data['replacement_name']){
                 $properties['replacement_name'] = $data['replacement_name'];
             }
-            if ($data['orthographic_variation']){
-                $properties['orthographic_variation'] = $data['orthographic_variation'];
+            if ($data['spelling_variation']){
+                $properties['spelling_variation'] = $data['spelling_variation'];
             }
         }
 
