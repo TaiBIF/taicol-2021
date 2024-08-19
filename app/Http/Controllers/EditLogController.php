@@ -30,8 +30,8 @@ class EditLogController extends Controller
                     ->select('columns','import_usage_logs.created_at','action','user_id','reference_usages.status','import_usage_logs.taxon_name_id')
                     ->Leftjoin('reference_usages', 'reference_usage_id', '=', 'reference_usages.id')
                     ->where('import_usage_logs.reference_id','=',$log_id)
-                    ->where('action', '!=', ImportUsageLog::ACTION_USAGE_CREATE)
-                    ->orderByDesc('created_at')
+                    // ->where('action', '!=', ImportUsageLog::ACTION_USAGE_CREATE)
+                    ->orderBy('created_at')
                     ->limit(5)
                     ->offset($offset)
                     ->get(); 
@@ -44,7 +44,7 @@ class EditLogController extends Controller
                     ->select('columns','action','user_id','created_at')
                     ->where('logs.model_id','=',$log_id)
                     ->where('logs.type','=', LogTypeMap[$log_type])
-                    ->orderByDesc('created_at')
+                    ->orderBy('created_at')
                     ->limit(5)
                     ->offset($offset)
                     ->get(); 

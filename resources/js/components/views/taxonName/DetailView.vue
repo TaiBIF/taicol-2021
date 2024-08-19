@@ -187,18 +187,18 @@
                 <!-- 編輯紀錄 -->
                 <div class="columns">
                 <div class="column is-12">
-                <p class="text-[15px] mb-2 is-5 is-inline-block"
+                <p class="text-[15px] mb-2 is-5 is-inline-block has-text-grey"
                     v-on:click="toggleEditLog('taxonname')">
                     {{ $t('common.editHistory') }} <a><i class="fas" :class="{'fa-chevron-down': editLogHidden, 'fa-chevron-up': !editLogHidden}"></i></a>
                 </p>
                 <div :class="{ hidden: editLogHidden }">
-                    <table class="table text-[14px] is-fullwidth is-hoverable max-w-full">
+                    <table class="table text-[14px] is-fullwidth max-w-full has-text-grey">
                         <thead class="font-bold">
                         <tr>
-                            <th class="w-[80px]" v-text="$t('common.editDate')"/>
-                            <th class="w-[80px]" v-text="$t('common.editAction')"/>
-                            <th class="w-[270px]" v-text="$t('common.editItem')"/>
-                            <th class="w-[90px]" v-text="$t('common.editBy')"/>
+                            <th class="w-[80px] has-text-grey" v-text="$t('common.editDate')"/>
+                            <th class="w-[80px] has-text-grey" v-text="$t('common.editAction')"/>
+                            <th class="w-[270px] has-text-grey" v-text="$t('common.editItem')"/>
+                            <th class="w-[90px] has-text-grey" v-text="$t('common.editBy')"/>
                         </tr>
                         </thead>
                         <tbody>

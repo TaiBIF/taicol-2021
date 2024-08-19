@@ -73,7 +73,7 @@
             <div v-if="showBook" class="columns">
                 <div class="column is-1"></div>
                 <div class="column is-10">
-                    <div v-if="book" class="box has-background-grey-lighter">
+                    <div v-if="book" class="box has-background-greyer">
                         <book-view v-bind="book"></book-view>
                     </div>
                 </div>
@@ -179,19 +179,19 @@
             </div>
         </div>
         <!-- 文獻編輯紀錄  -->
-        <div class="row">
-            <p class="text-[14px] mt-8 mb-2 font-bold is-5 is-inline-block"
+        <div class="row ">
+            <p class="text-[14px] mt-8 mb-2 font-bold is-5 is-inline-block has-text-grey"
                 v-on:click="toggleEditLog('reference')">
                 {{ $t('common.editReferenceHistory') }} <a><i class="fas" :class="{'fa-chevron-down': referenceEditLogHidden, 'fa-chevron-up': !referenceEditLogHidden}"></i></a>
             </p>
             <div :class="{ hidden: referenceEditLogHidden }">
-                <table class="table text-[14px] is-fullwidth is-hoverable max-w-full">
+                <table class="table text-[14px] is-fullwidth max-w-full has-text-grey">
                     <thead class="font-bold">
                     <tr>
-                        <th class="w-[80px]" v-text="$t('common.editDate')"/>
-                        <th class="w-[70px]" v-text="$t('common.editAction')"/>
-                        <th class="w-[270px]" v-text="$t('common.editItem')"/>
-                        <th class="w-[90px]" v-text="$t('common.editBy')"/>
+                        <th class="w-[80px] has-text-grey" v-text="$t('common.editDate')"/>
+                        <th class="w-[70px] has-text-grey" v-text="$t('common.editAction')"/>
+                        <th class="w-[270px] has-text-grey" v-text="$t('common.editItem')"/>
+                        <th class="w-[90px] has-text-grey" v-text="$t('common.editBy')"/>
                     </tr>
                     </thead>
                     <tbody>
@@ -208,18 +208,18 @@
         </div>
         <!-- 異名表編輯紀錄  -->
         <div class="row">
-            <p class="text-[14px] mt-8 mb-2 font-bold is-5 is-inline-block"
+            <p class="text-[14px] mt-8 mb-2 font-bold is-5 is-inline-block has-text-grey"
                 v-on:click="toggleEditLog('usage')">
                 {{ $t('common.editUsageHistory') }} <a><i class="fas" :class="{'fa-chevron-down': usageEditLogHidden, 'fa-chevron-up': !usageEditLogHidden}"></i></a>
             </p>
             <div :class="{ hidden: usageEditLogHidden }">
-                <table class="table text-[14px] is-fullwidth is-hoverable max-w-full">
+                <table class="table text-[14px] is-fullwidth max-w-full has-text-grey">
                     <thead class="font-bold">
                     <tr>
-                        <th class="w-[80px]" v-text="$t('common.editDate')"/>
-                        <th class="w-[70px]" v-text="$t('common.editAction')"/>
-                        <th class="w-[270px]" v-text="$t('common.editItem')"/>
-                        <th class="w-[90px]" v-text="$t('common.editBy')"/>
+                        <th class="w-[80px] has-text-grey" v-text="$t('common.editDate')"/>
+                        <th class="w-[70px] has-text-grey" v-text="$t('common.editAction')"/>
+                        <th class="w-[270px] has-text-grey" v-text="$t('common.editItem')"/>
+                        <th class="w-[90px] has-text-grey" v-text="$t('common.editBy')"/>
                     </tr>
                     </thead>
                     <tbody>

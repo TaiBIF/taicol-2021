@@ -88,33 +88,35 @@
                         </router-link>
                     </div>
                 </div>
-            </div>
-            <!-- 人名編輯紀錄  -->
-            <div class="column is-7">
-                <p class="text-[15px] mb-2 is-5 is-inline-block"
-                    v-on:click="toggleEditLog()">
-                    {{ $t('common.editHistory') }} <a><i class="fas" :class="{'fa-chevron-down': editLogHidden, 'fa-chevron-up': !editLogHidden}"></i></a>
-                </p>
-                <div :class="{ hidden: editLogHidden }">
-                    <table class="table text-[14px] is-fullwidth is-hoverable max-w-full">
-                        <thead class="font-bold">
-                        <tr>
-                            <th class="w-[80px]" v-text="$t('common.editDate')"/>
-                            <th class="w-[80px]" v-text="$t('common.editAction')"/>
-                            <th class="w-[270px]" v-text="$t('common.editItem')"/>
-                            <th class="w-[90px]" v-text="$t('common.editBy')"/>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr v-for="editLog in editLogs">
-                            <td>{{ editLog.createdAt }}</td>
-                            <td>{{ editLog.action }}</td>
-                            <td>{{ editLog.item }}</td>
-                            <td>{{ editLog.by }}</td>
-                        </tr>
-                        </tbody>
-                    </table>
-                    <button v-if=" logMore === true " v-on:click="fetchEditLog('person', logOffset)"  class="button is-small"> more +</button>
+                <div class="columns">
+                    <!-- 人名編輯紀錄  -->
+                    <div class="column">
+                        <p class="text-[15px] mb-2 is-5 is-inline-block has-text-grey"
+                            v-on:click="toggleEditLog()">
+                            {{ $t('common.editHistory') }} <a><i class="fas" :class="{'fa-chevron-down': editLogHidden, 'fa-chevron-up': !editLogHidden}"></i></a>
+                        </p>
+                        <div :class="{ hidden: editLogHidden }">
+                            <table class="table text-[14px] is-fullwidth max-w-full  has-text-grey">
+                                <thead class="font-bold">
+                                <tr>
+                                    <th class="w-[80px]  has-text-grey" v-text="$t('common.editDate')"/>
+                                    <th class="w-[80px]  has-text-grey" v-text="$t('common.editAction')"/>
+                                    <th class="w-[270px]  has-text-grey" v-text="$t('common.editItem')"/>
+                                    <th class="w-[90px]  has-text-grey" v-text="$t('common.editBy')"/>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr v-for="editLog in editLogs">
+                                    <td>{{ editLog.createdAt }}</td>
+                                    <td>{{ editLog.action }}</td>
+                                    <td>{{ editLog.item }}</td>
+                                    <td>{{ editLog.by }}</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                            <button v-if=" logMore === true " v-on:click="fetchEditLog('person', logOffset)"  class="button is-small"> more +</button>
+                        </div>
+                    </div>                    
                 </div>
             </div>
 

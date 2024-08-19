@@ -13,7 +13,7 @@ class Log extends Model
 
     const ACTION_CREATE = 1;
     const ACTION_UPDATE = 2;
-    const ACTION_IMPORT = 2;
+    const ACTION_IMPORT = 3;
 
     public function user()
     {
