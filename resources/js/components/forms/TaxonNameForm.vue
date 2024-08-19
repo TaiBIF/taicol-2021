@@ -365,15 +365,18 @@
                 <div class="columns is-multiline">
                     <div class="column is-6">
                         <label class="label" v-text="$t('taxonName.replacementName')"/>
-                        <taxon-name-select v-model="replacementName"></taxon-name-select>
+                        <taxon-name-select v-model="replacementName"
+                                            :errors="errors['replacementName']">
+                        </taxon-name-select>
                     </div>
                 </div>
                 <hr/>
-                
                 <div class="columns is-multiline">
                     <div class="column is-6">
                         <label class="label" v-text="$t('taxonName.spellingVariation')"/>
-                        <taxon-name-select v-model="spellingVariation"></taxon-name-select>
+                        <taxon-name-select v-model="spellingVariation"
+                                          :errors="errors['spellingVariation']">
+                        </taxon-name-select>
                     </div>
                 </div>
             </template>

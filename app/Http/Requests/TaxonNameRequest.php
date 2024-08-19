@@ -39,6 +39,24 @@ class TaxonNameRequest extends FormRequest
                     }
                 },
             ],
+            'replacement_name' => [
+                'nullable',
+                'exists:taxon_names,id',
+                function ($attribute, $value, $fail) use ($id) {
+                    if ($id === $value) {
+                        $fail('common.selfNotAllowed');
+                    }
+                },
+            ],
+            'spelling_variation' => [
+                'nullable',
+                'exists:taxon_names,id',
+                function ($attribute, $value, $fail) use ($id) {
+                    if ($id === $value) {
+                        $fail('common.selfNotAllowed');
+                    }
+                },
+            ],
             'hybrid_parents_id.0' => [
                 Rule::requiredIf($rank && $rank->key === 'hybrid-formula'),
                 Rule::requiredIf(count($hybridParents) === 1),
