@@ -1,7 +1,7 @@
 <template>
     <div class="container">
         <div class="columns rows">
-            <div class="column is-5">
+            <div class="column is-6">
                 <div class="columns">
                     <div class="column is-3">
                         <label class="label" v-text="$t('person.lastName')"/>

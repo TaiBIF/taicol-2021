@@ -11,10 +11,11 @@ const actionMap = [
     ImportUsageLog::ACTION_FIRST_IMPORT => 'import',
     ImportUsageLog::ACTION_APPEND => 'append',
     ImportUsageLog::ACTION_OVERWRITE => 'overwrite',
-    ImportUsageLog::ACTION_USAGE_CREATE => 'create',
+    ImportUsageLog::ACTION_USAGE_ADD => 'add',
     ImportUsageLog::ACTION_USAGE_UPDATE => 'edit',
     ImportUsageLog::ACTION_USAGE_DELETE => 'delete',
 ];
+
 
 
 const statusMap = [

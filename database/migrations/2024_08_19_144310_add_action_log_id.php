@@ -15,11 +15,7 @@ return new class extends Migration
     {
         Schema::table('import_usage_logs', function (Blueprint $table) {
             //
-            $table->json('old_value')->nullable();
-            $table->json('new_value')->nullable();
-            $table->text('columns')->nullable();
-            $table->unsignedInteger('reference_usage_id')->nullable();
-            $table->foreign('reference_usage_id')->references('id')->on('reference_usages');
+            $table->unsignedInteger('action_log_id')->nullable();
         });
     }
 
@@ -32,11 +28,7 @@ return new class extends Migration
     {
         Schema::table('import_usage_logs', function (Blueprint $table) {
             //
-            $table->dropColumn('old_value');
-            $table->dropColumn('new_value');
-            $table->dropColumn('columns');
-            $table->dropColumn('reference_usage_id');
+            $table->dropColumn('action_log_id');
         });
-
     }
 };

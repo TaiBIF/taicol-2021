@@ -12,7 +12,7 @@ class ImportUsageLog extends Model
     const ACTION_OVERWRITE = 2;
 
     # 編輯異名表
-    const ACTION_USAGE_CREATE = 3;
+    const ACTION_USAGE_ADD = 3;
     const ACTION_USAGE_UPDATE = 4;
     const ACTION_USAGE_DELETE = 5;
 

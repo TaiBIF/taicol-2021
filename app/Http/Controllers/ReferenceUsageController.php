@@ -449,7 +449,7 @@ class ReferenceUsageController extends Controller
                     }
                 } else {
 
-                    $nowAction = ImportUsageLog::ACTION_USAGE_CREATE;
+                    $nowAction = ImportUsageLog::ACTION_USAGE_ADD;
                     $currentUsage = new ReferenceUsage();
                     $currentUsage->reference_id = $id;
 

@@ -29,6 +29,7 @@ return new class extends Migration
     {
         Schema::table('import_usage_logs', function (Blueprint $table) {
             //
+            $table->dropColumn('taxon_name_id');
         });
     }
 };

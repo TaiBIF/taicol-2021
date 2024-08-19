@@ -107,18 +107,6 @@ class MyNamespaceController extends Controller
 
         try {
             DB::beginTransaction();
-            if ($overwrite) {
-                foreach ($reference->usages()->get() as $usage) {
-                    $edit_log = new ImportUsageLog();
-                    $edit_log->reference_usage_id = $usage->id;
-                    $edit_log->reference_id = $referenceId;
-                    $edit_log->taxon_name_id = $usage->taxon_name_id;
-                    $edit_log->action = ImportUsageLog::ACTION_USAGE_DELETE;
-                    $edit_log->user_id = $request->user()->id;
-                    $edit_log->save();
-                }
-                $reference->usages()->delete();
-            }
 
             $latestUsage = ReferenceUsage::select('group')->where('reference_id', $referenceId)
                 ->orderBy('group', 'desc')
@@ -142,6 +130,21 @@ class MyNamespaceController extends Controller
             $log->user_id = Auth::user()->id;
             $log->note = $note;
             $log->save();
+            $action_log_id = $log->id;
+
+            if ($overwrite) {
+                foreach ($reference->usages()->get() as $usage) {
+                    $edit_log = new ImportUsageLog();
+                    $edit_log->reference_usage_id = $usage->id;
+                    $edit_log->reference_id = $referenceId;
+                    $edit_log->taxon_name_id = $usage->taxon_name_id;
+                    $edit_log->action = ImportUsageLog::ACTION_USAGE_DELETE;
+                    $edit_log->action_log_id = $action_log_id;
+                    $edit_log->user_id = $request->user()->id;
+                    $edit_log->save();
+                }
+                $reference->usages()->delete();
+            }
 
             $groupLast = $latestUsage ? $latestUsage->group + 1 : 0;
             $groupUsages = $importUsages->groupBy('namespace_id');
@@ -171,7 +174,8 @@ class MyNamespaceController extends Controller
                     $edit_log->reference_usage_id = $referenceUsage->id;
                     $edit_log->reference_id = $referenceId;
                     $edit_log->taxon_name_id = $referenceUsage->taxon_name_id;
-                    $edit_log->action = ImportUsageLog::ACTION_USAGE_CREATE;
+                    $edit_log->action = ImportUsageLog::ACTION_USAGE_ADD;
+                    $edit_log->action_log_id = $action_log_id;
                     $edit_log->user_id = $request->user()->id;
                     $edit_log->save();
     

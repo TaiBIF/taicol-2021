@@ -28,7 +28,7 @@ export default {
     specimenType: 'Type Specimen',
     relatedName: 'Related Name',
     replacementName: 'Replacement Name',
-    spellingVariation: 'Spelling variation',
+    spellingVariation: 'Spelling Variation',
     typeName: 'Type Taxon',
     latinGenus: 'Genus',
     species: 'Species',
