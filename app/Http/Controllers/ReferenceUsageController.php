@@ -417,14 +417,17 @@ class ReferenceUsageController extends Controller
 
 
                 if (isset($usage['id']) && $usage['id']) {
+
                     $currentUsage = ReferenceUsage::find($usage['id']);
+
                     $old_value = array(
                         "status" => $currentUsage->status,
                         "is_indent" => $currentUsage->is_indent,
                         "is_title" => $currentUsage->is_title,
                         "accepted_taxon_name_id" => $currentUsage->accepted_taxon_name_id,
-                        "indications" => $currentUsage->properties['indications']
+                        "indications" => isset($currentUsage->properties['indications']) ? $currentUsage->properties['indications'] : null,
                     );
+
 
                     $nowAction = ImportUsageLog::ACTION_USAGE_UPDATE;
                      
@@ -448,6 +451,7 @@ class ReferenceUsageController extends Controller
                         continue; // 這邊就會跳出loop
                     }
                 } else {
+
 
                     $nowAction = ImportUsageLog::ACTION_USAGE_ADD;
                     $currentUsage = new ReferenceUsage();
@@ -502,6 +506,7 @@ class ReferenceUsageController extends Controller
                 $currentUsage->is_indent = (bool) $usage['is_indent'];
                 $currentUsage->save();
 
+
                 if ($currentUsage->status === 'accepted') {
                     $previousUsageId = $currentUsage->taxon_name_id;
                 }
@@ -518,25 +523,27 @@ class ReferenceUsageController extends Controller
                 
                 // $columnChanges = [];
                 if ($nowAction == ImportUsageLog::ACTION_USAGE_UPDATE){
-                    // $now_c = 'taxon_name_id';
+                    
                     $new_value = array();
                     
                     foreach (['status','is_indent','is_title','accepted_taxon_name_id'] as $now_c){
                         
                         if ($currentUsage[$now_c] != $old_value[$now_c]){
                             $new_value[$now_c] = $currentUsage[$now_c];
-                            // array_push();
                         } else {
                             unset($old_value[$now_c]);
                         }
                     }
 
-                    if ($currentUsage['properties']['indications'] != $old_value['indications']){
-                        $new_value['indications'] = $currentUsage['indications'];
-                    }
-                     else {
+                    if (isset($currentUsage['properties']['indications'])){
+                        if ($currentUsage['properties']['indications'] !== $old_value['indications']){
+                            $new_value['indications'] = $currentUsage['indications'];
+                        } else {
+                            unset($old_value['indications']);
+                        }
+                    } else if (!isset($old_value['indications'])){
                         unset($old_value['indications']);
-                    }
+                    } 
 
                     if (count($old_value)>0){
                         $edit_log->old_value = json_encode($old_value);
@@ -546,8 +553,7 @@ class ReferenceUsageController extends Controller
                         // 沒有修改的不存編輯紀錄
                         continue;
                     }
-                    
-                }   
+                }
 
                 $edit_log->save();
 
