@@ -84,7 +84,7 @@
                 <!-- 模式 --->
                 <section v-if="!isUsageFormSimple">
                     <!-- 模式標本 --->
-                    <template v-if="taxonName.rank.order > this.genusRank.order">
+                    <template v-if="taxonName.rank.order >= this.speciesRank.order">
                         <div class="title is-5">
                             {{ $t('taxonName.specimenType') }}
                             <div class="is-pulled-right buttons">
@@ -233,7 +233,7 @@ export default {
     },
     computed: {
         ...mapGetters({
-            genusRank: 'rank/getGenusRank',
+            speciesRank: 'rank/getSpeciesRank',
         }),
         taxonNameId() {
             return this.taxonName?.id;
