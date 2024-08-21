@@ -127,10 +127,10 @@ class TaxonNameService
             }
         }
 
-        // 屬以下(模式標本)
+        // 屬以下(模式標本): 種和以下（order >= 40）
         if ($rank->order > $rankGenus->order) {
             $typeSpecimens = $this->formatTypeSpecimens($data['type_specimens'] ?? []);
-        } else { // 屬(含)以上(模式學名)
+        } else { // 屬(含)以上(模式學名): 屬以上，包含屬的亞階層（order <= 39）
             $properties['type_name'] = $data['type_name'] ?? '';
             $typeSpecimens = [];
         }

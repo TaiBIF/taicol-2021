@@ -95,7 +95,7 @@ export default {
         async onEditingTaxonName() {
             const app = this;
             const { id, usageId } = app.$route.params;
-            const { data: { data } } = await app.axios.get(`/taxon-names/${app.presetData.taxonName.id}/info`);
+            const { data: { data } } = await app.axios.get(`/taxon-names/${app.presetData.taxonName.id}/usage-info`);
 
             this.$store.commit('layer/TAXON_NAME', {
                 onAfterSubmit: async () => {

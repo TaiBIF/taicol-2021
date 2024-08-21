@@ -251,7 +251,24 @@ class TaxonNameController extends Controller
         }
 
         return response()->json([
-            'data' => TaxonNameCollection::collection([$taxonName])[0]
+            'data' => new TaxonNameResource($taxonName)
+        ]);
+    }
+
+    public function usage_info($id)
+    {
+        $taxonName = TaxonName::with([
+            'authors', 'exAuthors', 'reference', 'usages', 'nomenclature', 'rank'
+        ])->find($id);
+
+        if (!$taxonName || $id != (int) $id) {
+            return response([
+                'message' => 'Not Found.'
+            ], 404);
+        }
+
+        return response()->json([
+            'data' => TaxonNameCollection::collection([$taxonName])[0],
         ]);
     }
 
@@ -711,7 +728,6 @@ class TaxonNameController extends Controller
             'type_specimens' => $request->get('type_specimens'),
             'publish_year' => $request->get('publish_year'),
             'note' => $request->get('note'),
-
             'is_hybrid' => $request->get('is_hybrid'),
             'hybrid_parents_id' => $request->get('hybrid_parents_id'),
             'latin_genus' => $request->get('latin_genus'),

@@ -61,6 +61,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::resource('taxon-names', 'TaxonNameController')->except('index', 'show');
     Route::get('taxon-names/{id}/info', 'TaxonNameController@info');
+    Route::get('taxon-names/{id}/usage-info', 'TaxonNameController@usage_info');
 
     // reference usage edit
     Route::get('references/{id}/usages-edit', 'ReferenceUsageController@index');

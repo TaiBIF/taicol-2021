@@ -9,6 +9,7 @@ use App\Reference;
 use App\TaxonName;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Log;
 
 class TaxonNameResource extends JsonResource
 {
@@ -23,6 +24,8 @@ class TaxonNameResource extends JsonResource
         $speciesLayer = isset($this->properties['species_layers']) ? $this->properties['species_layers'] : [];
 
         $species = $this->properties['species_id'] ? TaxonName::find($this->properties['species_id']) : null;
+        $replacementName = isset($this->properties['replacement_name']) ? TaxonName::find($this->properties['replacement_name']) : null;
+        $spellingVariation = isset($this->properties['spelling_variation']) ? TaxonName::find($this->properties['spelling_variation']) : null;
 
         $typeName = ($this->properties['type_name'] ?? '') ? TaxonNameCollection::collection([
             TaxonName::with([
@@ -35,27 +38,8 @@ class TaxonNameResource extends JsonResource
             ])->find((int) $this->properties['type_name'])
         ])[0] : null;
 
-        $replacementName = ($this->properties['replacement_name'] ?? '') ? TaxonNameCollection::collection([
-            TaxonName::with([
-                'authors',
-                'exAuthors',
-                'reference',
-                'nomenclature',
-                'originalTaxonName.authors',
-                'originalTaxonName.exauthors'
-            ])->find((int) $this->properties['replacement_name'])
-        ])[0] : null;
-
-        $spellingVariation = ($this->properties['spelling_variation'] ?? '') ? TaxonNameCollection::collection([
-            TaxonName::with([
-                'authors',
-                'exAuthors',
-                'reference',
-                'nomenclature',
-                'originalTaxonName.authors',
-                'originalTaxonName.exauthors'
-            ])->find((int) $this->properties['spelling_variation'])
-        ])[0] : null;
+        Log::info('$this->originalTaxonName');
+        Log::info($this->originalTaxonName);
 
         return [
             'id' => $this->id,
@@ -95,8 +79,8 @@ class TaxonNameResource extends JsonResource
                 ];
             }),
             'properties' => $this->properties,
-            'replacement_name' => $replacementName,
-            'spelling_variation' => $spellingVariation,
+            'replacement_name' => $replacementName ? new TaxonNameSimpleSubResource($replacementName) : null,
+            'spelling_variation' =>  $replacementName ? new TaxonNameSimpleSubResource($spellingVariation) : null,
             'type_name' => $typeName,
             'publish_year' => $this->publish_year,
             'hybrid_parents' => TaxonNameSimpleSubResource::collection($this->hybridParents),

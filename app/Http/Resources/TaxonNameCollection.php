@@ -56,27 +56,9 @@ class TaxonNameCollection extends JsonResource
             ])->find((int) $this->properties['type_name'])
         ])[0] : null;
 
-        $replacementName = ($this->properties['replacement_name'] ?? '') ? TaxonNameCollection::collection([
-            TaxonName::with([
-                'authors',
-                'exAuthors',
-                'reference',
-                'nomenclature',
-                'originalTaxonName.authors',
-                'originalTaxonName.exauthors'
-            ])->find((int) $this->properties['replacement_name'])
-        ])[0] : null;
 
-        $spellingVariation = ($this->properties['spelling_variation'] ?? '') ? TaxonNameCollection::collection([
-            TaxonName::with([
-                'authors',
-                'exAuthors',
-                'reference',
-                'nomenclature',
-                'originalTaxonName.authors',
-                'originalTaxonName.exauthors'
-            ])->find((int) $this->properties['spelling_variation'])
-        ])[0] : null;
+        $replacementName = isset($this->properties['replacement_name']) ? TaxonName::find($this->properties['replacement_name']) : null;
+        $spellingVariation = isset($this->properties['spelling_variation']) ? TaxonName::find($this->properties['spelling_variation']) : null;
 
         $commonNameUsage = $this->usages->first();
         $commonNameTw = collect($commonNameUsage->properties['common_names'] ?? [])->where('language', 'zh-tw')->first();
@@ -93,6 +75,8 @@ class TaxonNameCollection extends JsonResource
                 'name_in_reference' => $this->properties['usage']['name_in_reference'] ?? '',
             ] : [],
             'original_taxon_name' => $this->originalTaxonName ? TaxonNameCollection::collection([$this->originalTaxonName])[0] : null,
+            'replacement_name' => $replacementName ? new TaxonNameSimpleSubResource($replacementName) : null,
+            'spelling_variation' =>  $replacementName ? new TaxonNameSimpleSubResource($spellingVariation) : null,
             'rank' => $this->rank,
             'authors' => PersonCollection::collection($this->authors),
             'ex_authors' => PersonCollection::collection($this->exauthors),
@@ -120,8 +104,6 @@ class TaxonNameCollection extends JsonResource
             }),
             'root' => $rootId ? TaxonName::find($rootId) : null,
             'properties' => $this->properties,
-            'replacement_name' => $replacementName,
-            'spelling_variation' => $spellingVariation,
             'type_name' => $typeName,
             'publish_year' => $this->publish_year,
             'hybrid_parents' => $this->hybridParents->map(function ($p) {

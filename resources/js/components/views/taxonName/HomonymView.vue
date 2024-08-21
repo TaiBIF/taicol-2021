@@ -25,7 +25,7 @@
                     :to="{name: 'taxon-name-page', params: {id: taxonName.id}}"
                     class="my-link"
                 >
-                    <template v-if="taxonName.rank.order > 30">
+                    <template v-if="taxonName.rank.order > this.genusRank.order">
                         <i>{{ taxonName.name }}</i>
                     </template>
                     <template v-else>
@@ -67,6 +67,7 @@
     </table>
 </template>
 <script>
+import { mapGetters } from 'vuex';
 import AuthorName from '../../AuthorName';
 import SortButton from '../../SortButton';
 import StatusWithIndications from '../../StatusWithIndications';
@@ -78,6 +79,11 @@ export default {
             type: Object,
             required: true,
         },
+    },
+    computed: {
+        ...mapGetters({
+            genusRank: 'rank/getGenusRank',
+        }),
     },
     data() {
         return {

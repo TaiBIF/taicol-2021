@@ -84,7 +84,7 @@
                 <!-- 模式 --->
                 <section v-if="!isUsageFormSimple">
                     <!-- 模式標本 --->
-                    <template v-if="taxonName.rank.order > 30">
+                    <template v-if="taxonName.rank.order > this.genusRank.order">
                         <div class="title is-5">
                             {{ $t('taxonName.specimenType') }}
                             <div class="is-pulled-right buttons">
@@ -204,6 +204,7 @@
     </div>
 </template>
 <script>
+import { mapGetters } from 'vuex';
 import { cloneDeep } from 'lodash';
 import draggable from 'vuedraggable';
 import StatusSelect from '../selects/StatusSelect.vue';
@@ -231,6 +232,9 @@ export default {
         },
     },
     computed: {
+        ...mapGetters({
+            genusRank: 'rank/getGenusRank',
+        }),
         taxonNameId() {
             return this.taxonName?.id;
         },

@@ -44,7 +44,7 @@
             </td>
 
             <!-- 採集國家 -->
-            <td>{{ typeSpecimen.country.display['en-us'] }}</td>
+            <td>{{ typeSpecimen.country ? typeSpecimen.country.display['en-us'] : '' }}</td>
 
             <!-- 採集地點 -->
             <td>{{ typeSpecimen.locality }}</td>

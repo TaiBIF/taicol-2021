@@ -84,14 +84,14 @@ class PersonController extends Controller
                     return $usageTypeSpecimen['kind'] === TypeSpecimen::TYPE_SPECIMEN && in_array($id, $usageTypeSpecimen['collector_ids']);
                 })->map(function ($typeSpecimen) use ($usage) {
                     return [
-                        'collection_day' => $typeSpecimen['collection_day'],
-                        'collection_year' => $typeSpecimen['collection_year'],
-                        'collection_month' => $typeSpecimen['collection_month'],
-                        'collector_ids' => $typeSpecimen['collector_ids'],
-                        'country_id' => $typeSpecimen['country_id'],
-                        'locality' => $typeSpecimen['locality'],
-                        'collector_number' => $typeSpecimen['collector_number'],
-                        'specimens' => $typeSpecimen['specimens'],
+                        'collection_day' => isset($typeSpecimen['collection_day']) ? $typeSpecimen['collection_day'] : null,
+                        'collection_year' => isset($typeSpecimen['collection_year']) ? $typeSpecimen['collection_year'] : null,
+                        'collection_month' => isset($typeSpecimen['collection_month']) ? $typeSpecimen['collection_month'] : null,
+                        'collector_ids' => isset($typeSpecimen['collector_ids']) ? $typeSpecimen['collector_ids'] : null,
+                        'country_id' => isset($typeSpecimen['country_id']) ? $typeSpecimen['country_id'] : null,
+                        'locality' => isset($typeSpecimen['locality']) ? $typeSpecimen['locality'] : null,
+                        'collector_number' => isset($typeSpecimen['collector_number']) ? $typeSpecimen['collector_number'] : null,
+                        'specimens' => isset($typeSpecimen['specimens']) ? $typeSpecimen['specimens'] : null,
                         'taxon_name' => $usage->taxonName,
                     ];
                 })->toArray();
