@@ -80,7 +80,7 @@ class TaxonNameResource extends JsonResource
             }),
             'properties' => $this->properties,
             'replacement_name' => $replacementName ? new TaxonNameSimpleSubResource($replacementName) : null,
-            'spelling_variation' =>  $replacementName ? new TaxonNameSimpleSubResource($spellingVariation) : null,
+            'spelling_variation' =>  $spellingVariation ? new TaxonNameSimpleSubResource($spellingVariation) : null,
             'type_name' => $typeName,
             'publish_year' => $this->publish_year,
             'hybrid_parents' => TaxonNameSimpleSubResource::collection($this->hybridParents),
