@@ -25,7 +25,7 @@
                     :to="{name: 'taxon-name-page', params: {id: taxonName.id}}"
                     class="my-link"
                 >
-                    <template v-if="taxonName.rank.order > this.genusRank.order">
+                    <template v-if="taxonName.rank.order > genusRank.order">
                         <i>{{ taxonName.name }}</i>
                     </template>
                     <template v-else>
@@ -79,6 +79,7 @@ export default {
             type: Object,
             required: true,
         },
+
     },
     computed: {
         ...mapGetters({
