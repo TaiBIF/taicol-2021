@@ -38,9 +38,6 @@ class TaxonNameResource extends JsonResource
             ])->find((int) $this->properties['type_name'])
         ])[0] : null;
 
-        Log::info('$this->originalTaxonName');
-        Log::info($this->originalTaxonName);
-
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -85,6 +82,7 @@ class TaxonNameResource extends JsonResource
             'publish_year' => $this->publish_year,
             'hybrid_parents' => TaxonNameSimpleSubResource::collection($this->hybridParents),
             'note' => $this->note,
+            'is_publish' => $this->is_publish,
         ];
     }
 }

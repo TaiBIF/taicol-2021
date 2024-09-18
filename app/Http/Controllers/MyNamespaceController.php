@@ -8,9 +8,11 @@ use App\MyNamespace;
 use App\MyNamespaceUsage;
 use App\Reference;
 use App\ReferenceUsage;
+use App\TaxonName;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class MyNamespaceController extends Controller
 {
@@ -115,7 +117,7 @@ class MyNamespaceController extends Controller
 
             $log = new ImportUsageLog();
             $log->reference_id = $reference->id;
-            
+
             // 先判斷這個referernce_id是否已經有任何的usages
             if (!ImportUsageLog::where('reference_id', $reference->id)->exists()){
                 // 沒有的話是第一次匯入
@@ -125,6 +127,7 @@ class MyNamespaceController extends Controller
             } else {
                 $nowAction = ImportUsageLog::ACTION_APPEND;
             }
+
 
             $log->action = $nowAction;
             $log->user_id = Auth::user()->id;
@@ -165,6 +168,30 @@ class MyNamespaceController extends Controller
                     $referenceUsage->taxon_name_id = (int) $usage->taxon_name_id;
                     $referenceUsage->group = $usage->group + $groupLast;
                     $referenceUsage->order = $usage->order;
+
+                    $nameIds = [];
+
+                    if ($usage->parent_taxon_name_id){
+                        array_push($nameIds, $usage->parent_taxon_name_id);
+                    }
+
+                    if ($acceptedTaxonName){
+                        array_push($nameIds, $acceptedTaxonName->taxon_name_id);
+                    }
+
+                    array_push($nameIds, (int) $usage->taxon_name_id);
+
+                    if ($usage->properties){
+                        if (isset($usage->properties['type_name'])){
+                            array_push($nameIds, $usage->properties['type_name']);
+                        }
+                    }
+
+                    $publishingNames = TaxonName::whereIn('id', $nameIds)->get();
+                    foreach ($publishingNames as $publishingName){
+                        $publishingName->is_publish = 1;
+                        $publishingName->save();
+                    }
 
                     $referenceUsage->is_title = $usage->is_title;
                     $referenceUsage->is_indent = (bool) $usage->is_indent;

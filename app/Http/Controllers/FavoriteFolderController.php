@@ -6,7 +6,7 @@ use App\FavoriteFolder;
 use App\Http\Resources\FavoriteFolderCollection;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
-
+use Illuminate\Support\Facades\Log;
 
 class FavoriteFolderController extends Controller
 {

@@ -19,8 +19,19 @@
                     v-text="$t('common.close')">
             </button>
             <button class="button"
-                    v-on:click="submit"
-                    v-text="$t('common.submit')">
+                    v-if="!isReferenceUsageEdit && !isPublished" 
+                    v-on:click="onSubmit(false)"
+                    v-text="$t('common.saveAsDraft')">
+            </button>
+            <button class="button"
+                    v-if="!isPublished"
+                    v-on:click="onSubmit(true)"
+                    v-text="$t('common.publish')">
+            </button>
+            <button class="button"
+                    v-if="isPublished"
+                    v-on:click="onSubmit(true)"
+                    v-text="$t('common.save')">
             </button>
         </div>
     </div>
@@ -53,6 +64,18 @@ export default {
             errors: {},
         };
     },
+    computed: {
+        isReferenceUsageEdit() {
+            return this.$route.name.includes('reference-usages-list') || this.$route.name.includes('reference-usages-edit')
+        },
+        isPublished(){
+            if (this.presetData){
+                return this.presetData.isPublish ?? false
+            } else {
+                return false
+            }
+        },
+    },
     methods: {
         close() {
             this.$emit('close');
@@ -61,8 +84,8 @@ export default {
             this.onAfterSubmit(data);
             this.close();
         },
-        submit() {
-            this.$refs.form.submit();
+        onSubmit(isPublish) {
+            this.$refs.form.submit(isPublish);
         },
     },
 };

@@ -57,5 +57,6 @@ export default {
     // Form
     editingBlock: 'Name Usage Editing',
     addPublishReference: 'Insert Publication of This Name',
+    insertCitationOfThisName: 'Insert Citation of This Name',
     pleaseFinishEditing: 'Please click into red card of scientific name to complete editing.',
 };

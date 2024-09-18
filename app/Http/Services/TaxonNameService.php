@@ -36,14 +36,15 @@ class TaxonNameService
      * @param array $authorIds
      * @return int|null
      */
-    public function hasExist(int $nomenclatureId, int $rankId, string $name, int $referenceId = null, array $authorIds): int|null
+    public function hasExist(int $nomenclatureId, int $rankId, string $name, int $referenceId = null, array $authorIds, bool $is_publish): int|null
     {
         $existQuery = TaxonName::query()
             ->with(['authors'])
             ->where('nomenclature_id', $nomenclatureId)
             ->where('rank_id', $rankId)
             ->where('name', $name)
-            ->where('reference_id', $referenceId);
+            ->where('reference_id', $referenceId)
+            ->where('is_publish', $is_publish);
 
         // 若為 update 的話，不能為自己
         if ($this->taxonName->id) {
@@ -119,10 +120,10 @@ class TaxonNameService
 
         // 替代名 / 拼法相異學名
         if ($nomenclature->group !== 'virus') {
-            if ($data['replacement_name']){
+            if (isset($data['replacement_name'])){
                 $properties['replacement_name'] = $data['replacement_name'];
             }
-            if ($data['spelling_variation']){
+            if (isset($data['spelling_variation'])){
                 $properties['spelling_variation'] = $data['spelling_variation'];
             }
         }
@@ -178,6 +179,7 @@ class TaxonNameService
         $this->taxonName->properties = $properties;
         $this->taxonName->publish_year = $data['publish_year'];
         $this->taxonName->note = $data['note'] ?? '';
+        $this->taxonName->is_publish = $data['is_publish'] ?? true;
         $this->taxonName->save();
 
         return $this->taxonName;

@@ -30,6 +30,8 @@ export default {
     close: 'Close',
     submit: 'Submit',
     cancel: 'Cancel',
+    saveAsDraft: 'Save as draft',
+    publish: 'Publish',
     complete: 'Complete',
     import: 'Import',
     overwrite: 'Overwrite',

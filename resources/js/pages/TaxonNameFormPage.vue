@@ -9,6 +9,15 @@
             <div class="form-footer">
                 <div class="buttons is-right">
                     <button class="button m-0"
+                            v-if="!isPublished" 
+                            v-on:click="onSubmit(false)"
+                            v-text="$t('common.saveAsDraft')"/>
+                    <button class="button m-0"
+                            v-if="!isPublished"
+                            v-on:click="onSubmit(true)"
+                            v-text="$t('common.publish')"/>
+                    <button class="button m-0"
+                            v-if="isPublished"
                             v-on:click="onSubmit(true)"
                             v-text="$t('common.save')"/>
                 </div>
@@ -31,12 +40,26 @@ export default {
             presetData: null,
         };
     },
+    computed: {
+        isPublished(){
+            if (this.presetData){
+                return this.presetData.isPublish ?? false
+            } else {
+                return false
+            }
+        }
+    },
     methods: {
         onSubmit(isPublish) {
             this.$refs.form.submit(isPublish);
         },
         onAfterSubmitForm(data) {
-            this.$router.push({ name: 'taxon-name-page', params: { id: data.id } });
+            // 如果是草稿的話 跳轉到編輯頁面
+            if (data.isPublish == false){
+                this.$router.push({ name: 'taxon-name-edit', params: { id: data.id } });
+            } else {
+                this.$router.push({ name: 'taxon-name-page', params: { id: data.id } });
+            }
         },
         async onPreload() {
             if (this.$route.name === 'taxon-name-create') {

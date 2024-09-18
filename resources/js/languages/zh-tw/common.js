@@ -30,6 +30,8 @@ export default {
     close: '關閉',
     submit: '送出',
     cancel: '取消',
+    publish: '確定發布',
+    saveAsDraft: '存為草稿',
     complete: '完成',
     import: '匯入',
     overwrite: '覆蓋',

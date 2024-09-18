@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Class SearchController
@@ -252,6 +253,7 @@ class SearchController extends Controller
                     ->orderBy('references.publish_year');
             },
         ])
+            ->where('taxon_names.is_publish', '=', 1)
             ->leftJoin('ranks', 'taxon_names.rank_id', 'ranks.id');
 
         try {

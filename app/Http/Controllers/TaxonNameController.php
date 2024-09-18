@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use Illuminate\Support\Facades\Log;
 
 class TaxonNameController extends Controller
 {
@@ -35,6 +36,7 @@ class TaxonNameController extends Controller
             'nomenclature', 'rank', 'originalTaxonName.authors'
         ])
             ->leftJoin('ranks', 'taxon_names.rank_id', 'ranks.id')
+            ->where('is_publish', '=', true)
             ->whereRaw('LOWER(`name`) like ? ', ['%' . $keyword . '%'])
             ->orWhereHas('authors', function (Builder $query) use ($keyword) {
                 $query->whereRaw('LOWER(`last_name`) like ? ', ['%' . $keyword . '%'])
@@ -96,6 +98,7 @@ class TaxonNameController extends Controller
             'authors', 'exAuthors', 'nomenclature', 'rank', 'originalTaxonName.authors'
         ])
             ->leftJoin('ranks', 'taxon_names.rank_id', 'ranks.id')
+            ->where('taxon_names.is_publish', '=', 1)
             ->whereRaw('LOWER(`name`) like ? ', ['%' . $keyword . '%'])
             ->orWhereHas('authors', function (Builder $query) use ($keyword) {
                 $query->whereRaw('LOWER(`last_name`) like ? ', ['%' . $keyword . '%'])
@@ -119,7 +122,7 @@ class TaxonNameController extends Controller
     {
         $taxonName = TaxonName::with([
             'authors', 'exAuthors', 'reference', 'usages', 'nomenclature', 'rank'
-        ])->find($id);
+        ])->where('is_publish','=',1)->find($id);
 
         if (!$taxonName) {
             return response([
@@ -130,6 +133,7 @@ class TaxonNameController extends Controller
         // 同名
         $homonymsCount = (boolean) TaxonName::where('id', '!=', $taxonName->id)
             ->where('name', $taxonName->name)
+            ->where('is_publish','=',1)
             ->count();
 
         // 是否有「有效學名」
@@ -350,6 +354,7 @@ class TaxonNameController extends Controller
         ])
             ->leftJoin('references', 'references.id', 'taxon_names.reference_id')
             ->where('taxon_names.id', '!=', $taxonName->id)
+            ->where('taxon_names.is_publish', '=', 1)
             ->where('name', $taxonName->name);
 
         $direction = $request->get('direction');
@@ -710,9 +715,16 @@ class TaxonNameController extends Controller
 
         $service = new TaxonNameService($taxonName);
 
-        if ($existId = $service->hasExist($nomenclatureId, $rankId, $name, $referenceId, $authorIds)) {
+        if ($existId = $service->hasExist($nomenclatureId, $rankId, $name, $referenceId, $authorIds, true)) {
             return response()->json([
                 'message' => 'TaxonName exist',
+                'errors' => [
+                    'same_id' => $existId,
+                ],
+            ])->setStatusCode(409);
+        } else if ($existId = $service->hasExist($nomenclatureId, $rankId, $name, $referenceId, $authorIds, false)){
+            return response()->json([
+                'message' => 'TaxonName draft exist',
                 'errors' => [
                     'same_id' => $existId,
                 ],
@@ -749,6 +761,8 @@ class TaxonNameController extends Controller
             // ICNP
             'genome_composition' => $request->get('genome_composition'),
             'host' => $request->get('host'),
+
+            'is_publish' => $request->get('is_publish'),
         ],
             $authorIds,
             $exAuthorIds,
@@ -772,9 +786,14 @@ class TaxonNameController extends Controller
         $referenceId = $usage['reference_id'] ?? null;
         $name = trim(preg_replace('!\s+!', ' ', str_replace("\n", '', $request->get('name'))));
 
-        if ($service->hasExist($nomenclatureId, $rankId, $name, $referenceId, $authorIds)) {
+        if ($service->hasExist($nomenclatureId, $rankId, $name, $referenceId, $authorIds, true)) {
             return response([
                 'message' => 'TaxonName exist'
+            ])->setStatusCode(409);
+
+        } else if ($service->hasExist($nomenclatureId, $rankId, $name, $referenceId, $authorIds, false)){
+            return response([
+                'message' => 'TaxonName draft exist'
             ])->setStatusCode(409);
         }
 
@@ -809,6 +828,7 @@ class TaxonNameController extends Controller
             // ICNP
             'genome_composition' => $request->get('genome_composition'),
             'host' => $request->get('host'),
+            'is_publish' => $request->get('is_publish'),
         ],
             $authorIds,
             $request->get('ex_authors', []),

@@ -57,5 +57,6 @@ export default {
     // Form
     editingBlock: '學名使用編輯區',
     addPublishReference: '帶入發表文獻',
+    insertCitationOfThisName: '帶入引用文獻',
     pleaseFinishEditing: '請點入紅底學名卡片完成編輯',
 };

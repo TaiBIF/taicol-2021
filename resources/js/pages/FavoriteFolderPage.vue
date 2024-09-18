@@ -11,10 +11,16 @@
             </div>
             <ul class="z-0">
                 <li class="flex items-center px-4 py-1 hover:bg-gray-100 cursor-pointer"
-                    v-on:click="() => onOpenFolder(0)">
+                    v-on:click="() => onOpenFolder({ id : 0, title: $t('collect.meAdd') })">
                     <i class="fas fa-folder cursor-pointer"></i>
                     &nbsp;&nbsp;
                     <span>{{ $t('collect.meAdd') }}</span>
+                </li>
+                <li class="flex items-center px-4 py-1 hover:bg-gray-100 cursor-pointer"
+                    v-on:click="() => onOpenFolder({ id : -1, title: $t('collect.meDraft') })">
+                    <i class="fas fa-folder cursor-pointer"></i>
+                    &nbsp;&nbsp;
+                    <span>{{ $t('collect.meDraft') }}</span>
                 </li>
                 <li v-for="folder in folders">
                     <div class="flex items-center px-4 py-1 hover:bg-gray-100 cursor-pointer"

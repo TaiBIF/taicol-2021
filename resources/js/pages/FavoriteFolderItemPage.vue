@@ -37,16 +37,23 @@ export default {
     methods: {
         onFetchFolder() {
             const folderId = parseInt(this.$route.params.id, 10);
-            if (folderId !== 0) {
-                this.axios.get(`/favorite-folders/${folderId}`)
-                    .then(({ data: { data } }) => {
-                        this.targetFolder = data;
-                    });
-            } else {
+
+            if (folderId === 0){
                 this.targetFolder = {
                     id: 0,
                     title: this.$t('collect.meAdd'),
                 };
+
+            } else if (folderId === -1){
+                this.targetFolder = {
+                    id: -1,
+                    title: this.$t('collect.meDraft'),
+                };
+            } else {
+                this.axios.get(`/favorite-folders/${folderId}`)
+                    .then(({ data: { data } }) => {
+                        this.targetFolder = data;
+                    });
             }
         },
         onCloseFolder() {

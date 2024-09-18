@@ -46,7 +46,6 @@ export default {
     },
     methods: {
         onUpdateValue(value) {
-            console.log(value);
             this.$emit('input', value);
         },
     },

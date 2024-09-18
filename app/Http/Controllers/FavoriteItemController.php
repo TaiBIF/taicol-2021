@@ -12,6 +12,7 @@ use App\ReferenceUsage;
 use App\TaxonName;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class FavoriteItemController extends Controller
 {
@@ -30,21 +31,38 @@ class FavoriteItemController extends Controller
             ->first();
 
 
-        if ((int) $folderId !== 0 && !$folder) {
+        if ((int) $folderId !== 0 && (int) $folderId !== -1 && !$folder) {
             return response([])->setStatusCode(404);
         }
 
+        // 我建立的學名/文獻
         if ((int) $folderId == 0) {
-            $items = FavoriteMineItem::with('collectable')
-                ->where('user_id', $userId)
-                ->get();
+            $items = FavoriteMineItem::whereHas('collectable', function($q){
+                $q->where('is_publish', '=', 1);
+            })
+            ->where('user_id', $userId)
+            ->get();
+
+        // 我的學名/文獻草稿
+        } else if ((int) $folderId == -1) {
+
+            $items = FavoriteMineItem ::whereHas('collectable', function($q){
+                $q->where('is_publish', '=', 0);
+            })
+            ->where('user_id', $userId)
+            ->get();
+
+
         } else {
+            // 不限制
             $items = FavoriteItem::with('collectable')
                 ->where('favorite_folder_id', $folderId)
                 ->get();
         }
 
+
         $items = $items->map(function ($item) {
+            
             $content = [
                 'id' => $item->id,
                 'type' => $item->collectable_type,
@@ -56,6 +74,7 @@ class FavoriteItemController extends Controller
                     'type' => $item->collectable_type,
                 ];
             } else if ($item->collectable_type === FavoriteItem::TYPE_TAXON_NAME) {
+
                 $content['content'] = TaxonNameCollection::collection([$item->collectable])[0];
             } else if ($item->collectable_type === FavoriteItem::TYPE_REFERENCE) {
                 $content['content'] = ReferenceCollection::collection([$item->collectable])[0];

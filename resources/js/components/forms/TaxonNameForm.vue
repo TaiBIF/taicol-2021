@@ -738,6 +738,7 @@ export default {
 
                 genomeComposition: this.genomeComposition || '',
                 host: this.host || '',
+                isPublish: this.isPublish || true,
             };
         },
     },
@@ -792,13 +793,15 @@ export default {
             this.axios({
                 method: isEdit ? 'PUT' : 'POST',
                 url: isEdit ? `/taxon-names/${this.presetData.id}` : '/taxon-names',
-                data: { ...this.formData, isPublish },
+                data: { ...this.formData, 'isPublish': isPublish },
             }).then(({ data }) => {
                 this.onAfterSubmit(data);
                 openNotify(this.$t('common.saveSuccess'));
-            }).catch(({ status, errors }) => {
-                if (status === 409) {
+            }).catch(({ status, message, errors }) => {
+                if (status === 409 &&  message === 'TaxonName exist') {
                     openNotify('學名已存在', 'is-danger');
+                } else if (status === 409 &&  message === 'TaxonName draft exist') {
+                    openNotify('該筆資料已被建立為草稿，請到我的收藏裡的草稿確認並發布，若該筆不是您建立的草稿，還請聯絡管理員釐清。(catalogueoflife.taiwan@gmail.com)', 'is-danger');
                 } else {
                     this.errors = errors;
                 }

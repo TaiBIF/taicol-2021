@@ -4,6 +4,7 @@ export default {
     collectTo: '收藏至',
     myCollections: '我的收藏',
     meAdd: '我建立的學名/文獻',
+    meDraft: '我的學名/文獻草稿',
 
     nameView: '學名檢視',
     referenceView: '文獻檢視',

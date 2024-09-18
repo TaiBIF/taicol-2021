@@ -111,6 +111,7 @@ class TaxonNameCollection extends JsonResource
             }),
             'note' => $this->note,
             'common_name_tw' => $commonNameTw ? $commonNameTw['name'] : '',
+            'is_publish' => $this->is_publish,
         ];
     }
 }

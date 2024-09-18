@@ -4,6 +4,8 @@ export default {
     collectTo: 'Collect into',
     myCollections: 'My Collection',
     meAdd: 'Names/References Added by Me',
+    meDraft: 'Names/References Draft Added by Me',
+
 
     nameView: 'Name',
     referenceView: 'Reference',

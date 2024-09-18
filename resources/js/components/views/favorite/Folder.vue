@@ -221,7 +221,6 @@ export default {
             };
         },
         cloneUsageReference(r) {
-            console.log(r);
             return {
                 target: r.reference,
                 showPage: '',

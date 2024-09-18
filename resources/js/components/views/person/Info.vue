@@ -157,7 +157,6 @@ export default {
 
             this.axios.get(`/edit-logs?log_type=${log_type}&log_id=${this.$route.params.id}&offset=${offset}`)
                 .then(({ data: { editLogs, logMore, logOffset }  }) => {
-                    console.log(editLogs, logMore, logOffset)
                     this[`editLogs`].push(...editLogs);
                     this[`logMore`] = logMore;
                     this[`logOffset`] = logOffset;

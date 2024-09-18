@@ -31,12 +31,12 @@
                                 />
 
                                 <div class="buttons bg-white bg-opacity-25 is-right" style="min-width: 100px">
+                                    <!-- 這邊應該不會有學名草稿的發生 -->
                                     <router-link
                                         :to="{name: 'taxon-name-page', params: {id: usage.taxonName.id}}"
                                         class="g-button is-small mr-2">
                                         <i class="fas fa-external-link-alt"></i>
                                     </router-link>
-
                                     <a class="close-button is-small"
                                        v-on:click="e => onRemove(1, usage.id)">
                                     </a>
@@ -56,9 +56,16 @@
                                                class="flex-1"></taxon-name-full-label>
                         <div class="buttons bg-white bg-opacity-25 is-right" style="min-width: 100px">
                             <router-link
+                                v-if="item.content.is_publish==1"
                                 :to="{name: 'taxon-name-page', params: {id: item.content.id}}"
-                                class="g-button is-small mr-2"
-                            >
+                                class="g-button is-small mr-2">
+                                <i class="fas fa-external-link-alt"></i>
+                            </router-link>
+
+                            <router-link
+                                v-else
+                                :to="{name: 'taxon-name-edit', params: {id: item.content.id}}"
+                                class="g-button is-small mr-2">
                                 <i class="fas fa-external-link-alt"></i>
                             </router-link>
 

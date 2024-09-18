@@ -46,6 +46,13 @@
                             >
                                 {{ $t('usage.addPublishReference') }}
                             </button>
+                            <button :disabled="!taxonName.usage_reference"
+                                    :title="!taxonName.usage_reference ? `尚無歸檔文獻` : ''"
+                                    class="button is-outlined is-small"
+                            >
+                                <!-- v-on:click="onInsertCitationOfThisName"  -->
+                                {{ $t('usage.insertCitationOfThisName') }}
+                            </button>
                         </div>
                     </div>
                     <hr/>
