@@ -58,6 +58,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/books', 'BookController@index');
 
     Route::resource('references', 'ReferenceController')->except('index', 'show');
+    Route::get('references/{id}/info', 'ReferenceController@info');
 
     Route::resource('taxon-names', 'TaxonNameController')->except('index', 'show');
     Route::get('taxon-names/{id}/info', 'TaxonNameController@info');

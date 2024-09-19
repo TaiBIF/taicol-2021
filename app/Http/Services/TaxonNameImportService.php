@@ -92,9 +92,9 @@ class TaxonNameImportService
             }
 
             $authors = $this->findPersonsByString($row, $authorsString);
-            if ($service->hasExist($nomenclature, $this->ranks[$rankString]->id, $name, $referenceId, $authors->pluck('id')->toArray(),true)) {
+            if ($service->hasTaxonNameExist($nomenclature, $this->ranks[$rankString]->id, $name, $referenceId, $authors->pluck('id')->toArray(),true)) {
                 $this->throwError($row, '學名重複');
-            } else if ($service->hasExist($nomenclature, $this->ranks[$rankString]->id, $name, $referenceId, $authors->pluck('id')->toArray(),false)){
+            } else if ($service->hasTaxonNameExist($nomenclature, $this->ranks[$rankString]->id, $name, $referenceId, $authors->pluck('id')->toArray(),false)){
                 $this->throwError($row, '學名已存在於草稿');
             }
 

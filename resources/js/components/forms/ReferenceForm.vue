@@ -366,6 +366,7 @@ export default {
                         || this.targetBook.title
                     ),
                 },
+                isPublish: this.isPublish || true,
             };
             return {
                 ...r,
@@ -455,6 +456,8 @@ export default {
             }
         },
         async submit(isPublish) {
+
+            console.log(isPublish);
             const app = this;
             const method = app.$route.name === 'reference-edit' ? 'PUT' : 'POST';
             const url = app.$route.name === 'reference-edit' ? `/references/${app.reference.id}` : '/references';
@@ -488,9 +491,11 @@ export default {
                         app.onAfterSubmit(data);
                         resolve();
                     })
-                    .catch(({ errors, status }) => {
-                        if (status === 409) {
+                    .catch(({ errors, status, message }) => {
+                        if (status === 409 && message === 'Reference exist') {
                             openNotify(this.$t('reference.exist'), 'is-danger');
+                        } else if (status === 409 &&  message === 'Reference draft exist') {
+                            openNotify('該筆資料已被建立為草稿，請到我的收藏裡的草稿確認並發布，若該筆不是您建立的草稿，還請聯絡管理員釐清。(catalogueoflife.taiwan@gmail.com)', 'is-danger');
                         } else {
                             app.errors = errors;
                         }

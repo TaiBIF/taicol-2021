@@ -164,6 +164,16 @@ class ReferenceImportService
             $existReference = Reference::query()
                 ->where('title', $title)
                 ->where('publish_year', $publishYear)
+                ->where('is_publish', true)
+                ->whereHas('authors', function ($query) use ($authorIds) {
+                    $query->whereIn('persons.id', $authorIds);
+                }, '=', count($authorIds))
+                ->first();
+
+            $existDraftReference = Reference::query()
+                ->where('title', $title)
+                ->where('publish_year', $publishYear)
+                ->where('is_publish', false)
                 ->whereHas('authors', function ($query) use ($authorIds) {
                     $query->whereIn('persons.id', $authorIds);
                 }, '=', count($authorIds))
@@ -171,7 +181,10 @@ class ReferenceImportService
 
             if ($existReference) {
                 $this->throwError($row, "資料重複：與資料庫 #{$existReference->id}");
+            } else if ($existDraftReference) {
+                $this->throwError($row, "文獻已存在於草稿");
             }
+     
         }
     }
 
@@ -246,8 +259,10 @@ class ReferenceImportService
         $service = new ReferenceService($reference);
 
         $authorIds = $authors->pluck('id')->toArray();
-        if ($service->checkExistWithNewMeta($title, $publishYear, $authorIds)) {
+        if ($service->hasReferenceExist($title, $publishYear, $authorIds, true)) {
             throw new \Exception('資料重複');
+        } else if ($service->hasReferenceExist($title, $publishYear, $authorIds, false)) {
+            throw new \Exception('文獻已存在於草稿');
         }
 
         $service->create([
@@ -267,7 +282,7 @@ class ReferenceImportService
             ];
         }));
 
-        $service->saveBook($bookTitle, $bookAbbreviation ?? '');
+        $service->saveBook($bookTitle, $bookAbbreviation ?? '', true);
 
         $logService = new LogService();
         $logService->writeImportLog(LogType::REFERENCE, $reference->id);

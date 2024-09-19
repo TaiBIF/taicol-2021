@@ -31,27 +31,27 @@ class Reference extends Model
         return $this->belongsToMany(Person::class)->orderBy('order');
     }
 
-    public function saveBook($title, $titleAbbreviation = '', $editorIds = [])
-    {
-        $existBook = Book::query()
-            ->where('title', $title)
-            ->first();
+    // public function saveBook($title, $titleAbbreviation = '', $editorIds = [])
+    // {
+    //     $existBook = Book::query()
+    //         ->where('title', $title)
+    //         ->first();
 
-        if ($existBook) {
-            $existBook->title_abbreviation = $titleAbbreviation;
-            $existBook->save();
+    //     if ($existBook) {
+    //         $existBook->title_abbreviation = $titleAbbreviation;
+    //         $existBook->save();
 
-            $book = $existBook;
-        } else {
-            $book = new Book();
-            $book->title = $title;
-            $book->title_abbreviation = $titleAbbreviation;
-            $book->save();
-            $book->saveEditors($editorIds);
-        }
+    //         $book = $existBook;
+    //     } else {
+    //         $book = new Book();
+    //         $book->title = $title;
+    //         $book->title_abbreviation = $titleAbbreviation;
+    //         $book->save();
+    //         $book->saveEditors($editorIds);
+    //     }
 
-        $this->book()->associate($book);
-    }
+    //     $this->book()->associate($book);
+    // }
 
     public function book()
     {

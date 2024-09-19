@@ -24,7 +24,7 @@ class PersonService
         return PersonCollection::collection([$person])->first();
     }
 
-    public function hasExist(string $lastName, string $middleName, string $firstName, string $yearBirth): int|null
+    public function hasPersonExist(string $lastName, string $middleName, string $firstName, string $yearBirth): int|null
     {
         $existPersonQuery = Person::query()
             ->where('last_name', $lastName)

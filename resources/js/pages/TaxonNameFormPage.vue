@@ -3,7 +3,7 @@
         <div class="flex flex-col h-full py-6 mb-4">
             <div class="box overflow-y-auto px-10 py-4">
                 <taxon-name-form ref="form"
-                                 :on-after-submit="onAfterSubmitForm"
+                                 :on-after-submit="onAfterFormSubmit"
                                  :preset-data="presetData"/>
             </div>
             <div class="form-footer">
@@ -53,8 +53,8 @@ export default {
         onSubmit(isPublish) {
             this.$refs.form.submit(isPublish);
         },
-        onAfterSubmitForm(data) {
-            // 如果是草稿的話 跳轉到編輯頁面
+        onAfterFormSubmit(data) {
+            // 如果是草稿的話 留在編輯頁面
             if (data.isPublish == false){
                 this.$router.push({ name: 'taxon-name-edit', params: { id: data.id } });
             } else {

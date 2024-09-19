@@ -20,6 +20,17 @@
             <div class="flex gap-2 justify-end">
                 <button :class="{'is-loading': isLoading}"
                         class="button"
+                        v-if="!isPublished"
+                        v-on:click="() => submit(false)"
+                        v-text="$t('common.saveAsDraft')"/>
+                <button :class="{'is-loading': isLoading}"
+                        class="button"
+                        v-if="!isPublished"
+                        v-on:click="() => submit(true)"
+                        v-text="$t('common.publish')"/>
+                <button :class="{'is-loading': isLoading}"
+                        class="button"
+                        v-if="isPublished"
                         v-on:click="() => submit(true)"
                         v-text="$t('common.save')"/>
             </div>
@@ -49,7 +60,15 @@ export default {
             formStatus: this.$c.PAGE_IS_INITIAL,
         };
     },
-
+    computed: {
+        isPublished(){
+            if (this.presetData){
+                return this.presetData.isPublish ?? false
+            } else {
+                return false
+            }
+        }
+    },
     mounted() {
         if (this.$route.name === 'reference-edit') {
             this.fetchReference().then(() => {
@@ -101,7 +120,7 @@ export default {
             });
         },
         fetchReference() {
-            return this.axios.get(`/references/${this.$route.params.id}`)
+            return this.axios.get(`/references/${this.$route.params.id}/info`)
                 .then(({ data: { data } }) => {
                     this.presetData = data;
                     this.formStatus = this.$c.PAGE_IS_SUCCESS;
@@ -126,12 +145,12 @@ export default {
                 });
         }),
         onAfterFormSubmit(data) {
-            this.$router.push({
-                name: 'reference-page',
-                params: {
-                    id: data.id,
-                },
-            });
+            // 如果是草稿的話 留在編輯頁面
+            if (data.isPublish == false){
+                this.reload();
+            } else {
+                this.$router.push({ name: 'reference-page', params: { id: data.id } });
+            }
         },
     },
 };

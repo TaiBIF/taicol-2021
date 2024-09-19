@@ -14,8 +14,10 @@ use App\Http\Services\TaxonNameLogService;
 use App\Http\Services\TaxonNameService;
 use App\Rank;
 use App\Reference;
+use App\Book;
 use App\ReferenceUsage;
 use App\TaxonName;
+use Hamcrest\Type\IsString;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -715,20 +717,34 @@ class TaxonNameController extends Controller
 
         $service = new TaxonNameService($taxonName);
 
-        if ($existId = $service->hasExist($nomenclatureId, $rankId, $name, $referenceId, $authorIds, true)) {
+        if ($existId = $service->hasTaxonNameExist($nomenclatureId, $rankId, $name, $referenceId, $authorIds, true)) {
             return response()->json([
                 'message' => 'TaxonName exist',
                 'errors' => [
                     'same_id' => $existId,
                 ],
             ])->setStatusCode(409);
-        } else if ($existId = $service->hasExist($nomenclatureId, $rankId, $name, $referenceId, $authorIds, false)){
+        } else if ($existId = $service->hasTaxonNameExist($nomenclatureId, $rankId, $name, $referenceId, $authorIds, false)){
             return response()->json([
                 'message' => 'TaxonName draft exist',
                 'errors' => [
                     'same_id' => $existId,
                 ],
             ])->setStatusCode(409);
+        }
+
+
+        if (isset($referenceId) &&  $request->get('is_publish', true)){
+
+            $publishingRef = Reference::find($referenceId);
+            $publishingRef->is_publish = true;
+            $publishingRef->save();
+
+            if (isset($publishingRef->book_id)){
+                $publishingBook = Book::find($publishingRef->book_id);
+                $publishingBook->is_publish = true;
+                $publishingBook->save();
+            }
         }
 
         $taxonName = $service->saveAll([
@@ -772,6 +788,7 @@ class TaxonNameController extends Controller
         $taxonNameLogService->saveUpdateLog($taxonName, $authorIds, $exAuthorIds);
         return response([
             'id' => $taxonName->id,
+            'isPublish' => $request->get('is_publish', true)
         ]);
     }
 
@@ -786,15 +803,28 @@ class TaxonNameController extends Controller
         $referenceId = $usage['reference_id'] ?? null;
         $name = trim(preg_replace('!\s+!', ' ', str_replace("\n", '', $request->get('name'))));
 
-        if ($service->hasExist($nomenclatureId, $rankId, $name, $referenceId, $authorIds, true)) {
+        if ($service->hasTaxonNameExist($nomenclatureId, $rankId, $name, $referenceId, $authorIds, true)) {
             return response([
                 'message' => 'TaxonName exist'
             ])->setStatusCode(409);
 
-        } else if ($service->hasExist($nomenclatureId, $rankId, $name, $referenceId, $authorIds, false)){
+        } else if ($service->hasTaxonNameExist($nomenclatureId, $rankId, $name, $referenceId, $authorIds, false)){
             return response([
                 'message' => 'TaxonName draft exist'
             ])->setStatusCode(409);
+        }
+
+        if (isset($referenceId) &&  $request->get('is_publish', true)){
+
+            $publishingRef = Reference::find($referenceId);
+            $publishingRef->is_publish = true;
+            $publishingRef->save();
+
+            if (isset($publishingRef->book_id)){
+                $publishingBook = Book::find($publishingRef->book_id);
+                $publishingBook->is_publish = true;
+                $publishingBook->save();
+            }
         }
 
         $taxonName = $service->saveAll([

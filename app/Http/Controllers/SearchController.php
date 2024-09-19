@@ -139,6 +139,7 @@ class SearchController extends Controller
                 switch ($type) {
                     case $type === 'text' || $type === 'reference':
                         $referenceQuery
+                            ->where('is_publish', '=', 1)
                             ->where('type', '!=', Reference::TYPE_BACKBONE)
                             ->where('type', '!=', Reference::TYPE_SUPER_BACKBONE)
                             ->where(function ($referenceQuery) use ($word) {
@@ -147,7 +148,7 @@ class SearchController extends Controller
                                     ->orWhereRaw('subtitle LIKE ? ', '%' . $word . '%');
                             })->orWhereHas('book', function ($query) use ($word) {
                                 $query
-                                ->where('type', '!=', Reference::TYPE_BACKBONE)
+                                ->where('is_publish', '=', 1)
                                 ->where('type', '!=', Reference::TYPE_SUPER_BACKBONE)
                                 ->whereRaw('title LIKE ? ', '%' . $word . '%');
                             });
@@ -185,6 +186,7 @@ class SearchController extends Controller
         }
 
         $references = $referenceQuery
+            ->where('is_publish', '=', 1)
             ->where('type', '!=', Reference::TYPE_BACKBONE)
             ->where('type', '!=', Reference::TYPE_SUPER_BACKBONE)
             ->paginate($perPage);

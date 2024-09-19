@@ -36,7 +36,7 @@ class TaxonNameService
      * @param array $authorIds
      * @return int|null
      */
-    public function hasExist(int $nomenclatureId, int $rankId, string $name, int $referenceId = null, array $authorIds, bool $is_publish): int|null
+    public function hasTaxonNameExist(int $nomenclatureId, int $rankId, string $name, int $referenceId = null, array $authorIds, bool $is_publish): int|null
     {
         $existQuery = TaxonName::query()
             ->with(['authors'])

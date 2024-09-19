@@ -109,11 +109,12 @@ class ReferenceService
         ]));
     }
 
-    public function checkExistWithNewMeta($title, $publishYear, $authors): bool
+    public function hasReferenceExist($title, $publishYear, $authors, bool $isPublish): bool
     {
         $existQuery = Reference::query()
             ->where('title', $title)
             ->where('publish_year', $publishYear)
+            ->where('is_publish', $isPublish)
             ->whereHas('authors', function ($query) use ($authors) {
                 $query->whereIn('persons.id', $authors);
             }, '=', count($authors));
@@ -139,13 +140,13 @@ class ReferenceService
             ->toArray();
 
         $this->reference->note = $data['note'] ?? '';
-        $this->reference->is_publish = true;
+        $this->reference->is_publish = $data['is_publish'] ?? true;
         $this->reference->save();
 
         return $this->reference;
     }
 
-    public function saveBook(string $title, string $titleAbbreviation = '')
+    public function saveBook(string $title, string $titleAbbreviation = '', bool $isPublish)
     {
         if ($title == '') throw new \Exception('book title require.');
 
@@ -156,6 +157,7 @@ class ReferenceService
         if ($existBook) {
             // update title abbreviation
             $existBook->title_abbreviation = $titleAbbreviation;
+            $existBook->is_publish = $isPublish;
             $existBook->save();
 
             $book = $existBook;
@@ -163,6 +165,7 @@ class ReferenceService
             $book = new Book();
             $book->title = $title;
             $book->title_abbreviation = $titleAbbreviation;
+            $book->is_publish = $isPublish;
             $book->save();
         }
 

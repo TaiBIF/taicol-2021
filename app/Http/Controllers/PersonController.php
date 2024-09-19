@@ -52,7 +52,10 @@ class PersonController extends Controller
     {
         $person = Person::findOrFail($id);
 
-        $references = Reference::whereHas('authors', function (Builder $query) use ($person) {
+        $references = Reference:: where('is_publish', '=', 1)
+        ->where('type', '!=', Reference::TYPE_BACKBONE)
+        ->where('type', '!=', Reference::TYPE_SUPER_BACKBONE)
+        ->whereHas('authors', function (Builder $query) use ($person) {
             $query->where('persons.id', $person->id);
         })->get();
 
@@ -119,7 +122,7 @@ class PersonController extends Controller
 
         $service = new PersonService(new Person());
 
-        if ($service->hasExist($lastName, $middleName, $firstName, $yearBirth)) {
+        if ($service->hasPersonExist($lastName, $middleName, $firstName, $yearBirth)) {
             return response([
                 'message' => 'Person exist.'
             ])->setStatusCode(409);
@@ -147,7 +150,7 @@ class PersonController extends Controller
 
         $service = new PersonService($person);
 
-        if ($service->hasExist($lastName, $middleName, $firstName, $yearBirth)) {
+        if ($service->hasPersonExist($lastName, $middleName, $firstName, $yearBirth)) {
             return response([
                 'message' => 'Person exist.'
             ])->setStatusCode(409);

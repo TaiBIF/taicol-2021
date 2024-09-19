@@ -29,17 +29,21 @@ class ReferenceController extends Controller
 
         $referenceQuery = Reference::with(['authors']);
         if ($keyword) {
-            $referenceQuery->whereRaw('LOWER(`title`) LIKE ? ', ['%' . trim(strtoLower($keyword)) . '%'])
+            $referenceQuery->where(function ($_query) use ($keyword) {   
+                $_query
+                ->whereRaw('LOWER(`title`) LIKE ? ', ['%' . trim(strtoLower($keyword)) . '%'])
                 ->orWhereRaw('LOWER(`subtitle`) LIKE ? ', ['%' . trim(strtoLower($keyword)) . '%'])
                 ->orWhereHas('book', function ($query) use ($keyword) {
-                    $query->whereRaw('title LIKE ? ', '%' . $keyword . '%');
+                    $query->where('is_publish', 1)->whereRaw('title LIKE ? ', '%' . $keyword . '%');
                 })
                 ->orWhereHas('authors', function ($query) use ($keyword) {
                     $query->where('last_name', 'like', $keyword)
                         ->orWhere('first_name', 'like', $keyword)
-                        ->orWhere('middle_name', 'like', $keyword);
-                });
+                        ->orWhere('middle_name', 'like', $keyword);})
+                ;
+            });
         }
+
 
         if ($request->get('sortby') === 'type') {
             $referenceQuery->orderBy('type', $request->get('direction'));
@@ -54,6 +58,7 @@ class ReferenceController extends Controller
         }
 
         $references = $referenceQuery
+            ->where('is_publish', 1)
             ->where('type', '!=', Reference::TYPE_BACKBONE)
             ->where('type', '!=', Reference::TYPE_SUPER_BACKBONE)
             ->paginate(20);
@@ -69,7 +74,27 @@ class ReferenceController extends Controller
 
     public function show($id)
     {
+        
         $reference = Reference::with(['authors', 'book'])
+            ->where('is_publish', '=', 1)
+            ->where('type', '!=', Reference::TYPE_BACKBONE)
+            ->where('type', '!=', Reference::TYPE_SUPER_BACKBONE)
+            ->where('id', $id)
+            ->first();
+        if (!$reference) {
+            return response([
+                'message' => 'Not Found.'
+            ], 404);
+        }
+
+        return ReferenceCollection::collection([$reference])[0];
+    }
+
+    public function info($id)
+    {
+        
+        $reference = Reference::with(['authors', 'book'])
+            // ->where('is_publish', '=', 1)
             ->where('type', '!=', Reference::TYPE_BACKBONE)
             ->where('type', '!=', Reference::TYPE_SUPER_BACKBONE)
             ->where('id', $id)
@@ -113,9 +138,13 @@ class ReferenceController extends Controller
 
         $service = new ReferenceService($reference);
 
-        if ($service->checkExistWithNewMeta($title, $publishYear, $authors)) {
+        if ($service->hasReferenceExist($title, $publishYear, $authors, true)) {
             return response([
                 'message' => 'Reference exist'
+            ])->setStatusCode(409);
+        } else if  ($service->hasReferenceExist($title, $publishYear, $authors, false)) {
+            return response([
+                'message' => 'Reference draft exist'
             ])->setStatusCode(409);
         }
 
@@ -130,13 +159,15 @@ class ReferenceController extends Controller
                 'language' => $request->get('language'),
                 'properties' => $properties,
                 'note' => $request->get('note'),
+                'is_publish' => $request->get('is_publish'),
             ]);
 
             $reference->saveAuthors($authorsWithOrder);
 
             $service->saveBook(
                 $properties['book_title'],
-                $properties['book_title_abbreviation'] ?? ''
+                $properties['book_title_abbreviation'] ?? '',
+                $request->get('is_publish')
             );
 
             $service->saveCoverImage($request->get('image'), $request->get('cover_path'));
@@ -175,11 +206,16 @@ class ReferenceController extends Controller
 
         $service = new ReferenceService(new Reference());
 
-        if ($service->checkExistWithNewMeta($title, $publishYear, $authors)) {
+        if ($service->hasReferenceExist($title, $publishYear, $authors, true)) {
             return response([
                 'message' => 'Reference exist'
             ])->setStatusCode(409);
+        } else if  ($service->hasReferenceExist($title, $publishYear, $authors, false)) {
+            return response([
+                'message' => 'Reference draft exist'
+            ])->setStatusCode(409);
         }
+
 
         DB::beginTransaction();
 
@@ -192,13 +228,15 @@ class ReferenceController extends Controller
                 'language' => $request->get('language'),
                 'properties' => $properties,
                 'note' => $request->get('note'),
+                'is_publish' => $request->get('is_publish'),
             ]);
 
             $newReference->saveAuthors($authorsWithOrder);
 
             $service->saveBook(
                 $properties['book_title'],
-                $properties['book_title_abbreviation'] ?? ''
+                $properties['book_title_abbreviation'] ?? '',
+                $request->get('is_publish')
             );
 
             // upload image

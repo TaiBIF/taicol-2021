@@ -94,10 +94,21 @@
                                 <div class="buttons bg-white bg-opacity-25 is-right" style="min-width: 100px">
                                     <router-link
                                         :to="{name: 'reference-page', params: {id: r.reference.id}}"
-                                        class="g-button is-small mr-2"
-                                    >
+                                        class="g-button is-small mr-2" >
                                         <i class="fas fa-external-link-alt"></i>
                                     </router-link>
+                                    <!-- <router-link
+                                        v-if="item.content.is_publish==1"
+                                        :to="{name: 'reference-page', params: {id: r.reference.id}}"
+                                        class="g-button is-small mr-2" >
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </router-link>
+                                    <router-link
+                                        v-else
+                                        :to="{name: 'reference-edit', params: {id: r.reference.id}}"
+                                        class="g-button is-small mr-2" >
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </router-link> -->
 
                                     <a class="close-button is-small"
                                        v-on:click="e => onRemove(1, r.content[0].id, r.id)">
@@ -120,9 +131,15 @@
 
                         <div class="buttons bg-white bg-opacity-25 is-right" style="min-width: 100px">
                             <router-link
+                                v-if="r.isPublish==1"
                                 :to="{name: 'reference-page', params: {id: r.id}}"
-                                class="g-button is-small mr-2"
-                            >
+                                class="g-button is-small mr-2">
+                                <i class="fas fa-external-link-alt"></i>
+                            </router-link>
+                            <router-link
+                                v-else
+                                :to="{name: 'reference-edit', params: {id: r.id}}"
+                                class="g-button is-small mr-2">
                                 <i class="fas fa-external-link-alt"></i>
                             </router-link>
                             <a class="close-button is-small"

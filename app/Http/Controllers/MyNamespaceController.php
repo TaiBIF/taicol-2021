@@ -7,6 +7,7 @@ use App\ImportUsageLog;
 use App\MyNamespace;
 use App\MyNamespaceUsage;
 use App\Reference;
+use App\Book;
 use App\ReferenceUsage;
 use App\TaxonName;
 use Illuminate\Http\Request;
@@ -168,6 +169,20 @@ class MyNamespaceController extends Controller
                     $referenceUsage->taxon_name_id = (int) $usage->taxon_name_id;
                     $referenceUsage->group = $usage->group + $groupLast;
                     $referenceUsage->order = $usage->order;
+
+
+                    foreach($usage->per_usages as $per_usage){
+                        $publishingReference = Reference::find($per_usage['reference_id']);
+                        $publishingReference->is_publish = 1;
+                        $publishingReference->save();
+
+                        if (isset($publishingReference->book_id)){
+                            $publishingBook = Book::find($publishingReference->book_id);
+                            $publishingBook->is_publish = 1;
+                            $publishingBook->save();
+                        }
+
+                    }
 
                     $nameIds = [];
 
