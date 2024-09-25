@@ -6,6 +6,7 @@ use App\Http\Requests\TaxonNameRequest;
 use App\Http\Resources\PersonCollection;
 use App\Http\Resources\ReferenceCollection;
 use App\Http\Resources\TaxonNameCollection;
+use App\Http\Resources\BookCollection;
 use App\Http\Resources\TaxonNameResource;
 use App\Http\Services\LogService;
 use App\Http\Services\LogType;
@@ -571,6 +572,91 @@ class TaxonNameController extends Controller
             'per_page' => $reference->perPage(),
             'current_page' => $reference->currentPage(),
             'last_page' => $reference->lastPage(),
+        ]);
+    }
+
+    public function per_usages(Request $request, $id)
+    {
+        $new_reference_array = array();
+        $already_ids = array();
+
+        // 1. 相同的taxon_name_id reference_usages 的 per_usages
+        // 這邊要加上show_page
+        $referenceIds2 = ReferenceUsage::select('per_usages')
+            ->where('taxon_name_id', $id)
+            ->whereRaw('JSON_EXTRACT(per_usages, "$[*].reference_id")'.  "!= 'null'")
+            ->pluck('per_usages');
+        
+        foreach($referenceIds2 as $referenceIds22){
+            foreach($referenceIds22 as $per_usage){
+
+                if  (!in_array($per_usage['reference_id'], $already_ids)){
+
+                    $reference = Reference::with(['authors'])->where('id', $per_usage['reference_id'])->first();
+
+                    $now_a = [
+                        'show_page' => $per_usage['show_page'],
+                        'id' => $reference['id'],
+                        'type' => $reference['type'],
+                        'title' => $reference['title'],
+                        'subtitle' => $reference['subtitle'],
+                        'publish_year' => (int)$reference['publish_year'],
+                        'language' => $reference['language'],
+                        'properties' => $reference['properties'],
+                        'book' => $reference['book'] ? BookCollection::collection([$reference['book']])[0] : [],
+                        'note' => $reference['note'],
+                        'authors' => PersonCollection::collection($reference['authors']),
+                        'is_publish' => $reference['is_publish'],        
+
+                    ];
+
+                    array_push($already_ids, $per_usage['reference_id']);
+                    array_push($new_reference_array, $now_a);
+                }
+            }
+
+        }
+
+        // 2. 相同的taxon_name_id reference_usages 的 reference_id
+        $referenceIds = Reference::with(['authors'])
+        ->select('reference_usages.reference_id', 'references.*')
+        ->distinct() // 排除重複
+        ->leftjoin('reference_usages', 'references.id', 'reference_usages.reference_id')
+        ->where('reference_usages.taxon_name_id', $id)
+        ->where('reference_usages.status', 'accepted')
+        ->where('references.type', '!=', Reference::TYPE_BACKBONE)
+        ->where('references.type', '!=', Reference::TYPE_SUPER_BACKBONE)
+        ->where('reference_usages.is_title', false)
+        ->orderBy('references.publish_year', 'ASC')
+        ->get()
+        ->map(function($reference) {
+            return [
+                'id' => $reference['id'],
+                'type' => $reference['type'],
+                'title' => $reference['title'],
+                'subtitle' => $reference['subtitle'],
+                'publish_year' => (int)$reference['publish_year'],
+                'language' => $reference['language'],
+                'properties' => $reference['properties'],
+                'book' => $reference['book'] ? BookCollection::collection([$reference['book']])[0] : [],
+                'note' => $reference['note'],
+                'authors' => PersonCollection::collection($reference['authors']),
+                'is_publish' => $reference['is_publish'],        
+            ];
+        });
+    
+        foreach($referenceIds as $reference){
+            if (!in_array($reference['id'], $already_ids)){
+                array_push($already_ids, $reference['id']);
+                array_push($new_reference_array, $reference);
+            }
+        }
+
+        // 在javascript上順序會顛倒
+        array_multisort(array_column($new_reference_array, 'publish_year'), SORT_DESC, $new_reference_array);
+
+        return response()->json([
+            'data' => $new_reference_array,
         ]);
     }
 

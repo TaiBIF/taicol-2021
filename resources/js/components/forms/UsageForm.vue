@@ -42,15 +42,12 @@
                             <button :disabled="!taxonName.reference"
                                     :title="!taxonName.reference ? `尚無歸檔文獻` : ''"
                                     class="button is-outlined is-small"
-                                    v-on:click="onAddPublishReference"
-                            >
+                                    v-on:click="onAddPublishReference" >
                                 {{ $t('usage.addPublishReference') }}
                             </button>
-                            <button :disabled="!taxonName.usage_reference"
-                                    :title="!taxonName.usage_reference ? `尚無歸檔文獻` : ''"
-                                    class="button is-outlined is-small"
-                            >
-                                <!-- v-on:click="onInsertCitationOfThisName"  -->
+                            <!-- 這邊不直接disable 而是按了之後如果沒有相關文獻才跳出alert -->
+                            <button class="button is-outlined is-small"
+                                    v-on:click="onInsertCitationOfThisName" >
                                 {{ $t('usage.insertCitationOfThisName') }}
                             </button>
                         </div>
@@ -71,7 +68,7 @@
                                                    :on-remove-per-usage="() => onRemovePerUsage(index)"
                                                    :per-usage="perUsage"
                                                    :taxon-name="taxonName"
-                            />
+                            /> 
                             <per-usage-form v-else
                                             :errors="errors"
                                             :index="index"
@@ -352,15 +349,57 @@ export default {
             this.typeSpecimensIsSimpleViews.push(false);
         },
         onAddPublishReference() {
-            this.perUsages.unshift({
-                target: this.taxonName.reference,
-                figure: this.taxonName.properties.usage?.figure,
-                showPage: this.taxonName.properties.usage?.showPage,
-                nameInReference: this.taxonName.properties.usage?.nameInReference,
-                proParte: false,
-                isFromPublishedRef: true,
-            });
-            this.perUsagesIsSimpleViews.push(true);
+
+            let alreadyUsageRef = this.perUsages.map((i) => i.target.id);
+
+            if (!alreadyUsageRef.includes(this.taxonName.reference.id)){
+
+                this.perUsages.unshift({
+                    target: this.taxonName.reference,
+                    figure: this.taxonName.properties.usage?.figure,
+                    showPage: this.taxonName.properties.usage?.showPage,
+                    nameInReference: this.taxonName.properties.usage?.nameInReference,
+                    proParte: false,
+                    isFromPublishedRef: true,
+                });
+                this.perUsagesIsSimpleViews.push(true);
+            } else {
+                openNotify('發表文獻已帶入', 'is-danger');
+            }
+        },
+        onInsertCitationOfThisName(){
+
+            let alreadyUsageRef = this.perUsages.map((i) => i.target.id);
+
+            this.axios.get(`/taxon-names/${this.taxonName?.id}/per_usages`, {
+            }).then(({ data: { data } }) => {
+
+                data.forEach(element => {
+
+                    // 已經被建立在文獻卡片的文獻
+
+                    if (!alreadyUsageRef.includes(element.id)){
+
+                        this.perUsages.unshift({
+                            target: element,
+                            referenceId: element.id,
+                            figure: element.figure,
+                            showPage: element.showPage,
+                            nameInReference: element.nameInReference,
+                            proParte: element.proParte,
+                            isFromPublishedRef: element.isFromPublishedRef,
+                        });
+                        this.perUsagesIsSimpleViews.push(true);
+                    }
+
+                });
+
+                if (!data.length){
+                    openNotify('無引用文獻', 'is-danger');
+                }
+
+            })
+
         },
         onAddReference() {
             this.perUsages.push({

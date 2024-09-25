@@ -44,6 +44,7 @@ Route::get('taxon-names/{id}/synonyms', 'TaxonNameController@synonyms');
 Route::get('taxon-names/{id}/sub-taxon-names', 'TaxonNameController@subTaxonNames');
 Route::get('taxon-names/{id}/common-names', 'TaxonNameController@commonNames');
 Route::get('taxon-names/{id}/parents', 'TaxonNameController@parents');
+Route::get('taxon-names/{id}/per_usages', 'TaxonNameController@per_usages');
 Route::get('/doi', 'ReferenceController@fetchDoi');
 
 Route::middleware('auth:sanctum')->group(function () {
