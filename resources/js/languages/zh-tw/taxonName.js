@@ -7,6 +7,7 @@ export default {
         thisNameAuthors: '學名作者',
         thisCombinationAuthors: '本組合名作者',
     },
+    insertPublicationAuthorship: '帶入文獻作者',
     rank: '階層',
     nomenclature: '適用命名規約',
     kingdom: '界',

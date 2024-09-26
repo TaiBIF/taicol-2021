@@ -73,6 +73,9 @@ export default {
             }
         },
     },
+    created(){
+        this.$root.$refs.tSelect = this;
+    },
     methods: {
         renderFormatName(person, group) {
             return personFactory(group)([person]);
@@ -83,6 +86,14 @@ export default {
         onUpdateValue(value) {
             this.filteredPersons = [];
             this.$emit('input', value);
+        },
+        onUpdateValueOutside(value) {
+            // 要保留原本的作者
+            value.forEach(element => {
+                this.localValue.push(element);
+            });
+            this.localValue =[...new Set(this.localValue)];
+            this.onUpdateValue(this.localValue);
         },
         onAfterCreate(data) {
             this.localValue.push(data);

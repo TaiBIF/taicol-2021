@@ -7,6 +7,7 @@ export default {
         thisNameAuthors: 'This Name Author(s)',
         thisCombinationAuthors: 'This Combination Author(s)',
     },
+    insertPublicationAuthorship: 'Insert Publication Authorship',
     rank: 'Rank',
     nomenclature: 'Code of Nomenclature',
     kingdom: 'Kingdom',

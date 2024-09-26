@@ -270,11 +270,12 @@
                                         $t(`taxonName.author.${targetNomenclature.settings.keyOfAuthors}`) :
                                         $t(`taxonName.authors`)
                                 }}
+                                <button class="ml-2 button is-small is-outlined"
+                                        v-on:click="insertPublicationAuthorship"
+                                        >
+                                    {{ $t(`taxonName.insertPublicationAuthorship`) }}
+                                </button>                            
                             </label>
-                                                    <!-- <button  class="button is-small is-outlined">
-                            帶入文獻作者
-                        </button>
- -->
                             <person-select
                                 v-model="targetAuthors"
                                 :errors="errors.authors"
@@ -538,6 +539,15 @@ export default {
         };
     },
     computed: {
+        // isPublicationAuthorship(){
+        //     // console.log(this.usage?.target?.author);
+        //     // if (this.usage?.target?.authors){
+        //     //     return true
+        //     // } else {
+        //     //     return false
+        //     // }
+        //     return this.usage?.target?.authors
+        // },
         ...mapGetters({
             genusRank: 'rank/getGenusRank',
             speciesRank: 'rank/getSpeciesRank',
@@ -765,7 +775,17 @@ export default {
             deep: true,
         },
     },
+    mounted(){
+        
+    },
     methods: {
+        insertPublicationAuthorship(){
+            if (this.usage?.target?.authors){
+                this.$root.$refs.tSelect.onUpdateValueOutside(this.usage?.target?.authors)
+            } else {
+                openNotify('請先填寫下方發表文獻', 'is-danger');
+            }
+        },
         onAddTypeSpecimens() {
             const index = this.typeSpecimens.length;
             this.typeSpecimens.push({});
