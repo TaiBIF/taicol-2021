@@ -67,8 +67,8 @@ class UserController extends Controller
             'password' => 'required',
             'device' => 'required',
         ], [
-            'required' => '必填',
-            'email' => '格式不符',
+            'required' => 'user.required',
+            'email' => 'user.email',
         ]);
 
         $user = User::where('email', $request->email)->first();
@@ -99,10 +99,10 @@ class UserController extends Controller
                 Rule::requiredIf(function () use ($request) {
                     return !!$request->get('password');
                 }),
-            ]
+            ],
         ], [
-            'required' => '必填',
-            'email' => '格式不符',
+            'required' => 'user.required',
+            'email' => 'user.email',
             'same' => '「:attribute」與「:other」需一致',
             'unique' => '已被使用',
         ], [
@@ -135,8 +135,8 @@ class UserController extends Controller
         $request->validate([
             'status' => 'required'
         ], [
-            'required' => '必填',
-            'email' => '格式不符',
+            'required' => 'user.required',
+            'email' => 'user.email',
         ]);
 
         $user = User::find($id);
@@ -169,8 +169,8 @@ class UserController extends Controller
                 }),
             ]
         ], [
-            'required' => '必填',
-            'email' => '格式不符',
+            'required' => 'user.required',
+            'email' => 'user.email',
             'same' => '「:attribute」與「:other」需一致'
         ], [
             'password' => '密碼',

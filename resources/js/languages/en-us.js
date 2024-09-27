@@ -11,6 +11,7 @@ import usage from './en-us/usage';
 import user from './en-us/user';
 import collect from './en-us/collect';
 import validation from './en-us/validation';
+import guideline from './en-us/guideline';
 
 export default {
     functions: {
@@ -29,4 +30,5 @@ export default {
     user,
     indexPage,
     loginPage,
+    guideline,
 };

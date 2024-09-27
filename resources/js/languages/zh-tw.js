@@ -11,6 +11,7 @@ import usage from './zh-tw/usage';
 import user from './zh-tw/user';
 import collect from './zh-tw/collect';
 import validation from './zh-tw/validation';
+import guideline from './zh-tw/guideline';
 
 export default {
     title: '物種學名管理工具',
@@ -37,4 +38,5 @@ export default {
     user,
     indexPage,
     loginPage,
+    guideline,
 };

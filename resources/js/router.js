@@ -33,6 +33,15 @@ const routes = [
         },
     },
     {
+        name: 'guideline',
+        path: 'guideline',
+        component: () => import(/* webpackChunkName: "guideline" */'./pages/GuidelinePage.vue'),
+        meta: {
+            backgroundColor: 'grey',
+            allowAnonymous: true,
+        },
+    },
+    {
         name: 'index',
         path: '',
         component: Index,

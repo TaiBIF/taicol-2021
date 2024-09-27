@@ -59,6 +59,26 @@
                         </div>
                     </div>
                     <div class="columns">
+                        <div class="column is-12">
+                            <div class="field">
+                                <!-- <label class="label" v-text="$t('loginPage.biologyDepartment')"/> -->
+                                <div class="control">
+                                    <label class="is-marked">
+                                        <input class="checkbox" type="checkbox" name="guideline" 
+                                          @change="checkGuide()"
+
+                                           />
+                                            {{ $t('loginPage.agreeTo') }} 
+                                        <!-- {{ errors }} -->
+                                        <router-link class="underline" :to="{name: 'guideline'} " 
+                                                    v-text="$t('guideline.title')"/>
+
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="columns">
                         <div class="column">
                             <div class="button is-fullwidth"
                                  v-on:click="onRegister"
@@ -80,6 +100,9 @@ export default {
     components: {
         CountrySelect,
         GeneralInput,
+    },
+    created(){
+        this.isGuidelineChecked = false;
     },
     data() {
         return {
@@ -104,15 +127,24 @@ export default {
         },
     },
     methods: {
+        checkGuide(){
+            this.isGuidelineChecked = !this.isGuidelineChecked;;
+        },
         onRegister() {
-            this.axios.post('/users', this.formData)
-                .then(() => {
-                    this.$router.push('/login');
-                    openNotify(this.$t('common.createSuccess'));
-                })
-                .catch(({ errors }) => {
-                    this.errors = errors;
-                });
+            if (!this.isGuidelineChecked){
+                openNotify(this.$t('loginPage.pleaseAgreeTo'),'is-danger')
+
+            } else {
+                this.axios.post('/users', this.formData)
+                    .then(() => {
+                        this.$router.push('/login');
+                        openNotify(this.$t('common.createSuccess'));
+                    })
+                    .catch(({ errors }) => {
+                        this.errors = errors;
+                    });
+
+            }
         },
     },
 };

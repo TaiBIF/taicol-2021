@@ -43,4 +43,8 @@ export default {
     'usage.required_if': '必填',
     'usage.required_without': '必填',
     'usage.integer': '須為數字',
+
+    // user
+    'user.required': '必填',
+    'user.email': '格式不符',
 };

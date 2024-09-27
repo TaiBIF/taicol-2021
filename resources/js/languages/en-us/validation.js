@@ -43,4 +43,9 @@ export default {
     'usage.required_if': 'Required',
     'usage.required_without': 'Required',
     'usage.integer': 'Must be a number',
+
+    // user
+    'user.required': 'Required',
+    'user.email': 'Format does not match',
+
 };

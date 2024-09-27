@@ -6,6 +6,7 @@ export default {
         myNamespaces: '我的名錄',
         login: '登入',
         logout: '登出',
+        guideline: '個人資料處理指引',
         language: '語言',
     },
     adminMenu: {

@@ -6,6 +6,7 @@ export default {
         myNamespaces: 'My Checklist',
         login: 'Login',
         logout: 'Logout',
+        guideline: 'Personal Data Processing Guidelines',
         language: 'Language',
     },
     adminMenu: {

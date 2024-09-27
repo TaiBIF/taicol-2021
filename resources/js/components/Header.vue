@@ -5,7 +5,7 @@
                 <h1 class="title" v-text="$t('header.title')"></h1>
             </router-link>
         </div>
-        <div class="navbar-end ">
+        <div class="navbar-end mr-5">
             <template v-if="authenticated">
                 <router-link :to="{name: 'taxon-name-create'} " class="navbar-item"
                              v-text="$t('taxonName.create')"/>
@@ -70,6 +70,8 @@
                 >
                     {{ user ? user.name : '' }}
                     <div class="submenu">
+                        <router-link :to="{name: 'guideline'}" class="item"
+                                     v-text="$t('header.menu.guideline')"/>
                         <a class="item" v-on:click="onLogout" v-text="$t('header.menu.logout')"/>
                     </div>
                 </a>
