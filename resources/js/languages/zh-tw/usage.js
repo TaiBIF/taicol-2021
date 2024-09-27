@@ -47,9 +47,15 @@ export default {
     note: '其他備註',
     commonNameYear: '發表年份',
 
+    otherFields: '其他欄位',
     addAdditionalField: '新增欄位',
     fieldName: '欄位名稱',
     fieldValue: '欄位值',
+
+    customFields: '自訂欄位',
+    addCustomField: '新增自訂欄位',
+    fieldNameEn: '欄位名稱（英文）',
+    fieldNameZh: '欄位名稱（中文）',
 
     additionalFields: {
         'description': '特徵描述',

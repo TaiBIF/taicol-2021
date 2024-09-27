@@ -155,19 +155,13 @@
                 </div>
             </div>
         </div>
-         <div class="columns">
-            <div class="field">
-                <button class="button is-text"
-                        v-on:click="onAddAdditionalField">
-                    <i class="fa fa-plus-circle"></i>
-                    &nbsp;&nbsp;{{ $t('usage.addAdditionalField') }}
-                </button>
 
-            </div>
-        </div>
+
 
         <div class="columns">
             <div class="column is-12">
+                <label class="label"
+                           v-text="$t('usage.otherFields')"/>
                 <div class="field">
                     <div v-for="(additionalField, index) in additionalFields" class="box">
                         <a class="is-pulled-right close-button"
@@ -176,18 +170,20 @@
                         <div class="columns">
                             <div class="column is-6">
                                 <div class="field">
-                                    <label class="label inline-block">
+                                    <label class="is-marked label inline-block">
                                         {{ $t('usage.fieldName') }}
                                     </label>
                                     <additional-field-select ref="additionalFieldSelect"
                                                         v-model="additionalField['fieldName']"
-                                                        :is-use-key-id="true" />
+                                                        :is-use-key-id="true"
+                                                        :errors="errors[`propertiesAdditionalFields${index}FieldName`]" />
                                 </div>
                             </div>
                             <div class="column is-6">
                                 <div class="field">
-                                    <label class="label" v-text="$t('usage.fieldValue')"/>
-                                    <general-input v-model="additionalField['fieldValue']"/>
+                                    <label class="is-marked label" v-text="$t('usage.fieldValue')"/>
+                                    <general-input v-model="additionalField['fieldValue']"
+                                                    :errors="errors[`propertiesAdditionalFields${index}FieldValue`]" />
                                 </div>
                             </div>
                         </div>
@@ -195,6 +191,69 @@
                 </div>
             </div>
         </div>
+
+        <div class="columns">
+            <div class="field">
+                <button class="button is-text"
+                        v-on:click="onAddAdditionalField">
+                    <i class="fa fa-plus-circle"></i>
+                    &nbsp;&nbsp;{{ $t('usage.addAdditionalField') }}
+                </button>
+            </div>
+        </div>
+
+
+
+        <div class="columns">
+            <div class="column is-12">
+                <div class="field">
+                    <div v-for="(customField, index) in customFields" class="box">
+                        <a class="is-pulled-right close-button"
+                            v-on:click="() => onRemoveCustomField(index)">
+                        </a>
+                        <div class="columns">
+                            <div class="column is-4">
+                                <div class="field">
+                                    <label class="is-marked label inline-block">
+                                        {{ $t('usage.fieldNameEn') }}
+                                    </label>
+                                     <general-input v-model="customField['fieldNameEn']"
+                                                    :errors="errors[`propertiesCustomFields${index}FieldNameEn`]"/>
+                                </div>
+                            </div>
+                            <div class="column is-4">
+                                <div class="field">
+                                    <label class="label" v-text="$t('usage.fieldNameZh')"/>
+                                    <general-input v-model="customField['fieldNameZh']"/>
+                                </div>
+                            </div>
+                            <div class="column is-4">
+                                <div class="field">
+                                    <label class="is-marked label" v-text="$t('usage.fieldValue')"/>
+                                    <general-input v-model="customField['fieldValue']"
+                                                   :errors="errors[`propertiesCustomFields${index}FieldValue`]"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="columns">
+            <div class="field">
+                <div class="column is-12">
+                    <label class="label" v-text="$t('usage.customFields')"/>
+                    <button class="button is-text"
+                            v-on:click="onAddCustomField">
+                        <i class="fa fa-plus-circle"></i>
+                        &nbsp;&nbsp;{{ $t('usage.addCustomField') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
 
         <div class="columns">
             <div class="column is-12">
@@ -239,6 +298,7 @@ export default {
             isMarine: this.preset.isMarine ?? null,
             commonNames: this.preset.commonNames ?? [],
             additionalFields: this.preset.additionalFields ?? [],
+            customFields: this.preset.customFields ?? [],
             note: this.preset.note ?? '',
         };
     },
@@ -286,6 +346,16 @@ export default {
         },
         onRemoveAdditionalField(index) {
             this.additionalFields.splice(index, 1);
+        },
+        onAddCustomField(){
+            this.customFields.push({
+                fieldNameEn: '',
+                fieldNameZh: '',
+                fieldValue: null,
+            });
+        },
+        onRemoveCustomField(index) {
+            this.customFields.splice(index, 1);
         },
     },
     components: {

@@ -47,8 +47,15 @@ export default {
     note: 'Note',
     commonNameYear: 'Year',
 
+    otherFields: 'Other Fields',
     addAdditionalField: 'Add Field',
     fieldName: 'Field Name',
+    fieldValue: 'Field Value',
+
+    customFields: 'Custom Fields',
+    addCustomField: 'Add Custom Field',
+    fieldNameEn: 'Field Name in English',
+    fieldNameZh: 'Field Name in Chinese',
 
     additionalFields: {
         'description': 'Description',

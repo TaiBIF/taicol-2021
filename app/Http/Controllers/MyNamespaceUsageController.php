@@ -171,6 +171,13 @@ class MyNamespaceUsageController extends Controller
             'properties.is_in_taiwan' => $status === 'accepted' ? 'required' : '',
             'properties.common_names.*.name' => 'required',
             'properties.common_names.*.language' => 'required',
+            
+            'properties.additional_fields.*.field_name' => 'required',
+            'properties.additional_fields.*.field_value' => 'required',
+
+            'properties.custom_fields.*.field_name_en' => 'required',
+            'properties.custom_fields.*.field_value' => 'required',
+
         ], [
             'min' => 'usage.required',
             'not_in' => 'usage.required',
