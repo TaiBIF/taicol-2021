@@ -47,6 +47,21 @@ export default {
     note: 'Note',
     commonNameYear: 'Year',
 
+    addAdditionalField: 'Add Field',
+    fieldName: 'Field Name',
+
+    additionalFields: {
+        'description': 'Description',
+        'diagnosis': 'Diagnosis',
+        'distribution': 'Distribution',
+        'etymology': 'Etymology',
+        'habitat': 'Habitat',
+        'substrata': 'Substrata',
+        'measurements': 'Measurements',
+        'coloration': 'Coloration',
+        'otherExaminedMaterial': 'Other Examined Material',
+    },
+
     language: 'Language',
     area: 'Area',
 

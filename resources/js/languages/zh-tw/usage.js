@@ -47,6 +47,22 @@ export default {
     note: '其他備註',
     commonNameYear: '發表年份',
 
+    addAdditionalField: '新增欄位',
+    fieldName: '欄位名稱',
+    fieldValue: '欄位值',
+
+    additionalFields: {
+        'description': '特徵描述',
+        'diagnosis': '鑑定特徵',
+        'distribution': '物種分布',
+        'etymology': '語源',
+        'habitat': '棲地',
+        'substrata': '基質',
+        'measurements': '測量',
+        'coloration': '顏色',
+        'otherExaminedMaterial': '其他引證標本',
+    },
+
     language: '語言',
     area: '使用地區',
 

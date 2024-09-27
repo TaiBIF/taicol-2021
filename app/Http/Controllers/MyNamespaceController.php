@@ -14,6 +14,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Http\Services\TaxonNameLogService;
+use App\Http\Services\ReferenceLogService;
+use App\Http\Services\LogService;
+use App\Http\Services\LogType;
+use App\Http\Services\LogAction;
 
 class MyNamespaceController extends Controller
 {
@@ -172,13 +177,26 @@ class MyNamespaceController extends Controller
 
 
                     foreach($usage->per_usages as $per_usage){
-                        $publishingReference = Reference::find($per_usage['reference_id']);
-                        $publishingReference->is_publish = 1;
-                        $publishingReference->save();
 
+
+                        if (Reference::where('id',$per_usage['reference_id'])->where('is_publish',false)->count() >0){
+
+                            $publishingReference = Reference::find($per_usage['reference_id']);
+                            $publishingReference->is_publish = true;
+                            $publishingReference->save();
+
+                            // 如果文獻一起被發佈了 要加上update log
+                            $referenceLogService = new ReferenceLogService();
+                            $referenceLogService->initOriginData($publishingReference);
+                            $referenceLogService->write(LogType::REFERENCE, $publishingReference->id, LogAction::UPDATE, ['is_publish']);
+            
+                        } else {
+                            $publishingReference = Reference::find($referenceId);
+                        }
+            
                         if (isset($publishingReference->book_id)){
                             $publishingBook = Book::find($publishingReference->book_id);
-                            $publishingBook->is_publish = 1;
+                            $publishingBook->is_publish = true;
                             $publishingBook->save();
                         }
 
@@ -202,10 +220,17 @@ class MyNamespaceController extends Controller
                         }
                     }
 
-                    $publishingNames = TaxonName::whereIn('id', $nameIds)->get();
+                    $publishingNames = TaxonName::whereIn('id', $nameIds)->where('is_publish',false)->get();
                     foreach ($publishingNames as $publishingName){
-                        $publishingName->is_publish = 1;
+                        
+                        // 如果學名一起被發佈了 要加上update log
+                        $publishingName->is_publish = true;
                         $publishingName->save();
+
+                        $taxonNameLogService = new TaxonNameLogService();
+                        $taxonNameLogService->initOriginData($publishingName);
+                        $taxonNameLogService->write(LogType::TAXON_NAME, $publishingName->id, LogAction::UPDATE, ['is_publish']);
+
                     }
 
                     $referenceUsage->is_title = $usage->is_title;

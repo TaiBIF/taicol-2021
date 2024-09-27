@@ -21,7 +21,7 @@
 
         <div class="columns">
             <!-- 命名規約 -->
-            <div class="column is-4">
+            <div class="column is-3">
                 <div class="field">
                     <label class="label is-marked inline-block">
                         {{ $t('taxonName.nomenclature') }}
@@ -75,7 +75,7 @@
             </div>
 
             <!-- 雜交親代 -->
-            <div v-if="isNeedHybridFormula" class="column is-6">
+            <div v-if="isNeedHybridFormula" class="column is-5">
                 <div class="field ">
                     <label :class="{'is-marked': targetRank && targetRank.key === 'hybrid-formula'}"
                            class="label"
@@ -99,6 +99,18 @@
                     </div>
                 </div>
             </div>
+
+            <div v-if="isNeedHybridFormula && isEdit && !isPublished" class="column is-2 text-right">
+                <h1 class="title has-text-grey-light">
+                    {{ $t('common.draft') }}
+                </h1>
+            </div>
+            <div v-else-if="isEdit && !isPublished" class="column is-7 text-right">
+                <h1 class="title has-text-grey-light">
+                    {{ $t('common.draft') }}
+                </h1>
+            </div>
+
         </div>
         <div v-if="isNeedApprovedList" class="columns">
             <div class="column is-4">
@@ -539,15 +551,13 @@ export default {
         };
     },
     computed: {
-        // isPublicationAuthorship(){
-        //     // console.log(this.usage?.target?.author);
-        //     // if (this.usage?.target?.authors){
-        //     //     return true
-        //     // } else {
-        //     //     return false
-        //     // }
-        //     return this.usage?.target?.authors
-        // },
+        isPublished(){
+            if (this.presetData){
+                return this.presetData.isPublish ?? false
+            } else {
+                return false
+            }
+        },
         ...mapGetters({
             genusRank: 'rank/getGenusRank',
             speciesRank: 'rank/getSpeciesRank',
@@ -775,9 +785,6 @@ export default {
             deep: true,
         },
     },
-    mounted(){
-        
-    },
     methods: {
         insertPublicationAuthorship(){
             if (this.usage?.target?.authors){
@@ -821,7 +828,14 @@ export default {
                 if (status === 409 &&  message === 'TaxonName exist') {
                     openNotify('學名已存在', 'is-danger');
                 } else if (status === 409 &&  message === 'TaxonName draft exist') {
-                    openNotify('該筆資料已被建立為草稿，請到我的收藏裡的草稿確認並發布，若該筆不是您建立的草稿，還請聯絡管理員釐清。(catalogueoflife.taiwan@gmail.com)', 'is-danger');
+                    this.$store.commit('openModal', {
+                        component: () => import('../modals/ConfirmDraftModal.vue'),
+                        props: {
+                            onLeave: () => {
+                                this.$store.commit('closeModal');
+                            },
+                        },
+                    });
                 } else {
                     this.errors = errors;
                 }

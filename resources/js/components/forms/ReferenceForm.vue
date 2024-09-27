@@ -44,6 +44,18 @@
                     />
                 </div>
             </div>
+            <!-- 草稿浮水印 -->
+            <div v-if="!hideDraftMark && reference.type !== ReferenceTypes.TYPE_CHECKLIST" class="column is-6 text-right">
+                <h1 class="title has-text-grey-light">
+                    {{ $t('common.draft') }}
+                </h1>
+            </div>
+            <div v-else-if="!hideDraftMark && reference.type === ReferenceTypes.TYPE_CHECKLIST" class="column is-3 text-right">
+                <h1 class="title has-text-grey-light">
+                    {{ $t('common.draft') }}
+                </h1>
+            </div>
+
         </div>
         <div v-if="reference.type !== 0" class="columns">
             <div class="column is-6">
@@ -346,6 +358,14 @@ export default {
         },
     },
     computed: {
+        hideDraftMark(){
+            // console.log(this.presetData);
+            if (this.presetData){
+                return this.presetData.isPublish ?? false
+            } else {
+                return true
+            }
+        },
         ReferenceTypes() {
             return ReferenceTypes;
         },
@@ -495,7 +515,14 @@ export default {
                         if (status === 409 && message === 'Reference exist') {
                             openNotify(this.$t('reference.exist'), 'is-danger');
                         } else if (status === 409 &&  message === 'Reference draft exist') {
-                            openNotify('該筆資料已被建立為草稿，請到我的收藏裡的草稿確認並發布，若該筆不是您建立的草稿，還請聯絡管理員釐清。(catalogueoflife.taiwan@gmail.com)', 'is-danger');
+                            app.$store.commit('openModal', {
+                                component: () => import('../modals/ConfirmDraftModal.vue'),
+                                props: {
+                                    onLeave: () => {
+                                        app.$store.commit('closeModal');
+                                    },
+                                },
+                            });
                         } else {
                             app.errors = errors;
                         }

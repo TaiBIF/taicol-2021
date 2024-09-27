@@ -31,7 +31,6 @@
                     <label class="label"
                            v-text="$t('usage.distributionInTw')"/>
                     <general-input v-model="distributionInTw"/>
-
                             <label class="label">
                                 <label class="label">
                                     <input id="isNewRecord" v-model="isNewRecord"
@@ -48,8 +47,6 @@
                                     </tooltip>
                                 </label>
                             </label>
-
-
                 </div>
                 <div class="field p-2">
                     <label class="label"
@@ -158,6 +155,47 @@
                 </div>
             </div>
         </div>
+         <div class="columns">
+            <div class="field">
+                <button class="button is-text"
+                        v-on:click="onAddAdditionalField">
+                    <i class="fa fa-plus-circle"></i>
+                    &nbsp;&nbsp;{{ $t('usage.addAdditionalField') }}
+                </button>
+
+            </div>
+        </div>
+
+        <div class="columns">
+            <div class="column is-12">
+                <div class="field">
+                    <div v-for="(additionalField, index) in additionalFields" class="box">
+                        <a class="is-pulled-right close-button"
+                            v-on:click="() => onRemoveAdditionalField(index)">
+                        </a>
+                        <div class="columns">
+                            <div class="column is-6">
+                                <div class="field">
+                                    <label class="label inline-block">
+                                        {{ $t('usage.fieldName') }}
+                                    </label>
+                                    <additional-field-select ref="additionalFieldSelect"
+                                                        v-model="additionalField['fieldName']"
+                                                        :is-use-key-id="true" />
+                                </div>
+                            </div>
+                            <div class="column is-6">
+                                <div class="field">
+                                    <label class="label" v-text="$t('usage.fieldValue')"/>
+                                    <general-input v-model="additionalField['fieldValue']"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="columns">
             <div class="column is-12">
                 <div class="field">
@@ -174,6 +212,7 @@
 import GeneralInput from '../GeneralInput.vue';
 import DeselectableRadioButton from '../DeselectableRadioButton.vue';
 import LanguageSelect from '../selects/LanguageSelect.vue';
+import AdditionalFieldSelect from '../selects/AdditionalFieldSelect.vue';
 import Tooltip from '../Tooltip.vue';
 
 export default {
@@ -199,6 +238,7 @@ export default {
             isBrackish: this.preset.isBrackish ?? null,
             isMarine: this.preset.isMarine ?? null,
             commonNames: this.preset.commonNames ?? [],
+            additionalFields: this.preset.additionalFields ?? [],
             note: this.preset.note ?? '',
         };
     },
@@ -238,9 +278,19 @@ export default {
         onRemoveCommonName(index) {
             this.commonNames.splice(index, 1);
         },
+        onAddAdditionalField(){
+            this.additionalFields.push({
+                fieldName: '',
+                fieldValue: null,
+            });
+        },
+        onRemoveAdditionalField(index) {
+            this.additionalFields.splice(index, 1);
+        },
     },
     components: {
         LanguageSelect,
+        AdditionalFieldSelect,
         DeselectableRadioButton,
         GeneralInput,
         Tooltip,

@@ -10,9 +10,11 @@ use App\Http\Resources\BookCollection;
 use App\Http\Resources\TaxonNameResource;
 use App\Http\Services\LogService;
 use App\Http\Services\LogType;
+use App\Http\Services\LogAction;
 use App\Http\Services\TaxonNameImportService;
 use App\Http\Services\TaxonNameLogService;
 use App\Http\Services\TaxonNameService;
+use App\Http\Services\ReferenceLogService;
 use App\Rank;
 use App\Reference;
 use App\Book;
@@ -822,14 +824,27 @@ class TaxonNameController extends Controller
 
         if (isset($referenceId) &&  $request->get('is_publish', true)){
 
-            $publishingRef = Reference::find($referenceId);
-            $publishingRef->is_publish = true;
-            $publishingRef->save();
+            
+            if (Reference::where('id',$referenceId)->where('is_publish',false)->count() >0){
+                $publishingReference = Reference::find($referenceId);
+                $publishingReference->is_publish = true;
+                $publishingReference->save();
 
-            if (isset($publishingRef->book_id)){
-                $publishingBook = Book::find($publishingRef->book_id);
+                // 如果文獻一起被發佈了 要加上update log
+                $referenceLogService = new ReferenceLogService();
+                $referenceLogService->initOriginData($publishingReference);
+                $referenceLogService->write(LogType::REFERENCE, $publishingReference->id, LogAction::UPDATE, ['is_publish']);
+
+            } else {
+                $publishingReference = Reference::find($referenceId);
+            }
+
+            if (isset($publishingReference->book_id)){
+
+                $publishingBook = Book::find($publishingReference->book_id);
                 $publishingBook->is_publish = true;
                 $publishingBook->save();
+        
             }
         }
 
@@ -902,12 +917,12 @@ class TaxonNameController extends Controller
 
         if (isset($referenceId) &&  $request->get('is_publish', true)){
 
-            $publishingRef = Reference::find($referenceId);
-            $publishingRef->is_publish = true;
-            $publishingRef->save();
+            $publishingReference = Reference::find($referenceId);
+            $publishingReference->is_publish = true;
+            $publishingReference->save();
 
-            if (isset($publishingRef->book_id)){
-                $publishingBook = Book::find($publishingRef->book_id);
+            if (isset($publishingReference->book_id)){
+                $publishingBook = Book::find($publishingReference->book_id);
                 $publishingBook->is_publish = true;
                 $publishingBook->save();
             }
