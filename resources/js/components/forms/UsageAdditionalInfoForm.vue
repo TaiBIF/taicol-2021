@@ -160,9 +160,9 @@
 
         <div class="columns">
             <div class="column is-12">
-                <label class="label"
-                           v-text="$t('usage.otherFields')"/>
                 <div class="field">
+                    <label class="label"
+                           v-text="$t('usage.otherFields')"/>
                     <div v-for="(additionalField, index) in additionalFields" class="box">
                         <a class="is-pulled-right close-button"
                             v-on:click="() => onRemoveAdditionalField(index)">
@@ -188,21 +188,18 @@
                             </div>
                         </div>
                     </div>
+
+                    <button class="button is-text"
+                            v-on:click="onAddAdditionalField">
+                        <i class="fa fa-plus-circle"></i>
+                        &nbsp;&nbsp;{{ $t('usage.addAdditionalField') }}
+                    </button>
+
                 </div>
+
+
             </div>
         </div>
-
-        <div class="columns">
-            <div class="field">
-                <button class="button is-text"
-                        v-on:click="onAddAdditionalField">
-                    <i class="fa fa-plus-circle"></i>
-                    &nbsp;&nbsp;{{ $t('usage.addAdditionalField') }}
-                </button>
-            </div>
-        </div>
-
-
 
         <div class="columns">
             <div class="column is-12">
@@ -237,23 +234,16 @@
                         </div>
                     </div>
                 </div>
+
+                <label class="label" v-text="$t('usage.customFields')"/>
+                <button class="button is-text"
+                        v-on:click="onAddCustomField">
+                    <i class="fa fa-plus-circle"></i>
+                    &nbsp;&nbsp;{{ $t('usage.addCustomField') }}
+                </button>
+
             </div>
         </div>
-
-
-        <div class="columns">
-            <div class="field">
-                <div class="column is-12">
-                    <label class="label" v-text="$t('usage.customFields')"/>
-                    <button class="button is-text"
-                            v-on:click="onAddCustomField">
-                        <i class="fa fa-plus-circle"></i>
-                        &nbsp;&nbsp;{{ $t('usage.addCustomField') }}
-                    </button>
-                </div>
-            </div>
-        </div>
-
 
         <div class="columns">
             <div class="column is-12">
