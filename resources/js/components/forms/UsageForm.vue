@@ -172,7 +172,59 @@
                     <hr/>
                     <usage-additional-info-form :preset="properties" v-on:input="onUpdateAdditionalInfo" :errors="errors"/>
                 </section>
+
+
+                <section v-if="status === 'accepted'">
+                    
+                    <div class="addition-rows">
+                         <div class="addition-left-item">
+                            <span class="title is-5">{{ $t('usage.addAdditionalField') }}</span>
+                            <additional-field-select class="addition-dropdown" ref="additionalFieldSelect" v-on:input="onAddAdditionalField"/>
+                         </div>
+
+                            <button class="button is-text"
+                                    v-on:click="openAddCustomField"
+                                    >
+                                <i class="fa fa-plus-circle"></i>
+                                &nbsp;{{ $t('usage.addCustomField') }}
+                            </button>
+
+                    </div>
+
+
+                    <custom-field-modal class="box" v-if="showAddCustomField" @custom="getReturnData" />
+
+                </section>
+
+                <!-- 已經存在資料庫裡的新增欄位 -->
+
+                <section v-for="(additionalField, index) in additionalFields">
+                    <a class="is-pulled-right close-button"
+                        v-on:click="() => onRemoveAdditionalField(index)">
+                    </a>
+                    <div class="title is-5">{{ $t(`usage.additionalFields.${additionalField["fieldName"]}`) }}</div>
+                    <textarea class="textarea" v-model="additionalField['fieldValue']" />
+                </section>
+
+                <!-- 已經存在資料庫裡的自訂欄位 -->
+
+                <section v-for="(customField, index) in customFields">
+                    <a class="is-pulled-right close-button"
+                        v-on:click="() => onRemoveCustomField(index)">
+                    </a>
+                    <div class="title is-5"><span v-if="customField['fieldNameZh']">{{ customField['fieldNameZh'] }} </span>{{ customField['fieldNameEn'] }}</div>
+                    <textarea class="textarea" v-model="customField['fieldValue']" />
+                </section>
+
+
+                <section v-if="status === 'accepted'">
+                    <div class="title is-5">{{ $t('usage.note') }}</div>
+                    <textarea id="note" v-model="properties.note" class="textarea"/>
+                </section>
             </div>
+
+
+
             <div class="column is-3" v-show="!isUsageFormSimple">
                 <div class="field">
                     <label class="label">{{ $t('usage.usageSuggestion') }}</label>
@@ -211,6 +263,7 @@
 import { mapGetters } from 'vuex';
 import { cloneDeep } from 'lodash';
 import draggable from 'vuedraggable';
+import AdditionalFieldSelect from '../selects/AdditionalFieldSelect.vue';
 import StatusSelect from '../selects/StatusSelect.vue';
 import IndicationSelect from '../selects/IndicationSelect.vue';
 import TypeSpecimen from './TypeSpecimen.vue';
@@ -224,6 +277,7 @@ import PerUsageForm from './PerUsageForm.vue';
 import PerUsageSimpleCard from '../cards/PerUsageSimpleCard.vue';
 import UsageAdditionalInfoForm from './UsageAdditionalInfoForm.vue';
 import { NamespaceType } from '../../constants/namespace';
+import CustomFieldModal from '../modals/CustomFieldModal.vue';
 
 export default {
     props: {
@@ -261,6 +315,8 @@ export default {
                     ...this.properties,
                     indications: this.properties.indications?.map((i) => i.abbreviation),
                     typeName: this.typeName?.id,
+                    additionalFields: this.additionalFields,
+                    customFields: this.customFields,
                 },
                 perUsages: cloneDeep(this.perUsages).map((r) => ({
                     referenceId: r.target?.id,
@@ -303,6 +359,7 @@ export default {
 
         return {
             isLoading: true,
+            showAddCustomField: false,
 
             typeSpecimensIsSimpleViews: Object.keys(this.presetData?.typeSpecimens).map(() => true),
             perUsagesIsSimpleViews: Object.keys(this.presetData?.perUsages).map(() => true),
@@ -325,6 +382,8 @@ export default {
             errors: {},
             nameRemark: this.presetData.nameRemark ?? '',
             customNameRemark: this.presetData.customNameRemark ?? '',
+            additionalFields: this.presetData.properties.additionalFields ?? [],
+            customFields: this.presetData.properties.customFields ?? [],
         };
     },
     watch: {
@@ -354,7 +413,7 @@ export default {
 
             if (!alreadyUsageRef.includes(this.taxonName.reference.id)){
 
-                this.perUsages.unshift({
+                this.perUsages.push({
                     target: this.taxonName.reference,
                     figure: this.taxonName.properties.usage?.figure,
                     showPage: this.taxonName.properties.usage?.showPage,
@@ -380,7 +439,7 @@ export default {
 
                     if (!alreadyUsageRef.includes(element.id)){
 
-                        this.perUsages.unshift({
+                        this.perUsages.push({
                             target: element,
                             referenceId: element.id,
                             figure: element.figure,
@@ -440,6 +499,43 @@ export default {
                     this.errors = errors;
                 });
         },
+        onRemoveAdditionalField(index) {
+            this.additionalFields.splice(index, 1);
+        },
+        onAddAdditionalField(input){
+
+            let nowAdditionalFields = this.additionalFields.map((a) => a.fieldName);
+
+            if (nowAdditionalFields.includes(input.id)){
+                openNotify('此欄位已存在', 'is-danger');
+            } else {
+                this.additionalFields.push({
+                    fieldName: input.id,
+                    fieldValue: null,
+                });
+            }
+        },
+        openAddCustomField(){
+            this.showAddCustomField = !this.showAddCustomField ;
+        },
+        getReturnData(data){
+
+            let nowCustomFields = this.customFields.map((a) => a.fieldNameEn);
+            let nowAdditionalFields = this.additionalFields.map((a) => a.fieldName);
+
+            if (nowCustomFields.includes(data.customFieldNameEn)|nowAdditionalFields.includes(data.customFieldNameEn)){
+                openNotify('此欄位已存在', 'is-danger');
+            } else {
+                this.customFields.push({
+                    fieldNameEn: data.customFieldNameEn,
+                    fieldNameZh: data.customFieldNameZh,
+                    fieldValue: null,
+                });
+            }
+        },
+        onRemoveCustomField(index) {
+            this.customFields.splice(index, 1);
+        },
     },
     components: {
         UsageAdditionalInfoForm,
@@ -450,7 +546,9 @@ export default {
         TypeSpecimen,
         IndicationSelect,
         StatusSelect,
+        AdditionalFieldSelect,
         draggable,
+        CustomFieldModal
     },
 };
 
@@ -484,4 +582,21 @@ export default {
     border-right: 1px solid $light-grey;
     overflow-y: auto;
 }
+
+.addition-rows {
+    display: flex;
+    justify-content: space-between;
+}
+
+.addition-dropdown {
+    width: 75% !important;
+    margin-left: 2%;
+}
+
+.addition-left-item {
+    width: 75% !important;
+    display: flex;
+}
+
+
 </style>

@@ -359,7 +359,6 @@ export default {
     },
     computed: {
         hideDraftMark(){
-            // console.log(this.presetData);
             if (this.presetData){
                 return this.presetData.isPublish ?? false
             } else {
@@ -477,7 +476,6 @@ export default {
         },
         async submit(isPublish) {
 
-            console.log(isPublish);
             const app = this;
             const method = app.$route.name === 'reference-edit' ? 'PUT' : 'POST';
             const url = app.$route.name === 'reference-edit' ? `/references/${app.reference.id}` : '/references';

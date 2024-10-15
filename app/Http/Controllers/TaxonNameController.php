@@ -654,8 +654,7 @@ class TaxonNameController extends Controller
             }
         }
 
-        // 在javascript上順序會顛倒
-        array_multisort(array_column($new_reference_array, 'publish_year'), SORT_DESC, $new_reference_array);
+        array_multisort(array_column($new_reference_array, 'publish_year'), SORT_ASC, $new_reference_array);
 
         return response()->json([
             'data' => $new_reference_array,

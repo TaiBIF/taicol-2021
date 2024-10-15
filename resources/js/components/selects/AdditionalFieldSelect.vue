@@ -1,13 +1,11 @@
 <template>
-    <t-select v-model="localValue"
-              :clearable="true"
+    <t-select 
               :errors="errors"
               :keyId="isUseKeyId ? 'id' : ''"
               :options="options"
               :searchable="false"
               label="id"
-              v-on:input="onUpdateValue"
-    >
+              v-on:input="onUpdateValue">
         <template v-slot:selected-option="{ option }">
             <span v-text="$t(`usage.additionalFields.${option.id}`)"/>
         </template>

@@ -156,112 +156,12 @@
             </div>
         </div>
 
-
-
-        <div class="columns">
-            <div class="column is-12">
-                <div class="field">
-                    <label class="label"
-                           v-text="$t('usage.otherFields')"/>
-                    <div v-for="(additionalField, index) in additionalFields" class="box">
-                        <a class="is-pulled-right close-button"
-                            v-on:click="() => onRemoveAdditionalField(index)">
-                        </a>
-                        <div class="columns">
-                            <div class="column is-6">
-                                <div class="field">
-                                    <label class="is-marked label inline-block">
-                                        {{ $t('usage.fieldName') }}
-                                    </label>
-                                    <additional-field-select ref="additionalFieldSelect"
-                                                        v-model="additionalField['fieldName']"
-                                                        :is-use-key-id="true"
-                                                        :errors="errors[`propertiesAdditionalFields${index}FieldName`]" />
-                                </div>
-                            </div>
-                            <div class="column is-6">
-                                <div class="field">
-                                    <label class="is-marked label" v-text="$t('usage.fieldValue')"/>
-                                    <general-input v-model="additionalField['fieldValue']"
-                                                    :errors="errors[`propertiesAdditionalFields${index}FieldValue`]" />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <button class="button is-text"
-                            v-on:click="onAddAdditionalField">
-                        <i class="fa fa-plus-circle"></i>
-                        &nbsp;&nbsp;{{ $t('usage.addAdditionalField') }}
-                    </button>
-
-                </div>
-
-
-            </div>
-        </div>
-
-        <div class="columns">
-            <div class="column is-12">
-                <div class="field">
-                    <div v-for="(customField, index) in customFields" class="box">
-                        <a class="is-pulled-right close-button"
-                            v-on:click="() => onRemoveCustomField(index)">
-                        </a>
-                        <div class="columns">
-                            <div class="column is-4">
-                                <div class="field">
-                                    <label class="is-marked label inline-block">
-                                        {{ $t('usage.fieldNameEn') }}
-                                    </label>
-                                     <general-input v-model="customField['fieldNameEn']"
-                                                    :errors="errors[`propertiesCustomFields${index}FieldNameEn`]"/>
-                                </div>
-                            </div>
-                            <div class="column is-4">
-                                <div class="field">
-                                    <label class="label" v-text="$t('usage.fieldNameZh')"/>
-                                    <general-input v-model="customField['fieldNameZh']"/>
-                                </div>
-                            </div>
-                            <div class="column is-4">
-                                <div class="field">
-                                    <label class="is-marked label" v-text="$t('usage.fieldValue')"/>
-                                    <general-input v-model="customField['fieldValue']"
-                                                   :errors="errors[`propertiesCustomFields${index}FieldValue`]"/>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <label class="label" v-text="$t('usage.customFields')"/>
-                <button class="button is-text"
-                        v-on:click="onAddCustomField">
-                    <i class="fa fa-plus-circle"></i>
-                    &nbsp;&nbsp;{{ $t('usage.addCustomField') }}
-                </button>
-
-            </div>
-        </div>
-
-        <div class="columns">
-            <div class="column is-12">
-                <div class="field">
-                    <label class="label"
-                           for="note"
-                           v-text="$t('usage.note')"/>
-                    <textarea id="note" v-model="note" class="textarea"/>
-                </div>
-            </div>
-        </div>
     </div>
 </template>
 <script>
 import GeneralInput from '../GeneralInput.vue';
 import DeselectableRadioButton from '../DeselectableRadioButton.vue';
 import LanguageSelect from '../selects/LanguageSelect.vue';
-import AdditionalFieldSelect from '../selects/AdditionalFieldSelect.vue';
 import Tooltip from '../Tooltip.vue';
 
 export default {
@@ -287,9 +187,7 @@ export default {
             isBrackish: this.preset.isBrackish ?? null,
             isMarine: this.preset.isMarine ?? null,
             commonNames: this.preset.commonNames ?? [],
-            additionalFields: this.preset.additionalFields ?? [],
-            customFields: this.preset.customFields ?? [],
-            note: this.preset.note ?? '',
+            // note: this.preset.note ?? '',
         };
     },
     created() {
@@ -328,29 +226,9 @@ export default {
         onRemoveCommonName(index) {
             this.commonNames.splice(index, 1);
         },
-        onAddAdditionalField(){
-            this.additionalFields.push({
-                fieldName: '',
-                fieldValue: null,
-            });
-        },
-        onRemoveAdditionalField(index) {
-            this.additionalFields.splice(index, 1);
-        },
-        onAddCustomField(){
-            this.customFields.push({
-                fieldNameEn: '',
-                fieldNameZh: '',
-                fieldValue: null,
-            });
-        },
-        onRemoveCustomField(index) {
-            this.customFields.splice(index, 1);
-        },
     },
     components: {
         LanguageSelect,
-        AdditionalFieldSelect,
         DeselectableRadioButton,
         GeneralInput,
         Tooltip,

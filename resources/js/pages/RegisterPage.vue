@@ -70,9 +70,8 @@
                                            />
                                             {{ $t('loginPage.agreeTo') }} 
                                         <!-- {{ errors }} -->
-                                        <router-link class="underline" :to="{name: 'guideline'} " 
+                                        <a class="underline" v-on:click="openGuideline"
                                                     v-text="$t('guideline.title')"/>
-
                                     </label>
                                 </div>
                             </div>
@@ -127,6 +126,11 @@ export default {
         },
     },
     methods: {
+        openGuideline() {
+            this.$store.commit('openModal', {
+                component: () => import('./GuidelinePage'),
+            });
+        },
         checkGuide(){
             this.isGuidelineChecked = !this.isGuidelineChecked;;
         },
