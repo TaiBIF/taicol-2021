@@ -292,6 +292,8 @@
                                 v-model="targetAuthors"
                                 :errors="errors.authors"
                                 :group="targetNomenclature ? targetNomenclature.group : ''"
+                                :insertedAuthors="insertedAuthors"
+                                :insertAuthorsAction="insertAuthorsAction"
                             />
                         </div>
                     </div>
@@ -548,6 +550,9 @@ export default {
 
             genomeComposition: presetData?.properties?.genomeComposition || '',
             host: presetData?.properties?.host || '',
+
+            insertedAuthors: null,
+            insertAuthorsAction: 0,
         };
     },
     computed: {
@@ -788,7 +793,8 @@ export default {
     methods: {
         insertPublicationAuthorship(){
             if (this.usage?.target?.authors){
-                this.$root.$refs.tSelect.onUpdateValueOutside(this.usage?.target?.authors)
+                this.insertedAuthors = this.usage?.target?.authors;
+                this.insertAuthorsAction += 1;
             } else {
                 openNotify('請先填寫下方發表文獻', 'is-danger');
             }

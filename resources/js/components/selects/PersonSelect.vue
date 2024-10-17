@@ -10,6 +10,8 @@
               multiple
               v-on:input="onUpdateValue"
               v-on:typing="fetchFilteredPersons"
+              :insertedAuthors="insertedAuthors"
+              :insertAuthorsAction="insertAuthorsAction"
     >
         <template v-slot:option="{ option }">
             <span v-if="group" v-text="`${option.lastName}, ${option.firstName}`"/>
@@ -55,6 +57,12 @@ export default {
         group: {
             type: String,
         },
+        insertedAuthors: {
+            type: Array,
+        },
+        insertAuthorsAction: {
+            type: Number,
+        }
     },
     data() {
         return {
@@ -72,9 +80,10 @@ export default {
                 this.localValue = [];
             }
         },
-    },
-    created(){
-        this.$root.$refs.tSelect = this;
+        insertAuthorsAction() { 
+            // 每按一次就更新一次作者
+            this.onUpdateValueOutside(this.insertedAuthors);
+        }
     },
     methods: {
         renderFormatName(person, group) {
