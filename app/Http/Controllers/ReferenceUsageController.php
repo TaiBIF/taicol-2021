@@ -497,7 +497,15 @@ class ReferenceUsageController extends Controller
                             $parent = TaxonName::where('name', $parentTaxonNameString)
                                                 ->where('nomenclature_id', $nomenclatureId)
                                                 ->first()->id;
-                        }                                        
+                        } else if ($nowName->rank_id == 34) {
+                            // 種
+                            $parentTaxonNameString = $nowName->properties['latin_genus'];
+                            $nomenclatureId = $nowName->nomenclature_id;
+                    
+                            $parent = TaxonName::where('name', $parentTaxonNameString)
+                                                ->where('nomenclature_id', $nomenclatureId)
+                                                ->first()->id;
+                        }
                     }
 
                     $currentUsage->parent_taxon_name_id = $parent;
