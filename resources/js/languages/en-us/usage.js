@@ -45,6 +45,7 @@ export default {
     },
     commonName: 'Common Name',
     note: 'Note',
+    noteTagTitle: 'Note',
     commonNameYear: 'Year',
 
     otherFields: 'Other Fields',

@@ -45,6 +45,7 @@ export default {
     },
     commonName: '俗名',
     note: '其他備註',
+    noteTagTitle: '備註',
     commonNameYear: '發表年份',
 
     otherFields: '其他欄位',

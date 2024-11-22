@@ -12,13 +12,11 @@
             <div class="flex">
                 <div class="group bg-gray-100 mb-3 border border-gray-300 w-full border-b-0">
                     <template v-for="(usage, index) in usages">
-                        <div :class="{'is-title': usage.isTitle}" class="usage-row"
-                        >
+                        <div :class="{'is-title': usage.isTitle}" class="usage-row">
                             <div :class="{'is-indent': usage.isIndent}" class="usage-content">
                                 <template v-if="usage.nameRemark && !isSimple && !usage.isTitle">
                                     <span v-if="usage.customNameRemark"
                                           v-html="usage.customNameRemark"/>
-
                                     <usage-preview
                                         v-else
                                         ref="nameRemark"
@@ -72,6 +70,8 @@
                                     isBrackish: usage.properties.isBrackish,
                                     isMarine: usage.properties.isMarine,
                                     isNewRecord: usage.properties.isNewRecord,
+                                    additionalFields: usage.properties.additionalFields,
+                                    customFields: usage.properties.customFields,
                                 }"/>
                         <div v-if="usage.properties.distributionInTw" class="px-4">
                             {{ $t('usage.distributionInTw')}}: {{ usage.properties.distributionInTw }}
@@ -80,7 +80,7 @@
                             {{ $t('usage.alienStatusNote')}}: {{ usage.properties.alienStatusNote }}
                         </div>
                         <p v-if="usage.properties.note" class="px-4">
-                            {{ usage.properties.note }}
+                            {{ $t('usage.noteTagTitle')}}: {{ usage.properties.note }}
                         </p>
                     </div>
                 </div>
