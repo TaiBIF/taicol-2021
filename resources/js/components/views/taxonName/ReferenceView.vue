@@ -4,6 +4,7 @@
             <table class="table is-fullwidth is-hoverable has-text-left in-tab-content">
                 <thead>
                 <tr>
+                    <th>{{ $t('usage.usageId') }}</th>
                     <th>{{ $t('reference.authority') }}</th>
                     <th v-text="$t('common.reference')"/>
                     <th>
@@ -17,11 +18,11 @@
                 </thead>
                 <tbody>
                 <tr v-for="usage in usages">
+                    <td>{{ usage.id }}</td>
                     <!-- 作者 -->
                     <td>
                         <p class="no-wrap" v-text="showAuthors(usage.reference.authors)"/>
                     </td>
-
                     <!-- 文獻 -->
                     <td>
                         <router-link

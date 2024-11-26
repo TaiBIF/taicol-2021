@@ -1,4 +1,5 @@
 export default {
+    usageId: 'Usage ID',
     parentTaxon: 'Parent Taxon',
     acceptedTaxon: 'Accepted Name',
     indication: 'Indication',

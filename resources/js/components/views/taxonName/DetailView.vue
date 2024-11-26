@@ -5,6 +5,26 @@
                 <div class="columns">
                     <div class="column is-3">
                         <p class="has-text-weight-bold"
+                           v-text="$t('taxonName.nameId')"/>
+                    </div>
+                    <div class="column is-9">
+                        <p>{{ id }}</p>
+                    </div>
+                </div>
+
+                <div class="columns">
+                    <div class="column is-3">
+                        <p class="has-text-weight-bold"
+                           v-text="$t('taxonName.nowNomenclature')"/>
+                    </div>
+                    <div class="column is-9">
+                        <p>{{ nomenclature.display[$i18n.locale()] }}</p>
+                    </div>
+                </div>
+
+                <div class="columns">
+                    <div class="column is-3">
+                        <p class="has-text-weight-bold"
                            v-text="$t('taxonName.rank')"/>
                     </div>
                     <div class="column is-9">
@@ -62,6 +82,16 @@
                             {{ r(reference) }}
                         </router-link>
                         <p v-else v-text="properties.referenceName"></p>
+                    </div>
+                </div>
+
+                <div class="columns">
+                    <div class="column is-3">
+                        <p class="has-text-weight-bold"
+                           v-text="$t('taxonName.publishYear')"/>
+                    </div>
+                    <div class="column is-9">
+                        <p v-if="reference">{{ reference.publishYear }}</p>
                     </div>
                 </div>
 

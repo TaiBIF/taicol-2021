@@ -10,6 +10,7 @@ export default {
     insertPublicationAuthorship: 'Insert Publication Authorship',
     rank: 'Rank',
     nomenclature: 'Code of Nomenclature',
+    nowNomenclature: 'Nomenclature',
     kingdom: 'Kingdom',
     name: 'Name',
     exAuthor: 'Initial Author(s)',
@@ -20,6 +21,7 @@ export default {
         basonym: 'Basonym',
     },
     isApprovedList: 'Approved Lists 1980',
+    publishYear: 'Publish Year',
     publication: 'Publication',
     publishedIn: 'Published in',
     reference: 'Publication in',
@@ -83,4 +85,6 @@ export default {
     treatment: 'Treatment',
     referenceInformation: 'Information',
     goCompareReference: 'Compare',
+
+    nameId: 'Name ID',
 };

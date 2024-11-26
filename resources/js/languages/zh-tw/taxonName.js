@@ -10,6 +10,7 @@ export default {
     insertPublicationAuthorship: '帶入文獻作者',
     rank: '階層',
     nomenclature: '適用命名規約',
+    nowNomenclature: '命名規約',
     kingdom: '界',
     name: '名',
     exAuthor: '前述者/提出此名者',
@@ -20,6 +21,7 @@ export default {
         basonym: '基本異名',
     },
     isApprovedList: '1980年核准列表',
+    publishYear: '發表年份',
     publication: '發表文獻',
     publishedIn: '發表文獻',
     reference: '發表文獻',
@@ -71,4 +73,6 @@ export default {
     treatment: '文獻中處理',
     referenceInformation: '文獻中屬性資料',
     goCompareReference: '前往異名表比較',
+
+    nameId: '學名編碼',
 };

@@ -25,7 +25,6 @@
                 <div class="field">
                     <label class="label is-marked inline-block">
                         {{ $t('taxonName.nomenclature') }}
-
                         <tooltip>
                             <i class="fas fa-info-circle"></i>
                             <template v-slot:body>
@@ -51,8 +50,7 @@
                 <div class="field">
                     <label class="label is-marked">
                         {{ $t('taxonName.rank') }}
-
-                        <!-- 是否雜交 -->
+                        <!-- 是否雜交 --> 
                         <label v-if="isNeedHybridFormulaCheck" class="label is-pulled-right"
                                for="isHybrid">
                             <input id="isHybrid" v-model="isHybrid" class="checkbox"

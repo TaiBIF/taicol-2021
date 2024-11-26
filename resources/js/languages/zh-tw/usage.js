@@ -1,4 +1,5 @@
 export default {
+    usageId: '學名使用編碼',
     parentTaxon: '上階層',
     acceptedTaxon: '有效學名',
     indication: '標註',
