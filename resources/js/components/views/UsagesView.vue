@@ -51,7 +51,7 @@
                               showProperties(usage.properties) &&
                               !isSimple"
                         class="border-b border-gray-300 py-2 px-5 flex flex-col gap-2">
-                        <div v-if="usage.properties.commonNames && usage.properties.commonNames.length" class="px-2">
+                        <!-- <div v-if="usage.properties.commonNames && usage.properties.commonNames.length" class="px-2 c-tag">
                             <table class="text-center">
                                 <tr v-for="name in usage.properties.commonNames">
                                     <td class="px-2">{{ name.name }}</td>
@@ -59,7 +59,12 @@
                                     <td class="px-2">{{ $t(`usage.area`)}}: {{ name.area }}</td>
                                 </tr>
                             </table>
-                        </div>
+                        </div> -->
+
+                        <p v-for="name in usage.properties.commonNames" class="c-tag w-fit">
+                            <span class="pr-2">{{ name.name }}</span>/<span class="px-2">{{ $t(`reference.languages.${name.language}`) }}</span>/<span class="pl-2">{{ $t(`usage.area`)}}: {{ name.area }}</span>
+                        </p> 
+
                         <usage-property-tags v-bind="{
                                     alienType: usage.properties.alienType,
                                     isInTaiwan: usage.properties.isInTaiwan,
@@ -70,16 +75,20 @@
                                     isBrackish: usage.properties.isBrackish,
                                     isMarine: usage.properties.isMarine,
                                     isNewRecord: usage.properties.isNewRecord,
-                                    additionalFields: usage.properties.additionalFields,
-                                    customFields: usage.properties.customFields,
                                 }"/>
-                        <div v-if="usage.properties.distributionInTw" class="px-4">
+                        <div v-if="usage.properties.distributionInTw" class="px-4 c-tag">
                             {{ $t('usage.distributionInTw')}}: {{ usage.properties.distributionInTw }}
                         </div>
-                        <div v-if="usage.properties.alienStatusNote" class="px-4">
+                        <div v-if="usage.properties.alienStatusNote" class="px-4 c-tag">
                             {{ $t('usage.alienStatusNote')}}: {{ usage.properties.alienStatusNote }}
                         </div>
-                        <p v-if="usage.properties.note" class="px-4">
+                        <p v-for="additionalField in usage.properties.additionalFields" class="px-4 c-tag">
+                            {{ $t(`usage.additionalFields.${additionalField.fieldName}`)}}: {{ additionalField.fieldValue}}
+                        </p> 
+                        <p v-for="customField in usage.properties.customFields" class="px-4 c-tag">
+                            <template v-if="customField.fieldNameZh">{{ customField.fieldNameZh }} </template>{{ customField.fieldNameEn }}: {{ customField.fieldValue}}
+                        </p>
+                        <p v-if="usage.properties.note" class="px-4 c-tag">
                             {{ $t('usage.noteTagTitle')}}: {{ usage.properties.note }}
                         </p>
                     </div>
@@ -159,5 +168,9 @@ export default {
             }
         }
     }
+}
+
+.c-tag {
+    @apply bg-gray-50 px-3 ml-2;
 }
 </style>

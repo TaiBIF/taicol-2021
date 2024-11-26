@@ -26,12 +26,6 @@
               class="c-tag">{{ $t('usage.brackish') }}</span>
         <span v-if="isMarine"
               class="c-tag">{{ $t('usage.marine') }}</span>
-        <span v-for="additionalField in additionalFields" class="c-tag">
-            {{ $t(`usage.additionalFields.${additionalField.fieldName}`)}}: {{ additionalField.fieldValue}}
-        </span> 
-        <span v-for="customField in customFields" class="c-tag">
-            <template v-if="customField.fieldNameZh">{{ customField.fieldNameZh }} </template>{{ customField.fieldNameEn }}: {{ customField.fieldValue}}
-        </span> 
     </div>
 </template>
 <script lang="ts">
@@ -72,14 +66,6 @@ export default {
         },
         isMarine: {
             type: [Boolean, Number],
-            default: false,
-        },
-        additionalFields: {
-            type: Array,
-            default: false,
-        },
-        customFields: {
-            type: Array,
             default: false,
         },
     },

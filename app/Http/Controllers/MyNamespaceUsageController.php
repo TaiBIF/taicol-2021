@@ -387,10 +387,13 @@ class MyNamespaceUsageController extends Controller
                             // 種
                             $parentTaxonNameString = $nowName->properties['latin_genus'];
                             $nomenclatureId = $nowName->nomenclature_id;
-                    
-                            $parent = TaxonName::where('name', $parentTaxonNameString)
-                                                ->where('nomenclature_id', $nomenclatureId)
-                                                ->first()->id;
+
+                            $parent_query = TaxonName::where('name', $parentTaxonNameString)
+                                                ->where('nomenclature_id', $nomenclatureId);
+                            if ($parent_query->count() > 0){
+                                $parent = $parent_query->first()->id;
+                            }
+
                         }
                     }
 
