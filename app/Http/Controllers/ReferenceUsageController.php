@@ -18,6 +18,31 @@ use Illuminate\Support\Facades\Log;
 class ReferenceUsageController extends Controller
 {
 
+    private $common_names_var = ['葉' => '葉',
+                                '蘭' => '蘭',
+                                '裂' => '裂',
+                                '輻' => '輻',
+                                '良' => '良',
+                                '螺' => '螺',
+                                '笠' => '笠',
+                                '琉' => '琉',
+                                '離' => '離',
+                                '刺' => '刺',
+                                '律' => '律',
+                                '裡' => '裡',
+                                '里' => '里',
+                                '梨' => '梨',
+                                '輪' => '輪',
+                                '呂' => '呂',
+                                '利' => '利',
+                                '柳' => '柳',
+                                '金' => '金',
+                                '羽' => '羽',
+                                '狀' => '狀',
+                                '來' => '來',
+                                '綠' => '綠'];
+
+
     public function index(Request $request, $id)
     {
         $reference = Reference::find($id);
@@ -203,6 +228,30 @@ class ReferenceUsageController extends Controller
         'custom_name_remark','type_specimens','per_usages','is_indent','is_title'];
 
         $originUsage = ReferenceUsage::find($usageId);
+
+        if (isset($usage['properties']['common_names'])){
+
+            $new_common_names = [];
+            foreach ($usage['properties']['common_names'] as $name_c){
+                
+                $name = $name_c['name'];
+                
+                foreach (array_keys($this->common_names_var) as $cc_key) {
+                    $name = str_replace($cc_key,$this->common_names_var[$cc_key],$name);
+                };
+
+                $new_name_c = Array(
+                    "area" =>  $name_c['area'],
+                    "name" =>  $name,
+                    "language" =>  $name_c['language']
+                );
+
+                array_push($new_common_names, $new_name_c);
+                
+            }
+
+            $usage['properties']['common_names'] = $new_common_names;
+        }
 
         $old_value = array();
         foreach ($properties_cols as $properties_col){

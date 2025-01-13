@@ -11,6 +11,7 @@ use App\TaxonName;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use Illuminate\Support\Facades\Log;
 
 class UsageImportService
 {
@@ -53,6 +54,31 @@ class UsageImportService
         '拉丁文' => 'lat',
         '其他' => 'others',
     ];
+
+    public $common_names_var = ['葉' => '葉',
+                                '蘭' => '蘭',
+                                '裂' => '裂',
+                                '輻' => '輻',
+                                '良' => '良',
+                                '螺' => '螺',
+                                '笠' => '笠',
+                                '琉' => '琉',
+                                '離' => '離',
+                                '刺' => '刺',
+                                '律' => '律',
+                                '裡' => '裡',
+                                '里' => '里',
+                                '梨' => '梨',
+                                '輪' => '輪',
+                                '呂' => '呂',
+                                '利' => '利',
+                                '柳' => '柳',
+                                '金' => '金',
+                                '羽' => '羽',
+                                '狀' => '狀',
+                                '來' => '來',
+                                '綠' => '綠'];
+
 
     public function __construct(Worksheet $sheet, int $namespaceId)
     {
@@ -159,9 +185,14 @@ class UsageImportService
 
                 $isMatch = preg_match('/(.*)\((.*),(.*)\)/', $commonNamesString, $matches);
 
+                $name = $matches[1];
+                foreach (array_keys($this->common_names_var) as $cc_key) {
+                    $name = str_replace($cc_key,$this->common_names_var[$cc_key],$name);
+                };
+
                 $commonName = $isMatch ? [[
                     'area' => $matches[3],
-                    'name' => $matches[1],
+                    'name' => $name,
                     'language' => $this->languageMapping[$matches[2]],
                 ]] : [];
 
@@ -249,6 +280,7 @@ class UsageImportService
 
     private function saveUsages(int $row, $taxonName, ?object $parentTaxonName, $properties, $group, $order)
     {
+
         $usage = new MyNamespaceUsage();
         $usage->namespace_id = $this->namespaceId;
 

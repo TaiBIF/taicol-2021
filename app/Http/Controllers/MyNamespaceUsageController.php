@@ -21,6 +21,29 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class MyNamespaceUsageController extends Controller
 {
+    private $common_names_var = ['葉' => '葉',
+                                '蘭' => '蘭',
+                                '裂' => '裂',
+                                '輻' => '輻',
+                                '良' => '良',
+                                '螺' => '螺',
+                                '笠' => '笠',
+                                '琉' => '琉',
+                                '離' => '離',
+                                '刺' => '刺',
+                                '律' => '律',
+                                '裡' => '裡',
+                                '里' => '里',
+                                '梨' => '梨',
+                                '輪' => '輪',
+                                '呂' => '呂',
+                                '利' => '利',
+                                '柳' => '柳',
+                                '金' => '金',
+                                '羽' => '羽',
+                                '狀' => '狀',
+                                '來' => '來',
+                                '綠' => '綠'];
 
     public function index(Request $request, $namespaceId)
     {
@@ -206,6 +229,7 @@ class MyNamespaceUsageController extends Controller
         }
 
         try {
+
             $originUsage->parent_taxon_name_id = $usage['parent_taxon_name_id'] ?? null;
             $originUsage->is_for_publish = false;
 
@@ -213,12 +237,39 @@ class MyNamespaceUsageController extends Controller
                 $originUsage->is_indent = true;
             }
 
+            if (isset($usage['properties']['common_names'])){
+
+                $new_common_names = [];
+                foreach ($usage['properties']['common_names'] as $name_c){
+                    
+                    $name = $name_c['name'];
+                    
+                    foreach (array_keys($this->common_names_var) as $cc_key) {
+                        $name = str_replace($cc_key,$this->common_names_var[$cc_key],$name);
+                    };
+
+                    $new_name_c = Array(
+                        "area" =>  $name_c['area'],
+                        "name" =>  $name,
+                        "language" =>  $name_c['language']
+                    );
+
+                    array_push($new_common_names, $new_name_c);
+                    
+                }
+
+                $usage['properties']['common_names'] = $new_common_names;
+            }
+
+
             $originUsage->status = $usage['status'] ?? false;
             $originUsage->type_specimens = $usage['type_specimens'] ?? [];
             $originUsage->name_remark = $usage['name_remark'] ?? '';
             $originUsage->custom_name_remark = $usage['custom_name_remark'] ?? '';
             $originUsage->properties = $usage['properties'] ?? [];
             $originUsage->per_usages = $usage['per_usages'] ?? [];
+
+            
 
             $originUsage->save();
 
@@ -317,6 +368,7 @@ class MyNamespaceUsageController extends Controller
 
             $group = 0;
             foreach ($usages as $index => $usage) {
+
                 if ($index === 0 && isset($usage['is_deleted']) && $usage['is_deleted'] === false && $usage['is_title'] === false && $usage['status'] !== 'accepted' ) {
                     return response()->json([
                         'message' => '第一筆必須為 accepted'
@@ -328,8 +380,37 @@ class MyNamespaceUsageController extends Controller
                 if (!$usage['is_indent']) {
                     $group += 1;
                 }
+ 
+                // 這裡是在介面上移動學名卡片的縮排
+                // 雖然這邊應該沒有俗名的問題 但還是先寫著
+
+                if (isset($usage['properties']['common_names'])){
+
+                    $new_common_names = [];
+                    foreach ($usage['properties']['common_names'] as $name_c){
+                        
+                        $name = $name_c['name'];
+                        
+                        foreach (array_keys($this->common_names_var) as $cc_key) {
+                            $name = str_replace($cc_key,$this->common_names_var[$cc_key],$name);
+                        };
+    
+                        $new_name_c = Array(
+                            "area" =>  $name_c['area'],
+                            "name" =>  $name,
+                            "language" =>  $name_c['language']
+                        );
+    
+                        array_push($new_common_names, $new_name_c);
+                        
+                    }
+    
+                    $usage['properties']['common_names'] = $new_common_names;
+                }
+
 
                 if (isset($usage['id']) && $usage['id']) {
+
                     $currentUsage = MyNamespaceUsage::find($usage['id']);
 
                     // update status
@@ -345,9 +426,9 @@ class MyNamespaceUsageController extends Controller
                         continue;
                     }
                 } else {
+                    
                     $currentUsage = new MyNamespaceUsage();
                     $currentUsage->namespace_id = $namespaceId;
-
                     $currentUsage->is_for_publish = false;
                     $currentUsage->status = $usage['status'] ?? 'accepted';
                     $currentUsage->type_specimens = $usage['type_specimens'] ?? [];

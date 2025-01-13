@@ -91,7 +91,7 @@
                            v-text="$t('taxonName.publishYear')"/>
                     </div>
                     <div class="column is-9">
-                        <p v-if="reference">{{ reference.publishYear }}</p>
+                        <p>{{ publishYear }}</p>
                     </div>
                 </div>
 
@@ -325,6 +325,9 @@ export default {
             type: Object,
         },
         note: {
+            type: String,
+        },
+        publishYear: {
             type: String,
         },
     },

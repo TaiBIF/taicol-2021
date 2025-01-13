@@ -22,6 +22,7 @@ use App\Http\Services\LogAction;
 
 class MyNamespaceController extends Controller
 {
+
     public function index(Request $request)
     {
         $namespaces = $request->user()
@@ -159,7 +160,9 @@ class MyNamespaceController extends Controller
             $groupUsages = $importUsages->groupBy('namespace_id');
             foreach ($groupUsages as $groupUsage) {
 
+
                 foreach ($groupUsage as $usage) {
+
                     $acceptedTaxonName = $importUsages->where('status', '=', 'accepted')->where('group', $usage->group)->first();
                     $referenceUsage = new ReferenceUsage();
                     $referenceUsage->parent_taxon_name_id = $usage->parent_taxon_name_id;
