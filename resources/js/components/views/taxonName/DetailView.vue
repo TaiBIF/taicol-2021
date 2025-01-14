@@ -371,7 +371,11 @@ export default {
         },
         r(r) {
             r.properties.pagesRange = '';
-            return [subTitle(r), this.usage.showPage].filter(Boolean).join(': ');
+            if (r.properties.articleNumber) {
+                return this.usage.showPage ? subTitle(r) + '(' + this.usage.showPage + ')' : subTitle(r);
+            } else {
+                return [subTitle(r), this.usage.showPage].filter(Boolean).join(': ');
+            }
         },
     },
 };

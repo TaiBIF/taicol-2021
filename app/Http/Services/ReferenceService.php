@@ -58,16 +58,19 @@ class ReferenceService
      * @return string
      * @throws \Exception
      */
-    public static function generateSubtitle(int $type, string $publishYear, array $authorsLast, string $bookTitleAbbreviation = '', string $edition = '', string $issue = '', string $volume = '', string $chapter = '', string $pageRange = ''): string
+    public static function generateSubtitle(int $type, string $publishYear, array $authorsLast, string $bookTitleAbbreviation = '', string $edition = '', string $issue = '', string $volume = '', string $chapter = '', string $pageRange = '', string $articleNumber = ''): string
     {
         $lastNames = count($authorsLast) >= 3 ? "$authorsLast[0] et al." : implode(' & ', $authorsLast);
 
         switch ($type) {
             case Reference::TYPE_JOURNAL:
                 $issue = $issue ? "($issue)" : '';
+
+                // 如果有電子文章編號要優先採用
+                
                 $bookInfo = implode(': ', array_filter([
                     $volume . $issue,
-                    $pageRange
+                    $articleNumber ? $articleNumber : $pageRange
                 ]));
 
                 $subTitle = implode(' ', array_filter([

@@ -21,8 +21,17 @@ export default (references, names = comboLast) => {
             publishYear,
         ].filter(Boolean).join(', ');
 
+        let showPage = '';
+
+        if (ref.target?.properties?.articleNumber && ref.showPage){
+            showPage = ref.target?.properties?.articleNumber + '(' + ref.showPage  +')';
+        } else if (ref.showPage){
+            showPage = ref.showPage;
+        }
+
         const page = [
-            ref.showPage ?? '',
+            showPage ?? '',
+            // ref.showPage ?? '',
             ref.figure ?? '',
         ].filter(Boolean).join(', ');
 

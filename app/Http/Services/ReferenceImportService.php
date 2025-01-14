@@ -238,6 +238,7 @@ class ReferenceImportService
             $volume,
             $chapter,
             $pageRange,
+            $articleNumber,
         );
 
         $properties = [

@@ -65,7 +65,7 @@ const renderJournalSubtitle = (reference) => {
     const issue = reference.properties?.issue ? `(${reference.properties?.issue})` : '';
     const lastPart = [
         volume + issue,
-        reference.properties?.pagesRange,
+        reference.properties?.articleNumber ? reference.properties?.articleNumber :reference.properties?.pagesRange,
     ].filter(Boolean).join(': ');
 
     return [t, lastPart].filter(Boolean).join(' ');
