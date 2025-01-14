@@ -277,7 +277,7 @@ class TaxonNameController extends Controller
         }
 
         return response()->json([
-            'data' => TaxonNameCollection::collection([$taxonName])[0],
+            'data' => new TaxonNameResource($taxonName)
         ]);
     }
 

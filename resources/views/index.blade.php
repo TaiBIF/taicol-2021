@@ -6,7 +6,7 @@
         <title>物種學名管理工具</title>
         <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.14.0/css/all.min.css" rel="stylesheet">
-        <link href="{{ asset(mix('/css/app.css')) }}" rel="stylesheet">
+        <link href="{{ mix('/css/app.css') }}" rel="stylesheet">
     </head>
     <body>
         <div id="app" :class="{'is-grey': $route.meta.backgroundColor === 'grey'}">
@@ -18,7 +18,7 @@
             <layers></layers>
             <modal></modal>
         </div>
-        <script src="{{ asset(mix('/js/app.js')) }}"></script>
+        <script src="{{ mix('/js/app.js') }}"></script>
     </body>
     @include('ga')
 </html>
