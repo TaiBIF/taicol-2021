@@ -24,7 +24,7 @@ export default (references, names = comboLast) => {
         let showPage = '';
 
         if (ref.target?.properties?.articleNumber && ref.showPage){
-            showPage = ref.target?.properties?.articleNumber + '(' + ref.showPage  +')';
+            showPage = ref.target?.properties?.articleNumber + ' (' + ref.showPage  +')';
         } else if (ref.showPage){
             showPage = ref.showPage;
         }

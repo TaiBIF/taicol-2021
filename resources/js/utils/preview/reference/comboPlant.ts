@@ -19,7 +19,7 @@ export default (references, names = comboAbbr) => {
         let showPage = '';
 
         if (ref.target?.properties?.articleNumber && ref.showPage){
-            showPage = ref.target?.properties?.articleNumber + '(' + ref.showPage  +')';
+            showPage = ref.target?.properties?.articleNumber + ' (' + ref.showPage  +')';
         } else if (ref.showPage){
             showPage = ref.showPage;
         }

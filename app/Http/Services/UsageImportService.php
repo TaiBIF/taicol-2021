@@ -192,7 +192,7 @@ class UsageImportService
 
                 $commonName = $isMatch ? [[
                     'area' => $matches[3],
-                    'name' => $name,
+                    'name' => trim(str_replace("\x00", "", $name)),
                     'language' => $this->languageMapping[$matches[2]],
                 ]] : [];
 

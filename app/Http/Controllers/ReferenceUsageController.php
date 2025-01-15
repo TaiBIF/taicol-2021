@@ -242,7 +242,7 @@ class ReferenceUsageController extends Controller
 
                 $new_name_c = Array(
                     "area" =>  $name_c['area'],
-                    "name" =>  $name,
+                    "name" =>  trim(str_replace("\x00", "", $name)),
                     "language" =>  $name_c['language']
                 );
 

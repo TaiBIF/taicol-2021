@@ -372,7 +372,7 @@ export default {
         r(r) {
             r.properties.pagesRange = '';
             if (r.properties.articleNumber) {
-                return this.usage.showPage ? subTitle(r) + '(' + this.usage.showPage + ')' : subTitle(r);
+                return this.usage.showPage ? subTitle(r) + ' (' + this.usage.showPage + ')' : subTitle(r);
             } else {
                 return [subTitle(r), this.usage.showPage].filter(Boolean).join(': ');
             }

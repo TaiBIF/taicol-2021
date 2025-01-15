@@ -89,6 +89,11 @@ class ImportTaxonName extends Command
                 $s2Rank = $sheet->getCell('F' . $row)->getValue();
                 $latinS2 = $sheet->getCell('G' . $row)->getValue();
 
+                $name = trim(str_replace("\x00", "", $name));
+                $latinGenus = trim(str_replace("\x00", "", $latinGenus));
+                $latinS1 = trim(str_replace("\x00", "", $latinS1));
+                $latinS2 = trim(str_replace("\x00", "", $latinS2));
+
                 $authorsString = $sheet->getCell('I'. $row)->getValue();
                 $exAuthorsString = $sheet->getCell('J'. $row)->getValue();
 

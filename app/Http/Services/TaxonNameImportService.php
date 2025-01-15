@@ -71,6 +71,7 @@ class TaxonNameImportService
             $nomenclature = $this->nomenclatureMapping[$this->sheet->getCell('A' . $row)->getCalculatedValue()];
             $rankString = $this->sheet->getCell('B' . $row)->getCalculatedValue();
             $name = $this->sheet->getCell('C' . $row)->getCalculatedValue();
+            $name = trim(str_replace("\x00", "", $name));
             $referenceIdString = $this->sheet->getCell('O' . $row)->getCalculatedValue();
             $referenceId = (int) $referenceIdString ?: null;
             $authorsString = $this->sheet->getCell('L' . $row)->getCalculatedValue();
@@ -141,6 +142,11 @@ class TaxonNameImportService
 
         $s2Rank = $this->sheet->getCell('F' . $row)->getCalculatedValue();
         $latinS2 = $this->sheet->getCell('G' . $row)->getCalculatedValue();
+
+        $name = trim(str_replace("\x00", "", $name));
+        $latinGenus = trim(str_replace("\x00", "", $latinGenus));
+        $latinS1 = trim(str_replace("\x00", "", $latinS1));
+        $latinS2 = trim(str_replace("\x00", "", $latinS2));
 
         $originNameString = $this->sheet->getCell('H' . $row)->getCalculatedValue();
         $originNameAuthorString = $this->sheet->getCell('I' . $row)->getCalculatedValue();

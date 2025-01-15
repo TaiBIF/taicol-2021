@@ -939,9 +939,9 @@ class TaxonNameController extends Controller
 
             'is_hybrid' => $request->get('is_hybrid'),
             'hybrid_parents_id' => $request->get('hybrid_parents_id'),
-            'latin_genus' => $request->get('latin_genus'),
-            'latin_name' => $request->get('latin_name'),
-            'latin_s1' => $request->get('latin_s1'),
+            'latin_genus' => trim(str_replace("\x00", "", $request->get('latin_genus'))),
+            'latin_name' => trim(str_replace("\x00", "", $request->get('latin_name'))),
+            'latin_s1' => trim(str_replace("\x00", "", $request->get('latin_s1'))),
             'reference_name' => $request->get('reference_name'),
             'authors_name' => $request->get('authors_name'),
             'species_id' => $request->get('species_id'),

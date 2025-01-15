@@ -718,7 +718,7 @@ export default {
                 isApprovedList: this.isApprovedList || false,
                 speciesLayers: this.speciesLayers.map((t) => ({
                     rankAbbreviation: t.rank?.abbreviation || null,
-                    latinName: t.latinName,
+                    latinName: trim(str_replace("\x00", "",t.latinName)),
                 })),
                 speciesId: this.species?.id,
                 isHybrid: this.isHybrid,
