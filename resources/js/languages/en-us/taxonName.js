@@ -71,6 +71,7 @@ export default {
     taxonNameInfo: 'Details',
     accepted: 'Accepted Names',
     inReference: 'References',
+    homotypic: 'Homotypic Names',
     homonym: 'Homonyms',
     synonym: 'Synonyms',
     subTaxonName: 'Child Taxa',

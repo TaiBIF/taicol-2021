@@ -59,6 +59,7 @@ export default {
     taxonNameInfo: '學名資訊',
     accepted: '有效學名',
     inReference: '引用文獻',
+    homotypic: '同模式學名',
     homonym: '同名',
     synonym: '異名',
     subTaxonName: '子階層學名',

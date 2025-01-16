@@ -215,6 +215,11 @@ class TaxonNameController extends Controller
                     'key' => 'homonym',
                     'display' => (boolean) $homonymsCount > 0,
                 ],
+                // 同模式學名
+                [
+                    'key' => 'homotypic',
+                    'display' => (boolean) ($taxonName->object_group != null),
+                ],
                 // 有效學名
                 [
                     'key' => 'accepted',
@@ -383,6 +388,51 @@ class TaxonNameController extends Controller
             'per_page' => $homonyms->perPage(),
             'current_page' => $homonyms->currentPage(),
             'last_page' => $homonyms->lastPage(),
+        ]);
+    }
+
+    public function homotypic(Request $request, $id)
+    {
+
+        $taxonName = TaxonName::find($id);
+
+        $homotypicQuery = TaxonName::select([
+            'taxon_names.*',
+            'references.publish_year as reference_publish_year',
+        ])->with([
+            'authors',
+            'exAuthors',
+            'reference',
+            'nomenclature', 'rank',
+            'originalTaxonName.authors',
+            'originalTaxonName.exauthors'
+        ])
+            ->leftJoin('references', 'references.id', 'taxon_names.reference_id')
+            ->where('taxon_names.id', '!=', $taxonName->id)
+            ->where('taxon_names.is_publish', '=', 1)
+            ->where('taxon_names.object_group', '=', $taxonName->object_group);
+
+        $direction = $request->get('direction');
+        if (!$direction) {
+            $homotypicQuery->orderBy('taxon_names.name');
+        } else {
+            if ($request->get('sortby') === 'publish_year') {
+                $homotypicQuery->orderBy('references.publish_year', $direction);
+            }
+
+            if ($request->get('sortby') === 'taxon_name') {
+                $homotypicQuery->orderBy('taxon_names.name', $direction);
+            }
+        }
+        
+        $homotypic = $homotypicQuery->paginate();
+
+        return response()->json([
+            'total' => $homotypic->total(),
+            'data' => TaxonNameCollection::collection($homotypic->items()),
+            'per_page' => $homotypic->perPage(),
+            'current_page' => $homotypic->currentPage(),
+            'last_page' => $homotypic->lastPage(),
         ]);
     }
 

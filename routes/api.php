@@ -40,6 +40,7 @@ Route::get('taxon-names/{id}', 'TaxonNameController@show');
 Route::get('taxon-names/{id}/references', 'TaxonNameController@references');
 Route::get('taxon-names/{id}/accepted', 'TaxonNameController@accepted');
 Route::get('taxon-names/{id}/homonyms', 'TaxonNameController@homonyms');
+Route::get('taxon-names/{id}/homotypic', 'TaxonNameController@homotypic');
 Route::get('taxon-names/{id}/synonyms', 'TaxonNameController@synonyms');
 Route::get('taxon-names/{id}/sub-taxon-names', 'TaxonNameController@subTaxonNames');
 Route::get('taxon-names/{id}/common-names', 'TaxonNameController@commonNames');

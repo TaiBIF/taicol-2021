@@ -10,6 +10,7 @@
                 <accepted-view v-if="currentTab === `accepted`" :type="taxonName.nomenclature.group"/>
                 <synonym-view v-if="currentTab === `synonym`" :taxon-name="taxonName"/>
                 <homonym-view v-if="currentTab === `homonym`" :taxon-name="taxonName"/>
+                <homotypic-view v-if="currentTab === `homotypic`" :taxon-name="taxonName"/>
                 <trivial-name v-if="currentTab === `names`" :taxon-name="taxonName"/>
                 <reference-view v-if="currentTab === `in-reference`"/>
                 <sub-taxon-names-view v-if="currentTab === `sub-taxon-name`" :taxon-name="taxonName"/>
@@ -23,6 +24,7 @@
 import DetailView from '../components/views/taxonName/DetailView.vue';
 import SynonymView from '../components/views/taxonName/SynonymView.vue';
 import HomonymView from '../components/views/taxonName/HomonymView.vue';
+import HomotypicView from '../components/views/taxonName/HomotypicView.vue';
 import TrivialName from '../components/views/taxonName/TrivialName.vue';
 import ReferenceView from '../components/views/taxonName/ReferenceView.vue';
 import AcceptedView from '../components/views/taxonName/AcceptedView.vue';
@@ -56,6 +58,11 @@ export default {
                 {
                     key: 'homonym',
                     title: this.$t('taxonName.homonym'),
+                    display: false,
+                },
+                {
+                    key: 'homotypic',
+                    title: this.$t('taxonName.homotypic'),
                     display: false,
                 },
                 {
@@ -100,6 +107,7 @@ export default {
                 this.commonName = commonName;
 
                 tabs.forEach(({ key, display }) => {
+                    console.log(key, display);
                     this.onToggle(key, display);
                 });
 
@@ -129,6 +137,7 @@ export default {
         DetailView,
         SynonymView,
         HomonymView,
+        HomotypicView,
         TrivialName,
         ReferenceView,
     },
