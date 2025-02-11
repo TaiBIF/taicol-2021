@@ -6,6 +6,7 @@ use App\Http\Requests\TaxonNameRequest;
 use App\Http\Resources\PersonCollection;
 use App\Http\Resources\ReferenceCollection;
 use App\Http\Resources\TaxonNameCollection;
+use App\Http\Resources\TaxonNameSimpleSubResource;
 use App\Http\Resources\BookCollection;
 use App\Http\Resources\TaxonNameResource;
 use App\Http\Services\LogService;
@@ -399,20 +400,21 @@ class TaxonNameController extends Controller
         $homotypicQuery = TaxonName::select([
             'taxon_names.*',
             'references.publish_year as reference_publish_year',
-        ])->with([
-            'authors',
-            'exAuthors',
-            'reference',
-            'nomenclature', 'rank',
-            'originalTaxonName.authors',
-            'originalTaxonName.exauthors'
-        ])
+            ])->with([
+                'authors',
+                'exAuthors',
+                'reference',
+                'nomenclature', 'rank',
+                'originalTaxonName.authors',
+                'originalTaxonName.exauthors'
+            ])
             ->leftJoin('references', 'references.id', 'taxon_names.reference_id')
             ->where('taxon_names.id', '!=', $taxonName->id)
             ->where('taxon_names.is_publish', '=', 1)
             ->where('taxon_names.object_group', '=', $taxonName->object_group);
 
         $direction = $request->get('direction');
+
         if (!$direction) {
             $homotypicQuery->orderBy('taxon_names.name');
         } else {
@@ -429,7 +431,7 @@ class TaxonNameController extends Controller
 
         return response()->json([
             'total' => $homotypic->total(),
-            'data' => TaxonNameCollection::collection($homotypic->items()),
+            'data' => TaxonNameSimpleSubResource::collection($homotypic->items()),
             'per_page' => $homotypic->perPage(),
             'current_page' => $homotypic->currentPage(),
             'last_page' => $homotypic->lastPage(),
@@ -977,16 +979,20 @@ class TaxonNameController extends Controller
             }
         }
 
+        
+        $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
+        $search_name = str_replace($replace_words, ' ', $name);
+
         $taxonName = $service->saveAll([
             'nomenclature_id' => $nomenclatureId,
             'rank_id' => $rankId,
             'name' => $name,
+            'search_name' => $search_name,
             'formatted_authors' => $request->get('formatted_authors'),
             'original_taxon_name_id' => $request->get('original_taxon_name_id'),
             'type_specimens' => $request->get('type_specimens'),
             'publish_year' => $request->get('publish_year'),
             'note' => $request->get('note'),
-
             'is_hybrid' => $request->get('is_hybrid'),
             'hybrid_parents_id' => $request->get('hybrid_parents_id'),
             'latin_genus' => trim(str_replace("\x00", "", $request->get('latin_genus'))),

@@ -170,6 +170,10 @@ class TaxonNameService
             $properties['host'] = $data['host'];
         }
 
+        if (isset($data['search_name'])){
+            $this->taxonName->search_name = $data['search_name'];
+        }
+
         $this->taxonName->nomenclature_id = $nomenclature->id;
         $this->taxonName->rank_id = $rank->id;
         $this->taxonName->name = $data['name'];

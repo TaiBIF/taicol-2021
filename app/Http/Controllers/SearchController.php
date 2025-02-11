@@ -266,7 +266,12 @@ class SearchController extends Controller
                 switch ($type) {
                     case $type === 'text' || $type === 'taxon-name':
                         $query->where(function ($query) use ($word) {
-                            $query->whereRaw('name like ? ', '%' . $word . '%');
+
+
+                            $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
+                            $word = str_replace($replace_words, ' ', $word);
+
+                            $query->whereRaw('search_name like ? ', '%' . $word . '%');
 
                             // Check if the word contains Chinese
                             if (preg_match('/\p{Han}+/u', $word)) {
