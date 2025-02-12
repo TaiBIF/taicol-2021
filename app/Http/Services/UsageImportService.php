@@ -183,30 +183,36 @@ class UsageImportService
                     }
                 }
 
-                $isMatch = preg_match('/(.*)\((.*),(.*)\)/', $commonNamesString, $matches);
+                if (isset($commonNamesString)){
 
-                $name = $matches[1];
-                foreach (array_keys($this->common_names_var) as $cc_key) {
-                    $name = str_replace($cc_key,$this->common_names_var[$cc_key],$name);
-                };
+                    $isMatch = preg_match('/(.*)\((.*),(.*)\)/', $commonNamesString, $matches);
 
-                $commonName = $isMatch ? [[
-                    'area' => $matches[3],
-                    'name' => trim(str_replace("\x00", "", $name)),
-                    'language' => $this->languageMapping[$matches[2]],
-                ]] : [];
+                    $name = $matches[1];
+                    foreach (array_keys($this->common_names_var) as $cc_key) {
+                        $name = str_replace($cc_key,$this->common_names_var[$cc_key],$name);
+                    };
+
+                    $commonName = $isMatch ? [[
+                        'area' => $matches[3],
+                        'name' => trim(str_replace("\x00", "", $name)),
+                        'language' => $this->languageMapping[$matches[2]],
+                    ]] : [];
+                }
+
+                $isInTaiwan = !isset($isInTaiwan) || $isInTaiwan === '' ? null : (int)$isInTaiwan;
 
                 $properties = [
                     'is_fossil' => !isset($isFossil) || $isFossil === '' ? null : ($isFossil ? 1 : 0),
                     'is_marine' => !isset($isMarine) || $isMarine === '' ? null : ($isMarine ? 1 : 0),
                     'is_brackish' => !isset($isBrackish) || $isBrackish === '' ? null : ($isBrackish ? 1 : 0),
                     'common_names' => !isset($commonName) ? null : ($commonName),
-                    'is_in_taiwan' => !isset($isInTaiwan) || $isInTaiwan === '' ? null : ($isInTaiwan ? 1 : 0),
+                    'is_in_taiwan' => $isInTaiwan,
                     'is_freshwater' => !isset($isFreshwater) || $isFreshwater === '' ? null : ($isFreshwater ? 1 : 0),
                     'is_terrestrial' => !isset($isTerrestrial) || $isTerrestrial === '' ? null : ($isTerrestrial ? 1 : 0),
                 ];
 
-                if ($isInTaiwan) {
+
+                if ($isInTaiwan == 1) {
                     $properties['is_endemic'] = !isset($isEndemic) || $isEndemic === '' ? null : ($isEndemic ? 1 : 0);
                     $properties['distribution_in_tw'] = $distributionTw;
                     $properties['is_new_record'] = !isset($isNewRecord) || $isNewRecord === '' ? null : ($isNewRecord ? true : false);
