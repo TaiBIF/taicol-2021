@@ -14,6 +14,37 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use IntlChar;
+
+function unicode_to_plain($text) {
+    $plain_text = '';
+    
+    for ($i = 0; $i < mb_strlen($text, 'UTF-8'); $i++) {
+        $char = mb_substr($text, $i, 1, 'UTF-8');
+        
+        // 獲取 Unicode 名稱
+        $name = IntlChar::charName($char);
+        
+        if (strpos($name, 'MATHEMATICAL') !== false) {
+            // 取最後一個單詞（對應的普通字母）
+            $parts = explode(' ', $name);
+            $letter = strtolower(end($parts)); // 預設轉小寫
+            
+            // 如果名稱包含 "CAPITAL"，則轉大寫
+            if (strpos($name, 'CAPITAL') !== false) {
+                $letter = strtoupper($letter);
+            }
+            
+            $plain_text .= $letter;
+        } else {
+            $plain_text .= $char; // 保持原字元
+        }
+    }
+    
+    return $plain_text;
+}
+
+
 
 /**
  * Class SearchController
@@ -212,7 +243,7 @@ class SearchController extends Controller
 
             return [
                 'type' => trim($type),
-                'name' => trim($name),
+                'name' => unicode_to_plain(trim($name)),
             ];
         }) : collect([]);
         return $keywords;
