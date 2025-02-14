@@ -170,13 +170,26 @@ class TaxonNameService
             $properties['host'] = $data['host'];
         }
 
-        if (isset($data['search_name'])){
-            $this->taxonName->search_name = $data['search_name'];
+        $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
+
+        if ($rank->id==34 && $isHybrid == true){
+
+            $search_name =  $data['latin_genus'] . ' ' . $data['latin_s1'];
+
+        } else if ($rank->id==47){
+            // 這邊尚未完成
+
+            $search_name = '';
+
+        } else {
+        
+            $search_name = str_replace($replace_words, ' ', $data['name']);
         }
 
         $this->taxonName->nomenclature_id = $nomenclature->id;
         $this->taxonName->rank_id = $rank->id;
         $this->taxonName->name = $data['name'];
+        $this->taxonName->search_name = $search_name;
         $this->taxonName->formatted_authors = $data['formatted_authors'] ?? '';
         $this->taxonName->original_taxon_name_id = $data['original_taxon_name_id'] ?? null;
         $this->taxonName->type_specimens = $typeSpecimens;
@@ -185,6 +198,8 @@ class TaxonNameService
         $this->taxonName->note = $data['note'] ?? '';
         $this->taxonName->is_publish = $data['is_publish'] ?? true;
         $this->taxonName->save();
+
+
 
         return $this->taxonName;
     }
@@ -276,9 +291,23 @@ class TaxonNameService
             $hybridParents[$hybridParent2] = ['order' => 1];
         }
 
+
         // hybrid-formula 學名特殊處理
         if ($this->taxonName->rank->key === 'hybrid-formula') {
             $this->taxonName->name = "{$h1?->name} × {$h2?->name}";
+            if ($h1?->properties['latin_genus'] == $h2?->properties['latin_genus'] ){
+                $now_h2_name = str_replace($h1?->properties['latin_genus']. ' ' ,'',$h2?->name);
+                $search_name = "{$h1?->name} {$now_h2_name}";
+            } else {
+                $search_name = "{$h1?->name} {$h2?->name}";
+            }
+
+            $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × ','× '];
+            $search_name = str_replace($replace_words, ' ', $search_name);
+
+
+            $this->taxonName->search_name =  $search_name ;
+
             $this->taxonName->save();
         }
 

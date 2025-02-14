@@ -179,14 +179,14 @@ class TaxonNameImportService
         $exAuthors = $this->findPersonsByString($row, $exAuthorsString);
 
 
-        $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
+        // $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
 
 
         return $service->saveAll([
             'nomenclature_id' => $nomenclature,
             'rank_id' => $this->ranks[strtolower($rankString)]->id,
             'name' => $name,
-            'search_name' => str_replace($replace_words, ' ', $name),
+            // 'search_name' => str_replace($replace_words, ' ', $name),
             'formatted_authors' => $formattedAuthorsString,
             'original_taxon_name_id' => $originalTaxonName ? $originalTaxonName->id : null,
             'type_specimens' => [],

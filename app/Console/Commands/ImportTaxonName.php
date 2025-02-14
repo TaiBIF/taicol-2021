@@ -127,7 +127,7 @@ class ImportTaxonName extends Command
                 }
 
                 $species = TaxonName::where('name', "$latinGenus $latinS1")->first();
-                $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
+                $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × ','× '];
 
                 $taxonName = new TaxonName();
                 $taxonName->nomenclature_id = $nomenclature;

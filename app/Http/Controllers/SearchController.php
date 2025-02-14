@@ -300,9 +300,11 @@ class SearchController extends Controller
 
 
                             $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
-                            $word = str_replace($replace_words, ' ', $word);
+                            $word_wo_rank = str_replace($replace_words, ' ', $word);
 
-                            $query->whereRaw('search_name like ? ', '%' . $word . '%');
+                            $query->whereRaw('search_name like ? ', '%' . $word_wo_rank . '%');
+                            $query->orWhereRaw( 'name like ? ' , '%' . $word . '%');
+
 
                             // Check if the word contains Chinese
                             if (preg_match('/\p{Han}+/u', $word)) {

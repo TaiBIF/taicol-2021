@@ -979,15 +979,10 @@ class TaxonNameController extends Controller
             }
         }
 
-        
-        $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
-        $search_name = str_replace($replace_words, ' ', $name);
-
         $taxonName = $service->saveAll([
             'nomenclature_id' => $nomenclatureId,
             'rank_id' => $rankId,
             'name' => $name,
-            'search_name' => $search_name,
             'formatted_authors' => $request->get('formatted_authors'),
             'original_taxon_name_id' => $request->get('original_taxon_name_id'),
             'type_specimens' => $request->get('type_specimens'),
