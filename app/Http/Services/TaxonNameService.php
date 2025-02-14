@@ -199,8 +199,6 @@ class TaxonNameService
         $this->taxonName->is_publish = $data['is_publish'] ?? true;
         $this->taxonName->save();
 
-
-
         return $this->taxonName;
     }
 
