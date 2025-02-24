@@ -130,6 +130,9 @@ class PersonImportService
                 $person->country_numeric_code = $numericCode;
                 $person->save();
 
+                $logService = new LogService();
+                $logService->writeImportLog(LogType::PERSON, $person->id);
+
                 $row++;
                 $count++;
             }
