@@ -27,6 +27,7 @@ class SpecimenPropertiesEntity implements Jsonable, Arrayable
         $this->collectionMonth = $data['collection_month'] ?? '';
         $this->collectionDay = $data['collection_day'] ?? '';
         $this->collectors = $data['collectors'];
+        $this->collectorIds = $data['collector_ids'];
         $this->collectorNumber = $data['collector_number'];
         $this->lectoCitePage = $data['lecto_cite_page'];
         $this->lectoDesignatedReferenceId = $data['lecto_designated_reference']['id'] ?? null;
@@ -51,6 +52,7 @@ class SpecimenPropertiesEntity implements Jsonable, Arrayable
             'collection_month' => $this->collectionMonth ?? '',
             'collection_day' => $this->collectionDay ?? '',
             'collectors' => $this->collectors,
+            'collector_ids' => $this->collectorIds,
             'collector_number' => $this->collectorNumber ?? '',
             'lecto_cite_page' => $this->lectoCitePage ?? '',
             'lecto_designated_reference_id' => $this->lectoDesignatedReferenceId ?? null,

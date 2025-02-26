@@ -110,7 +110,7 @@ class MyNamespaceUsageController extends Controller
             });
         }
 
-        $typeName = $typeName = ($usage->properties['type_name'] ?? '') ? TaxonNameCollection::collection([
+        $typeName = ($usage->properties['type_name'] ?? '') ? TaxonNameCollection::collection([
             TaxonName::with([
                 'authors',
                 'exAuthors',
@@ -135,7 +135,7 @@ class MyNamespaceUsageController extends Controller
                 return $r;
             }),
             'type_specimens' => collect($usage->type_specimens)->map(function ($t) {
-                    $t['collectors'] = PersonCollection::collection(Person::whereIn('id', $t['collector_ids'])->get());
+                    $t['collectors'] = PersonCollection::collection(Person::whereIn('id', $t['collector_ids'] ?? [])->get());
                     return $t;
                 }) ?? [],
             'name_remark' => $usage->name_remark,

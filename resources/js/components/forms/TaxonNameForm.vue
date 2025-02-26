@@ -731,7 +731,7 @@ export default {
                     }
 
                     if (t.collectors.length) {
-                        t.collectorsId = t.collectors.map((c) => c.id);
+                        t.collectorIds = t.collectors.map((c) => c.id);
                     }
 
                     if (t.country) {

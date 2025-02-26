@@ -21,6 +21,9 @@ use App\Reference;
 use App\Book;
 use App\ReferenceUsage;
 use App\TaxonName;
+use App\TypeSpecimen;
+use App\Country;
+use App\Person;
 use Hamcrest\Type\IsString;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -36,49 +39,65 @@ class TaxonNameController extends Controller
 
         $strict = (bool) $request->get('strict', false);
 
-        $keyword = trim(strtolower($request->get('keyword', '')));
-        $query = TaxonName::select('taxon_names.*')->with([
-            'authors', 'exAuthors', 'reference', 'reference.authors',
-            'nomenclature', 'rank', 'originalTaxonName.authors'
-        ])
+        $id = $request->get('id');
+    
+        if (isset($id)) {
+
+            $query = TaxonName::select('taxon_names.*')->with([
+                'authors', 'exAuthors', 'reference', 'reference.authors',
+                'nomenclature', 'rank', 'originalTaxonName.authors'
+            ])
             ->leftJoin('ranks', 'taxon_names.rank_id', 'ranks.id')
-            ->where('is_publish', '=', true)
-            ->whereRaw('LOWER(`name`) like ? ', ['%' . $keyword . '%'])
-            ->orWhereHas('authors', function (Builder $query) use ($keyword) {
-                $query->whereRaw('LOWER(`last_name`) like ? ', ['%' . $keyword . '%'])
-                    ->orWhereRaw('LOWER(`first_name`) like ? ', ['%' . $keyword . '%'])
-                    ->orWhereRaw('LOWER(`middle_name`) like ? ', ['%' . $keyword . '%'])
-                    ->orWhereRaw('LOWER(`abbreviation_name`) like ? ', ['%' . $keyword . '%']);
-            });
+            ->where('taxon_names.id', '=', $id);
 
-        if ($keyword === '' && $strict) {
-            return response()->json([
-                'total' => 0,
-                'data' => [],
-                'per_page' => $perPage,
-                'current_page' => 0,
-                'last_page' => 0,
-            ]);
+            $taxonNames = $query->get();
+    
+        } else {
+
+            $keyword = trim(strtolower($request->get('keyword', '')));
+            $query = TaxonName::select('taxon_names.*')->with([
+                'authors', 'exAuthors', 'reference', 'reference.authors',
+                'nomenclature', 'rank', 'originalTaxonName.authors'
+            ])
+                ->leftJoin('ranks', 'taxon_names.rank_id', 'ranks.id')
+                ->where('is_publish', '=', true)
+                ->whereRaw('LOWER(`name`) like ? ', ['%' . $keyword . '%'])
+                ->orWhereHas('authors', function (Builder $query) use ($keyword) {
+                    $query->whereRaw('LOWER(`last_name`) like ? ', ['%' . $keyword . '%'])
+                        ->orWhereRaw('LOWER(`first_name`) like ? ', ['%' . $keyword . '%'])
+                        ->orWhereRaw('LOWER(`middle_name`) like ? ', ['%' . $keyword . '%'])
+                        ->orWhereRaw('LOWER(`abbreviation_name`) like ? ', ['%' . $keyword . '%']);
+                });
+
+            if ($keyword === '' && $strict) {
+                return response()->json([
+                    'total' => 0,
+                    'data' => [],
+                    'per_page' => $perPage,
+                    'current_page' => 0,
+                    'last_page' => 0,
+                ]);
+            }
+
+            if ($request->get('sortby') === 'rank') {
+                $query->orderBy('ranks.order', $request->get('direction'));
+            }
+
+            if ($request->get('sortby') === 'name') {
+                $query->orderBy('taxon_names.name', $request->get('direction'));
+            }
+
+            if ($request->get('sortby') === 'publish_year') {
+                $query->orderBy('taxon_names.publish_year', $request->get('direction'));
+            }
+
+            $taxonNames = $query->orderByRaw(
+                "CASE WHEN LOWER(`name`) = '{$keyword}' THEN 0 WHEN LOWER(`name`) LIKE '{$keyword}%' THEN 1 WHEN LOWER(`name`) LIKE '% {$keyword}' THEN 2 ELSE 3 END"
+            )
+                ->orderBy('taxon_names.name')
+                ->limit($perPage)
+                ->get();
         }
-
-        if ($request->get('sortby') === 'rank') {
-            $query->orderBy('ranks.order', $request->get('direction'));
-        }
-
-        if ($request->get('sortby') === 'name') {
-            $query->orderBy('taxon_names.name', $request->get('direction'));
-        }
-
-        if ($request->get('sortby') === 'publish_year') {
-            $query->orderBy('taxon_names.publish_year', $request->get('direction'));
-        }
-
-        $taxonNames = $query->orderByRaw(
-            "CASE WHEN LOWER(`name`) = '{$keyword}' THEN 0 WHEN LOWER(`name`) LIKE '{$keyword}%' THEN 1 WHEN LOWER(`name`) LIKE '% {$keyword}' THEN 2 ELSE 3 END"
-        )
-            ->orderBy('taxon_names.name')
-            ->limit($perPage)
-            ->get();
 
         return response()->json([
             'data' => TaxonNameCollection::collection($taxonNames),
@@ -1055,4 +1074,19 @@ class TaxonNameController extends Controller
             'total' => $count,
         ]);
     }
+
+    public function typeSpecimens($id)
+    {
+        $usage = TaxonName::find($id);
+        
+        return response(
+          collect($usage->type_specimens)->map(function ($t) {
+                    if (array_key_exists('collectors', $t)){
+                        $t['collectors'] = PersonCollection::collection(Person::whereIn('id',array_column($t['collectors'], 'id'))->get());
+                    }
+                    return $t;
+                }) ?? [],
+        );
+    }
+
 }

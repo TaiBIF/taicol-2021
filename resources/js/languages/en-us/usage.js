@@ -82,5 +82,7 @@ export default {
     editingBlock: 'Name Usage Editing',
     addPublishReference: 'Insert Publication of This Name',
     insertCitationOfThisName: 'Insert Citation of This Name',
+    insertTypeSpecimenOfThisName: 'Insert Type Specimen of This Name',
+    insertTypeNameOfThisName: 'Insert Type Name of This Name',
     pleaseFinishEditing: 'Please click into red card of scientific name to complete editing.',
 };

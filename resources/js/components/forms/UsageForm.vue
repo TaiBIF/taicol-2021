@@ -92,6 +92,10 @@
                         <div class="title is-5">
                             {{ $t('taxonName.specimenType') }}
                             <div class="is-pulled-right buttons">
+                                <button class="button is-outlined is-small"
+                                        v-on:click="onInsertTypeSpecimenOfThisName" >
+                                    {{ $t('usage.insertTypeSpecimenOfThisName') }}
+                                </button>
                             </div>
                         </div>
                         <hr/>
@@ -156,11 +160,23 @@
 
                     <!-- 模式學名 --->
                     <template v-else>
-                        <h3 class="title is-5">{{ $t('taxonName.typeName') }}</h3>
+                        <div class="title is-5">
+                            {{ $t('taxonName.typeName') }}
+                            <div class="is-pulled-right buttons">
+                                <button class="button is-outlined is-small"
+                                        v-on:click="onInsertTypeNameOfThisName"
+                                        :disabled="!taxonNameTypeName" >
+                                    {{ $t('usage.insertTypeNameOfThisName') }}
+                                </button>
+                            </div>
+                        </div>
                         <hr/>
                         <div class="columns is-multiline">
                             <div class="column is-12">
-                                <taxon-name-select v-model="typeName"/>
+                                <taxon-name-select 
+                                    v-model="typeName"
+                                    :insertedTypeName="insertedTypeName"
+                                    :insertTypeNameAction="insertTypeNameAction"/>
                             </div>
                         </div>
                     </template>
@@ -293,6 +309,9 @@ export default {
         ...mapGetters({
             speciesRank: 'rank/getSpeciesRank',
         }),
+        taxonNameTypeName() {
+            return this.taxonName?.properties?.typeName;
+        },
         taxonNameId() {
             return this.taxonName?.id;
         },
@@ -330,7 +349,7 @@ export default {
                     ...t,
                     sexId: t.sex?.id,
                     countryId: t.country?.numericCode,
-                    collectorIds: t.collectors.map((c) => c.id),
+                    collectorIds: t.collectors?.map((c) => c.id),
                 })),
                 customNameRemark: this.customNameRemark,
                 nameRemark: this.$refs.nameRemark.$el.innerHTML,
@@ -356,7 +375,6 @@ export default {
         const indications = indicationOptions
             .filter((i) => i.status === this.presetData.status)
             .filter((i) => this.presetData.properties.indications?.includes(i.abbreviation));
-
         return {
             isLoading: true,
             showAddCustomField: false,
@@ -384,6 +402,8 @@ export default {
             customNameRemark: this.presetData.customNameRemark ?? '',
             additionalFields: this.presetData.properties.additionalFields ?? [],
             customFields: this.presetData.properties.customFields ?? [],
+            insertedTypeName: null,
+            insertTypeNameAction: 0,
         };
     },
     watch: {
@@ -455,6 +475,30 @@ export default {
 
                 if (!data.length){
                     openNotify('無引用文獻', 'is-danger');
+                }
+
+            })
+
+        },
+        onInsertTypeNameOfThisName(){
+            this.insertedTypeName = this.presetData.taxonName.properties.typeName;
+            this.insertTypeNameAction += 1;
+        },
+        onInsertTypeSpecimenOfThisName(){
+
+            this.axios.get(`/taxon-names/${this.taxonName?.id}/type-specimens`, {
+            }).then(({ data}) => {
+
+
+                data.forEach(element => {
+
+                    this.typeSpecimens.push({...element});
+                    this.typeSpecimensIsSimpleViews.push(true);
+
+                });
+
+                if (!data.length){
+                    openNotify('無模式標本', 'is-danger');
                 }
 
             })

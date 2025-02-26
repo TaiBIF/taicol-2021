@@ -13,11 +13,13 @@ use App\Http\Services\PersonImportService;
 use App\Http\Services\PersonService;
 use App\Person;
 use App\Reference;
+use App\TaxonName;
 use App\ReferenceUsage;
 use App\TypeSpecimen;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use Illuminate\Support\Facades\Log;
 
 class PersonController extends Controller
 {
@@ -66,36 +68,29 @@ class PersonController extends Controller
     {
         Person::findOrFail($id);
 
-        $usages = ReferenceUsage::with([
-            'parent',
-            'taxonName.nomenclature',
-            'taxonName.rank',
-            'taxonName.authors',
-            'taxonName.exAuthors',
-            'taxonName.reference.authors',
-            'taxonName.originalTaxonName',
-            'taxonName.originalTaxonName.authors',
-            'taxonName.originalTaxonName.exAuthors',
-        ])
-            ->whereRaw('JSON_CONTAINS(JSON_EXTRACT(`type_specimens`, \'$[*].collector_ids\'), ?)', $id)
-            ->get();
+        // 2025-02 改成用學名表單取資料
+
+        $usages = TaxonName
+        ::whereRaw('JSON_CONTAINS(JSON_EXTRACT(`type_specimens`, \'$[*].collectors[*].id\'), ?)', $id)
+        ->get();
 
         $typeSpecimens = [];
         $usages->each(function ($usage) use ($id, &$typeSpecimens) {
             $usagesTypeSpecimens = collect($usage->type_specimens)
                 ->filter(function ($usageTypeSpecimen) use ($id) {
-                    return $usageTypeSpecimen['kind'] === TypeSpecimen::TYPE_SPECIMEN && in_array($id, $usageTypeSpecimen['collector_ids']);
+                    return $usageTypeSpecimen['kind'] === TypeSpecimen::TYPE_SPECIMEN && in_array($id, array_column($usageTypeSpecimen['collectors'], 'id'));
                 })->map(function ($typeSpecimen) use ($usage) {
+
                     return [
                         'collection_day' => isset($typeSpecimen['collection_day']) ? $typeSpecimen['collection_day'] : null,
                         'collection_year' => isset($typeSpecimen['collection_year']) ? $typeSpecimen['collection_year'] : null,
                         'collection_month' => isset($typeSpecimen['collection_month']) ? $typeSpecimen['collection_month'] : null,
-                        'collector_ids' => isset($typeSpecimen['collector_ids']) ? $typeSpecimen['collector_ids'] : null,
+                        'collector_ids' => isset($typeSpecimen['collectors']) ? array_column($typeSpecimen['collectors'], 'id') : null,
                         'country_id' => isset($typeSpecimen['country_id']) ? $typeSpecimen['country_id'] : null,
                         'locality' => isset($typeSpecimen['locality']) ? $typeSpecimen['locality'] : null,
                         'collector_number' => isset($typeSpecimen['collector_number']) ? $typeSpecimen['collector_number'] : null,
                         'specimens' => isset($typeSpecimen['specimens']) ? $typeSpecimen['specimens'] : null,
-                        'taxon_name' => $usage->taxonName,
+                        'taxon_name' => $usage,
                     ];
                 })->toArray();
 

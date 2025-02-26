@@ -8,6 +8,8 @@
               label="name"
               v-on:input="updateValue()"
               v-on:typing="fetchFilteredTaxonNames"
+              :insertedTypeName="insertedTypeName"
+              :insertTypeNameAction="insertTypeNameAction"
     >
         <template v-slot:selected-option="{ option }">
             <taxon-name-label :taxon-name="option" class="is-inline-block"/><!--
@@ -66,6 +68,12 @@ export default {
             type: Boolean,
             default: false,
         },
+        insertedTypeName: {
+            type: Number,
+        },
+        insertTypeNameAction: {
+            type: Number,
+        }
     },
     data() {
         return {
@@ -79,6 +87,21 @@ export default {
         TaxonNameLabel,
         AuthorName,
         tSelect: Select,
+    },
+    watch: {
+        insertTypeNameAction() { 
+
+            this.isLoading = true;
+            this.filteredTaxonNames = [];
+            this.axios.get('taxon-names', {
+                params: { id: this.insertedTypeName, strict: true },
+            }).then(({ data: { data } }) => {
+                this.filteredTaxonNames = data;
+                this.isLoading = false;            
+                this.localValue = data[0];
+                this.$emit('input', this.localValue);
+            });
+        }
     },
     methods: {
         showReference(o) {

@@ -133,7 +133,7 @@ class ReferenceUsageController extends Controller
                 return $r;
             }),
             'type_specimens' => collect($usage->type_specimens)->map(function ($t) {
-                    $t['collectors'] = PersonCollection::collection(Person::whereIn('id', $t['collector_ids'])->get());
+                    $t['collectors'] = PersonCollection::collection(Person::whereIn('id', $t['collector_ids'] ?? [])->get());
                     return $t;
                 }) ?? [],
             'name_remark' => $usage->name_remark,
