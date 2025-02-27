@@ -37,7 +37,7 @@ class UsageCollection extends JsonResource
             'is_title' => $this->is_title,
             'is_indent' => $this->is_indent,
             'parent_taxon_name' => $this->parentTaxonName,
-            'taxon_name' => TaxonNameCollection::collection([$this->taxonName])[0],
+            'taxon_name' => TaxonNameSimpleSubResource::collection([$this->taxonName])[0],
             'status' => $this->status,
             'type_specimens' => collect($this->type_specimens)->map(function($typeSpecimen) {
                 $typeSpecimen['country'] = isset($typeSpecimen['country_id']) ? Country::find($typeSpecimen['country_id']) : null;

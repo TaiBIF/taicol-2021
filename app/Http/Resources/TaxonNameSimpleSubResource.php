@@ -30,7 +30,9 @@ class TaxonNameSimpleSubResource extends JsonResource
             'properties' => $this->properties,
             'publish_year' => $this->publish_year,
             'original_taxon_name' => $this->originalTaxonName ? new TaxonNameResource($this->originalTaxonName) : null,
-
+            'hybrid_parents' => $this->hybridParents->map(function ($p) {
+                return TaxonNameCollection::collection([$p])[0];
+            }),
             // Taxon name page 原始組合名所需要的資訊
             'species' => $species ? new TaxonNameResource($species) : null,
             'species_layers' => collect($speciesLayer)->map(function ($s) {
