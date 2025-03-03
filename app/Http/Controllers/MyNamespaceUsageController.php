@@ -335,6 +335,8 @@ class MyNamespaceUsageController extends Controller
 
     public function store(Request $request, $namespaceId)
     {
+        // 名錄編輯區頁面操作 如滑動等
+
         $usages = $request->all();
 
         $request->validate([

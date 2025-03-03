@@ -8,6 +8,8 @@
 
         <span v-if="p.isEndemic" class="tag">{{ $t('usage.alienTypeShortTag.endemic') }}</span>
 
+        <span v-if="p.isNewRecord === 1 || p.isNewRecord === true" class="tag">{{ $t('usage.isNewRecordShortTag.isNewRecord') }}</span>
+
         <span v-if="p.alienType === 'native'" class="tag">{{ $t('usage.alienTypeShortTag.native') }}</span>
         <span v-if="p.alienType === 'naturalized'" class="tag">{{ $t('usage.alienTypeShortTag.naturalized') }}</span>
         <span v-if="p.alienType === 'invasive'" class="tag">{{ $t('usage.alienTypeShortTag.invasive') }}</span>

@@ -44,6 +44,9 @@ export default {
         marine: '海',
         nonIsInTaiwan: '非臺',
     },
+    isNewRecordShortTag: {
+        isNewRecord: '新',
+    },
     commonName: '俗名',
     note: '其他備註',
     noteTagTitle: '備註',

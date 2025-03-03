@@ -84,73 +84,84 @@
                  class="form-body bg-white shadow-md p-0 w-full overflow-y-auto grow">
                 <div id="usage-content-container" class="p-4 min-h-full">
                     <draggable :list="usages" class="item-container draggable-container"
+                               ghost-class="dragging"
                                data-type="main"
                                handle=".handle"
                                tag="div"
                                v-bind="dragOptions"
                                v-on:change="onChange"
-                    >
+                               @start="onDragStart"
+                               @end="onDragEnd"
+                               >
+                        <div v-for="(usage,index) in usages">
+                            <div 
+                                v-if="!usage.isDeleted"
+                                :key="`usage_${index}`"
+                                :class="{
+                                        'is-title': usage.isTitle,
+                                        'is-indent': usage.isIndent,
+                                        'bg-red-50': isInvalidUsage(usage, index),
+                                    }"
+                                :data-index="index"
+                                class="usage-row bg-white"
+                                tabindex="1"
+                                v-on:keypress.tab.prevent="(e) => e.preventDefault()"
+                                v-on:keydown.tab.prevent="(e) => onTab(e, index)"
+                                v-on:keyup.tab.prevent="(e) => e.preventDefault()">
+                                <span class="handle"></span>
+                                <div class="usage-content" v-on:dblclick="() => goUsage(usage)">
+                                    <status-dot :status="usage.status"/>
+                                    <template v-if="usage.nameRemark && !isListSimple && !usage.isTitle">
+                                        <p v-if="usage.customNameRemark"
+                                        v-html="usage.customNameRemark"/>
+                                        <usage-preview
+                                            v-else
+                                            ref="nameRemark"
+                                            :indications="getIndications(usage.properties.indications)"
+                                            :per-usages="usage.perUsages"
+                                            :status="usage.status"
+                                            :taxon-name="usage.taxonName"
+                                            :type-name="usage.typeName"
+                                            :type-specimens="usage.typeSpecimens"
+                                        />
+                                    </template>
+                                    <template v-else>
+                                        <usage-preview
+                                            ref="nameRemark"
+                                            :indications="getIndications(usage.properties.indications)"
+                                            :is-simple="true"
+                                            :per-usages="usage.perUsages"
+                                            :status="usage.status"
+                                            :taxon-name="usage.taxonName"
+                                            :type-name="usage.typeName"
+                                            :type-specimens="usage.typeSpecimens"
+                                        />
+                                    </template>
+                                    <!-- 加上俗名 -->
+                                    <span v-if="usage.properties.commonNames " class="ml-2">
+                                    {{ usage.properties.commonNames ? usage.properties.commonNames.map(item => item.name).join(', ') : '' }}
+                                    </span>
+                                </div>
+                                <div class="is-right">
+                                    <usage-property-short-tags :p="usage.properties"></usage-property-short-tags>
+                                </div>
+                                <div class="buttons bg-white bg-opacity-25 is-right  ">
 
-                        <div v-for="(usage,index) in usages"
-                             v-if="!usage.isDeleted"
-                             :key="`usage_${index}`"
-                             :class="{
-                                     'is-title': usage.isTitle,
-                                     'is-indent': usage.isIndent,
-                                     'bg-red-50': isInvalidUsage(usage, index),
-                                 }"
-                             :data-index="index"
-                             class="usage-row bg-white"
-                             tabindex="1"
-                             v-on:keypress.tab.prevent="(e) => e.preventDefault()"
-                             v-on:keydown.tab.prevent="(e) => onTab(e, index)"
-                             v-on:keyup.tab.prevent="(e) => e.preventDefault()"
-                        >
-                            <span class="handle"></span>
-                            <div class="usage-content" v-on:dblclick="() => goUsage(usage)">
-                                <status-dot :status="usage.status"/>
-                                <template v-if="usage.nameRemark && !isListSimple && !usage.isTitle">
-                                    <p v-if="usage.customNameRemark"
-                                       v-html="usage.customNameRemark"/>
-
-                                    <usage-preview
-                                        v-else
-                                        ref="nameRemark"
-                                        :indications="getIndications(usage.properties.indications)"
-                                        :per-usages="usage.perUsages"
-                                        :status="usage.status"
-                                        :taxon-name="usage.taxonName"
-                                        :type-name="usage.typeName"
-                                        :type-specimens="usage.typeSpecimens"
-                                    />
-                                </template>
-                                <template v-else>
-                                    <usage-preview
-                                        ref="nameRemark"
-                                        :indications="getIndications(usage.properties.indications)"
-                                        :is-simple="true"
-                                        :per-usages="usage.perUsages"
-                                        :status="usage.status"
-                                        :taxon-name="usage.taxonName"
-                                        :type-name="usage.typeName"
-                                        :type-specimens="usage.typeSpecimens"
-                                    />
-                                </template>
+                                    <a v-if="!isUsageFormSimple" v-show="!usage.isIndent"
+                                    class="button is-small is-text"
+                                    v-on:click="e => onToggleTitle(e, index)"
+                                    >
+                                        {{ $t('namespace.usageTitle') }}
+                                    </a>
+                                    <a class="close-button is-small"
+                                    v-on:click="e => onRemove(e, index)">
+                                    </a>
+                                </div>
                             </div>
-                            <div class="is-right">
-                                <usage-property-short-tags :p="usage.properties"></usage-property-short-tags>
-                            </div>
-                            <div class="buttons bg-white bg-opacity-25 is-right">
-
-                                <a v-if="!isUsageFormSimple" v-show="!usage.isIndent"
-                                   class="button is-small is-text"
-                                   v-on:click="e => onToggleTitle(e, index)"
-                                >
-                                    {{ $t('namespace.usageTitle') }}
-                                </a>
-                                <a class="close-button is-small"
-                                   v-on:click="e => onRemove(e, index)">
-                                </a>
+                            <!-- 如果是某個group的最後一個usage則顯示 -->
+                            <div class="accepted-prop" :class="`accepted-prop-${usage.nowGroup}`" v-if="isLastGroupElement(index,usages,usage.nowGroup)">
+                                <!-- 從這邊去抓accepted usage的資料 -->
+                                <div v-html="returnUsageProp(usage.nowGroup, usages)"></div>
                             </div>
                         </div>
                     </draggable>
@@ -235,6 +246,67 @@ export default {
         },
     },
     methods: {
+        onDragStart(event){
+            let index = event.oldIndex; 
+            let now_group = this.usages[index].nowGroup;
+            var list;
+            list = document.querySelectorAll(`.accepted-prop-${now_group}`);
+            for (var i = 0; i < list.length; ++i) {
+            list[i].classList.add('d-none');
+            }
+        },
+        onDragEnd(event){
+            let index = event.oldIndex; 
+            let now_group = this.usages[index].nowGroup;
+            var list;
+            list = document.querySelectorAll(`.accepted-prop-${now_group}`);
+            for (var i = 0; i < list.length; ++i) {
+            list[i].classList.remove('d-none');
+            }
+        },
+        isLastGroupElement(index,usages,nowGroup){
+           return index === usages.map(e => e.nowGroup).lastIndexOf(nowGroup)
+        },
+        returnUsageProp(nowGroup, usages){
+
+            let accptedUsage = usages.filter(item => item.nowGroup === nowGroup && item.status=='accepted' )[0];
+            let propStr = '';
+
+            if (accptedUsage != null){
+
+
+                if (accptedUsage.properties?.distributionInTw){
+                    propStr += `<div><i>Distribution in Taiwan.</i> ${accptedUsage.properties.distributionInTw}</div>`;
+                }
+
+                if (accptedUsage.properties?.alienStatusNote){
+                    propStr += `<div><i>Distribution Note.</i> ${accptedUsage.properties.alienStatusNote}</div>`;
+                }
+
+                if (accptedUsage.properties?.additionalFields?.length){
+                    let additionalFields = accptedUsage.properties.additionalFields;
+                    for (var i = 0; i < additionalFields.length; ++i) {
+                        let str = additionalFields[i].fieldName;
+                        propStr += `<div><i>${str[0].toUpperCase() + str.slice(1)}.</i> ${additionalFields[i].fieldValue}</div>`;
+                    }
+                }
+
+                if (accptedUsage.properties?.customFields?.length){
+                    let customFields = accptedUsage.properties.customFields;
+                    for (var i = 0; i < customFields.length; ++i) {
+                        let str = customFields[i].fieldNameEn;
+                        propStr += `<div><i>${str[0].toUpperCase() + str.slice(1)}.</i> ${customFields[i].fieldValue}</div>`;
+                    }
+                }
+
+                if (accptedUsage.properties?.note){
+                    propStr += `<div><i>Note.</i> ${accptedUsage.properties.note}</div>`;
+                }
+            }
+
+            return propStr
+
+        },
         isInvalidUsage(usage, index) {
             if (usage.status === '') {
                 return true;
@@ -500,8 +572,10 @@ export default {
                 .then(({ data }) => {
                     this.isLoading = false;
                     this.model = data;
+                    let now_group = 0;
                     this.usages = data.usages.map((u) => ({
                         ...u,
+                        nowGroup: u.isIndent ? now_group : now_group += 1 ,
                         taxonNameId: u.taxonName?.id,
                         parentTaxonNameId: u.parentTaxonName?.id,
                     }));
@@ -529,6 +603,22 @@ export default {
 };
 </script>
 <style lang="scss" scoped>
+
+.accepted-prop {
+    margin-left: 2rem;
+    margin-bottom: 1rem;
+}
+
+.sortable-chosen .accepted-prop {
+    display: none;
+}
+
+
+.d-none {
+    display: none;
+}
+
+
 #usage-container {
     height: calc(100vh - #{$navbar-height} - #{$breadcrumb-height} - 2.5rem);
 }

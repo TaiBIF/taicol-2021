@@ -44,6 +44,9 @@ export default {
         marine: 'MA',
         nonIsInTaiwan: 'non-TW',
     },
+    isNewRecordShortTag: {
+        isNewRecord: 'New',
+    },
     commonName: 'Common Name',
     note: 'Note',
     noteTagTitle: 'Note',
