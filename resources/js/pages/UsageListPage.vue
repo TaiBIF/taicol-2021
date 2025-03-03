@@ -123,6 +123,7 @@
                                             :taxon-name="usage.taxonName"
                                             :type-name="usage.typeName"
                                             :type-specimens="usage.typeSpecimens"
+                                            :common-names="usage.properties.commonNames"
                                         />
                                     </template>
                                     <template v-else>
@@ -135,12 +136,9 @@
                                             :taxon-name="usage.taxonName"
                                             :type-name="usage.typeName"
                                             :type-specimens="usage.typeSpecimens"
+                                            :common-names="usage.properties.commonNames"
                                         />
                                     </template>
-                                    <!-- 加上俗名 -->
-                                    <span v-if="usage.properties.commonNames " class="ml-2">
-                                    {{ usage.properties.commonNames ? usage.properties.commonNames.map(item => item.name).join(', ') : '' }}
-                                    </span>
                                 </div>
                                 <div class="is-right">
                                     <usage-property-short-tags :p="usage.properties"></usage-property-short-tags>
@@ -159,9 +157,10 @@
                                 </div>
                             </div>
                             <!-- 如果是某個group的最後一個usage則顯示 -->
-                            <div class="accepted-prop" :class="`accepted-prop-${usage.nowGroup}`" v-if="isLastGroupElement(index,usages,usage.nowGroup)">
+                            <usage-property-export-tags v-if="isLastGroupElement(index,usages,usage.nowGroup)" class="d-none" :p="returnAccetpedUsageProp(usage.nowGroup, usages)"></usage-property-export-tags>
+                            <div class="accepted-prop" :class="`accepted-prop-${usage.nowGroup}`" v-show="!isListSimple && isLastGroupElement(index,usages,usage.nowGroup)">
                                 <!-- 從這邊去抓accepted usage的資料 -->
-                                <div v-html="returnUsageProp(usage.nowGroup, usages)"></div>
+                                <div v-html="returnUsageProp(returnAccetpedUsageProp(usage.nowGroup, usages))"></div>
                             </div>
                         </div>
                     </draggable>
@@ -192,6 +191,7 @@ import indications from '../components/selects/indications';
 import downloadUsageHtmlToDoc from '../utils/downloadUsageHtmlToDoc';
 import StatusDot from '../components/StatusDot.vue';
 import UsagePropertyShortTags from '../components/views/UsagePropertyShortTags.vue';
+import UsagePropertyExportTags from '../components/views/UsagePropertyExportTags.vue';
 import { NamespaceType } from '../constants/namespace';
 import StatusSelect from '../components/selects/StatusSelect.vue';
 import RadioButton from '../components/RadioButton.vue';
@@ -273,44 +273,55 @@ export default {
         isLastGroupElement(index,usages,nowGroup){
            return index === usages.map(e => e.nowGroup).lastIndexOf(nowGroup)
         },
-        returnUsageProp(nowGroup, usages){
+        returnUsageProp(accptedUsageProp){
 
-            let accptedUsage = usages.filter(item => item.nowGroup === nowGroup && item.status=='accepted' )[0];
             let propStr = '';
 
-            if (accptedUsage != null){
+            if (accptedUsageProp != null){
 
+                // 前面加上其他屬性 for 匯出word檔使用
+                // usage-property-short-tags 裡面的
 
-                if (accptedUsage.properties?.distributionInTw){
-                    propStr += `<div><i>Distribution in Taiwan.</i> ${accptedUsage.properties.distributionInTw}</div>`;
+                if (accptedUsageProp?.distributionInTw){
+                    propStr += `<p><i>Distribution in Taiwan.</i> ${accptedUsageProp.distributionInTw}</p>`;
                 }
 
-                if (accptedUsage.properties?.alienStatusNote){
-                    propStr += `<div><i>Distribution Note.</i> ${accptedUsage.properties.alienStatusNote}</div>`;
+                if (accptedUsageProp?.alienStatusNote){
+                    propStr += `<p><i>Distribution Note.</i> ${accptedUsageProp.alienStatusNote}</p>`;
                 }
 
-                if (accptedUsage.properties?.additionalFields?.length){
-                    let additionalFields = accptedUsage.properties.additionalFields;
+                if (accptedUsageProp?.additionalFields?.length){
+                    let additionalFields = accptedUsageProp.additionalFields;
                     for (var i = 0; i < additionalFields.length; ++i) {
                         let str = additionalFields[i].fieldName;
-                        propStr += `<div><i>${str[0].toUpperCase() + str.slice(1)}.</i> ${additionalFields[i].fieldValue}</div>`;
+                        propStr += `<p><i>${str[0].toUpperCase() + str.slice(1)}.</i> ${additionalFields[i].fieldValue}</p>`;
                     }
                 }
 
-                if (accptedUsage.properties?.customFields?.length){
-                    let customFields = accptedUsage.properties.customFields;
+                if (accptedUsageProp?.customFields?.length){
+                    let customFields = accptedUsageProp.customFields;
                     for (var i = 0; i < customFields.length; ++i) {
                         let str = customFields[i].fieldNameEn;
-                        propStr += `<div><i>${str[0].toUpperCase() + str.slice(1)}.</i> ${customFields[i].fieldValue}</div>`;
+                        propStr += `<p><i>${str[0].toUpperCase() + str.slice(1)}.</i> ${customFields[i].fieldValue}</p>`;
                     }
                 }
 
-                if (accptedUsage.properties?.note){
-                    propStr += `<div><i>Note.</i> ${accptedUsage.properties.note}</div>`;
+                if (accptedUsageProp?.note){
+                    propStr += `<p><i>Note.</i> ${accptedUsageProp.note}</p>`;
                 }
             }
 
             return propStr
+
+        },
+        returnAccetpedUsageProp(nowGroup, usages){
+
+            let accptedUsage = usages.filter(item => item.nowGroup === nowGroup && item.status=='accepted' )[0];
+            if (accptedUsage?.properties != null){
+                return accptedUsage.properties
+            } else {
+                return {}
+            }
 
         },
         isInvalidUsage(usage, index) {
@@ -599,6 +610,7 @@ export default {
         RadioButton,
         StatusSelect,
         UsagePropertyShortTags,
+        UsagePropertyExportTags,
         UsagePreview,
         AuthorName,
         TaxonNameSelect,

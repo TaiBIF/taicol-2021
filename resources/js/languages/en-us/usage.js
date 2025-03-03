@@ -18,6 +18,7 @@ export default {
     alienType: 'Alien-type in Taiwan',
     alienStatusNote: 'Alien-type Note',
     inTaiwan: 'Exist in Taiwan',
+    notInTaiwan: 'Not Exist in Taiwan',
     endemic: 'Endemic to Taiwan',
     alienTypeOptions: {
         native: 'Native',

@@ -38,6 +38,10 @@
                 </template>
             </template>
         </template>
+        <template v-if="commonNames.length">
+            <span class="ml-2">{{ commonNames.map(item => item.name).join(', ')  }}</span>
+        </template>
+
     </p>
 </template>
 <script>
@@ -78,6 +82,12 @@ export default {
             type: Array,
             required: true,
         },
+        commonNames: {
+            type: Array,
+            default() {
+                return [];
+            },
+        },
         isSimple: {
             type: Boolean,
             required: false,
@@ -86,6 +96,9 @@ export default {
     methods: {
         Scombo,
         comboTypeStrain,
+        hasCommonNames(commonNames){
+            return true
+        }
     },
 };
 </script>

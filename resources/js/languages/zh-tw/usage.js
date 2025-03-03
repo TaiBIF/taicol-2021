@@ -18,6 +18,7 @@ export default {
     alienType: '原生/外來類型',
     alienStatusNote: '原生/外來備註',
     inTaiwan: '存在於臺灣',
+    notInTaiwan: '不存在於臺灣',
     endemic: '臺灣特有',
     alienTypeOptions: {
         native: '原生',

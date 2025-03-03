@@ -12,9 +12,27 @@ export default (container, title) => {
     target.querySelectorAll('.buttons').forEach(function (item, index) {
         item.parentNode.removeChild(item);
     });
+
+
+    target.querySelectorAll('.tags').forEach(function (item, index) {
+        item.parentNode.removeChild(item);
+    });
+
+
+    target.querySelectorAll('.tag').forEach(function (item, index) {
+        item.parentNode.removeChild(item);
+    });
+
+    // 非接受名加上縮排
     target.querySelectorAll('.is-indent > .usage-content > p').forEach(function (item, index) {
         item.prepend('　');
     });
+
+    // 其他屬性加上縮排
+    target.querySelectorAll('.accepted-prop p').forEach(function (item, index) {
+        item.prepend('　');
+    });
+
 
     var html = preHtml + target.innerHTML.replace(/div/g, 'span').replace(/&nbsp;/, ' ') + postHtml;
 
