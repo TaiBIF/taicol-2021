@@ -31,6 +31,7 @@ export default {
     submit: 'Submit',
     cancel: 'Cancel',
     saveAsDraft: 'Save as draft',
+    goBack: 'Go back',
     draft: 'Draft',
     publish: 'Publish',
     complete: 'Complete',

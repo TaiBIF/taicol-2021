@@ -169,6 +169,9 @@
             </div>
             <div class="sticky bottom-0 bg-white p-4 w-full border-t">
                 <div class="buttons is-right">
+                    <button class="button m-0"
+                        v-on:click="goBack()"
+                        v-text="$t('common.goBack')"/>
                     <a :class="{ 'is-loading': isLoading }"
                        class="button"
                        v-on:click="onSave"
@@ -246,6 +249,9 @@ export default {
         },
     },
     methods: {
+        goBack(){
+            window.history.back();
+        },
         onDragStart(event){
             let index = event.oldIndex; 
             let now_group = this.usages[index].nowGroup;

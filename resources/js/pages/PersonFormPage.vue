@@ -6,6 +6,9 @@
             </div>
             <div class="form-footer">
                 <div class="buttons is-right">
+                    <button class="button m-0"
+                            v-on:click="goBack()"
+                            v-text="$t('common.goBack')"/>
                     <button class="button"
                             v-on:click="onSubmit(true)"
                             v-text="$t('common.save')"/>
@@ -26,6 +29,9 @@ export default {
         };
     },
     methods: {
+        goBack(){
+            window.history.back();
+        },
         async onPreload() {
             try {
                 const { data } = await this.axios.get(`/persons/${this.$route.params.id}`);

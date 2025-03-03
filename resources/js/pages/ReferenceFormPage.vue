@@ -18,6 +18,9 @@
                         v-text="$t('reference.doiImport')"/>
             </div>
             <div class="flex gap-2 justify-end">
+                <button class="button m-0"
+                    v-on:click="goBack()"
+                    v-text="$t('common.goBack')"/>
                 <button :class="{'is-loading': isLoading}"
                         class="button"
                         v-if="!isPublished"
@@ -109,6 +112,9 @@ export default {
         this.$store.commit('breadcrumb/CLEAR_ITEMS');
     },
     methods: {
+        goBack(){
+            window.history.back();
+        },
         onFetchDOIReference() {
             this.$store.commit('openModal', {
                 component: () => import('../components/modals/DoiModal.vue'),

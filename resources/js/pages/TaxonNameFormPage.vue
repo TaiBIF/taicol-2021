@@ -9,6 +9,9 @@
             <div class="form-footer">
                 <div class="buttons is-right">
                     <button class="button m-0"
+                            v-on:click="goBack()"
+                            v-text="$t('common.goBack')"/>
+                    <button class="button m-0"
                             v-if="!isPublished" 
                             v-on:click="onSubmit(false)"
                             v-text="$t('common.saveAsDraft')"/>
@@ -50,6 +53,9 @@ export default {
         }
     },
     methods: {
+        goBack(){
+            window.history.back();
+        },
         onSubmit(isPublish) {
             this.$refs.form.submit(isPublish);
         },

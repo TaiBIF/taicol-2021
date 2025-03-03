@@ -32,6 +32,7 @@ export default {
     cancel: '取消',
     publish: '確定發布',
     saveAsDraft: '存為草稿',
+    goBack: '返回',
     draft: '草稿',
     complete: '完成',
     import: '匯入',

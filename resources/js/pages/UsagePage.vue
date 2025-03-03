@@ -23,6 +23,9 @@
                             :preset-data="presetData"/>
 
                 <div class="buttons is-right px-4 py-3 border-t">
+                    <button class="button m-0"
+                            v-on:click="goBack()"
+                            v-text="$t('common.goBack')"/>
                     <button class="button"
                             v-on:click="submit"
                             v-text="$t('common.save')">
@@ -74,6 +77,9 @@ export default {
             });
     },
     methods: {
+        goBack(){
+            window.history.back();
+        },
         close() {
             this.$emit('close');
         },
