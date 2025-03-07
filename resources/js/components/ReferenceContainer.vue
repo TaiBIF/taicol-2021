@@ -96,16 +96,13 @@ export default {
             handler(usage) {
                 const newUsage = usage;
                 newUsage.target.properties.pagesRange = '';
-                // console.log(newUsage.target.properties);
                 let referenceName = null;
                 if (newUsage.target.properties.articleNumber){
                     referenceName = subTitle(newUsage.target)
                     if (usage.showPage){
                         referenceName += ' (' + usage.showPage + ')'
                     }
-                    // , usage.showPage].filter(Boolean).join(': ');
                 } else {
-                    // const referenceName = [subTitle(newUsage.target), usage.showPage].filter(Boolean).join(': ');
                     referenceName = [subTitle(newUsage.target), usage.showPage].filter(Boolean).join(': ');
                 }
                 this.$emit('update:referenceName', referenceName);

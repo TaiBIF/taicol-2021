@@ -394,7 +394,7 @@ export default {
             } : {},
             description: '',
             perUsages: this.presetData?.perUsages ? this.presetData?.perUsages.map((t) => {
-                t.proParteType = (t.proParte == true && t?.proParteText == null) ? 'pro parte' : '';
+                t.proParteType = (t.proParte == true && t?.proParteType == null) ? 'pro parte' : t?.proParteType;
                 return t;
             }) : [],
             typeSpecimens: this.presetData?.typeSpecimens ? this.presetData?.typeSpecimens.map((t) => {
