@@ -531,7 +531,8 @@ export default {
         },
         async onDownloadDoc() {
             const container = document.getElementById('usage-content-container');
-            downloadUsageHtmlToDoc(container, this.model.title);
+            const { items } = this.$store.state.breadcrumb;
+            downloadUsageHtmlToDoc(container, items[items.length - 1].name);
         },
         onSubmit: _.debounce(function () {
             const { id } = this.$route.params;

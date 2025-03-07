@@ -1,5 +1,5 @@
 export default (container, title) => {
-    let filename = 'test';
+    let filename = title;
 
     var preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>" +
         "<head><style>.is-orange { color: #F78500 } " +
