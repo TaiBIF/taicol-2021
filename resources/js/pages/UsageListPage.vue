@@ -294,7 +294,10 @@ export default {
                     let additionalFields = accptedUsageProp.additionalFields;
                     for (var i = 0; i < additionalFields.length; ++i) {
                         let str = additionalFields[i].fieldName;
-                        propStr += `<p><i>${str[0].toUpperCase() + str.slice(1)}.</i> ${additionalFields[i].fieldValue}</p>`;
+                        let title = str[0].toUpperCase() + str.slice(1);
+                        title = title.replace(/([A-Z])/g, ' $1').trim()
+
+                        propStr += `<p><i>${title}.</i> ${additionalFields[i].fieldValue}</p>`;
                     }
                 }
 
@@ -531,8 +534,7 @@ export default {
         },
         async onDownloadDoc() {
             const container = document.getElementById('usage-content-container');
-            const { items } = this.$store.state.breadcrumb;
-            downloadUsageHtmlToDoc(container, items[items.length - 1].name);
+            downloadUsageHtmlToDoc(container, this.model.title);
         },
         onSubmit: _.debounce(function () {
             const { id } = this.$route.params;
@@ -586,7 +588,7 @@ export default {
                 let data = resp.data.usages;
                 let groupCount = resp.data.groupCount;
 
-                this.model = data;
+                this.model = resp.data;
                 this.usages = data.map((u) => ({
                     ...u,
                     taxonNameId: u.taxonName?.id,
@@ -609,7 +611,7 @@ export default {
                 const resp = await this.axios.get(`${url}?offset=${offset}`);
                 let data = resp.data.usages;
 
-                this.model = [...this.model,...data];
+                // this.model = [...this.model,...data];
                 this.usages = [...this.usages, ...data.map((u) => ({
                     ...u,
                     taxonNameId: u.taxonName?.id,
@@ -632,19 +634,21 @@ export default {
                 = this.configs.type === 'namespace' ? `/namespaces/${id}/usages` : `/references/${id}/usages-edit`;
 
             // 從這邊修改
-            this.loadUsages(url);
             // this.axios
             //     .get(url)
             //     .then(({ data }) => {
 
             //         this.isLoading = false;
             //         this.model = data;
-            //         this.usages = [...this.usages, ...data.usages.map((u) => ({
-            //             ...u,
-            //             taxonNameId: u.taxonName?.id,
-            //             parentTaxonNameId: u.parentTaxonName?.id,
-            //         }))];
+            //         // this.usages = [...this.usages, ...data.usages.map((u) => ({
+            //         //     ...u,
+            //         //     taxonNameId: u.taxonName?.id,
+            //         //     parentTaxonNameId: u.parentTaxonName?.id,
+            //         // }))]
+                    
+            //         ;
             //     });
+            this.loadUsages(url);
         },
         getIndications(indicationArray) {
             return indicationArray ?
