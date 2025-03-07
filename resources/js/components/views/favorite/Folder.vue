@@ -227,6 +227,8 @@ export default {
                 figure: '',
                 nameRemark: '',
                 proParte: false,
+                proParteType: '',
+                proParteText: '',
                 isFromPublishedRef: false,
             };
         },
@@ -237,6 +239,8 @@ export default {
                 figure: '',
                 nameRemark: '',
                 proParte: false,
+                proParteType: '',
+                proParteText: '',
                 isFromPublishedRef: false,
             };
         },

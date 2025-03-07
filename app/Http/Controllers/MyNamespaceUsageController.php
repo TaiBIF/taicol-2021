@@ -53,10 +53,20 @@ class MyNamespaceUsageController extends Controller
             return response()->json([], 401);
         }
 
-        $usages = MyNamespaceUsage::where('namespace_id', $namespaceId)->orderBy('group')->orderBy('order')->get();
+        $offset = 0;
+        $length = 100;
+
+        $groupArray = MyNamespaceUsage::where('namespace_id', $namespaceId)
+                                       ->distinct('group')->pluck('group')->toArray();
+        sort($groupArray);
+        $groupCount = count($groupArray);
+        $groupArray = array_slice($groupArray, $offset, $length);
+
+        $usages = MyNamespaceUsage::where('namespace_id', $namespaceId)->whereIn('group',$groupArray)->orderBy('group')->orderBy('order')->get();
 
         $data = MyNamespaceCollection::collection([$namespace])->first()->toArray($request);
         $data['usages'] = UsageCollection::collection($usages);
+        $data['group_count'] = $groupCount;
 
         return response($data);
     }
@@ -150,6 +160,7 @@ class MyNamespaceUsageController extends Controller
 
         $typeSpecimens = $request->get('type_specimens');
         $status = $request->get('status');
+        $status = $request->get('status');
 
         $request->validate([
             'status' => 'required',
@@ -191,6 +202,7 @@ class MyNamespaceUsageController extends Controller
             'type_specimens.*.isotypes.*.herbarium' => 'required',
             'per_usages.*.reference_id' => 'required',
             'per_usages.*.show_page' => 'integer|nullable',
+            'per_usages.*.pro_parte_text' => 'required_if:per_usages.*.pro_parte_type,excl. ＿＿,quoad ＿＿',
             'properties.is_in_taiwan' => $status === 'accepted' ? 'required' : '',
             'properties.common_names.*.name' => 'required',
             'properties.common_names.*.language' => 'required',

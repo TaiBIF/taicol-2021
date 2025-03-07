@@ -157,10 +157,10 @@
                                 </div>
                             </div>
                             <!-- 如果是某個group的最後一個usage則顯示 -->
-                            <usage-property-export-tags v-if="isLastGroupElement(index,usages,usage.nowGroup)" class="d-none" :p="returnAccetpedUsageProp(usage.nowGroup, usages)"></usage-property-export-tags>
-                            <div class="accepted-prop" :class="`accepted-prop-${usage.nowGroup}`" v-show="!isListSimple && isLastGroupElement(index,usages,usage.nowGroup)">
+                            <usage-property-export-tags v-if="isLastGroupElement(index,usages,usage.group)" class="d-none" :p="returnAccetpedUsageProp(usage.group, usages)"></usage-property-export-tags>
+                            <div class="accepted-prop" :class="`accepted-prop-${usage.group}`" v-show="!isListSimple && isLastGroupElement(index,usages,usage.group)">
                                 <!-- 從這邊去抓accepted usage的資料 -->
-                                <div v-html="returnUsageProp(returnAccetpedUsageProp(usage.nowGroup, usages))"></div>
+                                <div v-html="returnUsageProp(returnAccetpedUsageProp(usage.group, usages))"></div>
                             </div>
                         </div>
                     </draggable>
@@ -254,7 +254,7 @@ export default {
         },
         onDragStart(event){
             let index = event.oldIndex; 
-            let now_group = this.usages[index].nowGroup;
+            let now_group = this.usages[index].group;
             var list;
             list = document.querySelectorAll(`.accepted-prop-${now_group}`);
             for (var i = 0; i < list.length; ++i) {
@@ -263,15 +263,15 @@ export default {
         },
         onDragEnd(event){
             let index = event.oldIndex; 
-            let now_group = this.usages[index].nowGroup;
+            let now_group = this.usages[index].group;
             var list;
             list = document.querySelectorAll(`.accepted-prop-${now_group}`);
             for (var i = 0; i < list.length; ++i) {
             list[i].classList.remove('d-none');
             }
         },
-        isLastGroupElement(index,usages,nowGroup){
-           return index === usages.map(e => e.nowGroup).lastIndexOf(nowGroup)
+        isLastGroupElement(index,usages,group){
+           return index === usages.map(e => e.group).lastIndexOf(group)
         },
         returnUsageProp(accptedUsageProp){
 
@@ -314,9 +314,9 @@ export default {
             return propStr
 
         },
-        returnAccetpedUsageProp(nowGroup, usages){
+        returnAccetpedUsageProp(group, usages){
 
-            let accptedUsage = usages.filter(item => item.nowGroup === nowGroup && item.status=='accepted' )[0];
+            let accptedUsage = usages.filter(item => item.group === group && item.status=='accepted' )[0];
             if (accptedUsage?.properties != null){
                 return accptedUsage.properties
             } else {
@@ -577,6 +577,52 @@ export default {
                     openNotify('發生錯誤，資料儲存失敗', 'is-danger');
                 });
         }),
+
+        async loadUsages(url) {
+            try {
+                let offset = 0;
+                const resp = await this.axios.get(`${url}?offset=${offset}`);
+                let data = resp.data.usages;
+                let groupCount = resp.data.groupCount;
+
+                this.model = data;
+                this.usages = data.map((u) => ({
+                    ...u,
+                    taxonNameId: u.taxonName?.id,
+                    parentTaxonNameId: u.parentTaxonName?.id,
+                }));
+
+                if (groupCount > 100) {
+                    for (let i = 100; i <= groupCount; i += 100) {
+                        await this.loadUsageWithDelay(i,url);
+                    }                
+                } 
+                this.isLoading = false;
+
+            } catch (error) {
+                console.error("load usage:", error);
+            }
+        },
+        async loadUsageWithDelay(offset,url) {
+            try {
+                const resp = await this.axios.get(`${url}?offset=${offset}`);
+                let data = resp.data.usages;
+
+                this.model = [...this.model,...data];
+                this.usages = [...this.usages, ...data.map((u) => ({
+                    ...u,
+                    taxonNameId: u.taxonName?.id,
+                    parentTaxonNameId: u.parentTaxonName?.id,
+                }))];
+
+                // wait 1 sec avoid Too Many Attempts
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            } catch (error) {
+                console.error(`loadUsageWithDelay ${offset}:`, error);
+            }
+        },
+
+
         refresh() {
             this.isLoading = true;
             const { id } = this.$route.params;
@@ -584,19 +630,20 @@ export default {
             const url
                 = this.configs.type === 'namespace' ? `/namespaces/${id}/usages` : `/references/${id}/usages-edit`;
 
-            this.axios
-                .get(url)
-                .then(({ data }) => {
-                    this.isLoading = false;
-                    this.model = data;
-                    let now_group = 0;
-                    this.usages = data.usages.map((u) => ({
-                        ...u,
-                        nowGroup: u.isIndent ? now_group : now_group += 1 ,
-                        taxonNameId: u.taxonName?.id,
-                        parentTaxonNameId: u.parentTaxonName?.id,
-                    }));
-                });
+            // 從這邊修改
+            this.loadUsages(url);
+            // this.axios
+            //     .get(url)
+            //     .then(({ data }) => {
+
+            //         this.isLoading = false;
+            //         this.model = data;
+            //         this.usages = [...this.usages, ...data.usages.map((u) => ({
+            //             ...u,
+            //             taxonNameId: u.taxonName?.id,
+            //             parentTaxonNameId: u.parentTaxonName?.id,
+            //         }))];
+            //     });
         },
         getIndications(indicationArray) {
             return indicationArray ?

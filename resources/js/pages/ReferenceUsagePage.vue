@@ -49,14 +49,46 @@ export default {
             referenceUrl: `/references/${this.$route.params.id}`,
         };
     },
-    mounted() {
-        this.axios.get(`/references/${this.$route.params.id}`)
-            .then(({ data: { data } }) => {
+    methods: {
+        async loadUsages() {
+            try {
+                let offset = 0;
+                const resp = await this.axios.get(`/references/${this.$route.params.id}/usages?offset=${offset}`);
+                let data = resp.data.data;
+                let groupCount = resp.data.groupCount;
+                this.usageGroups = Object.values(data);
+
+                if (groupCount > 100) {
+                    for (let i = 100; i <= groupCount; i += 100) {
+                        await this.loadUsageWithDelay(i);
+                    }
+                }
+            } catch (error) {
+                console.error("load usage:", error);
+            }
+        },
+        async loadUsageWithDelay(offset) {
+            try {
+                const resp = await this.axios.get(`/references/${this.$route.params.id}/usages?offset=${offset}`);
+                let data = resp.data.data;
+                this.usageGroups = [...this.usageGroups, ...Object.values(data)];
+                this.usageGroups = [ ...this.usageGroups ];
+
+                // wait 1 sec avoid Too Many Attempts
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            } catch (error) {
+                console.error(`loadUsageWithDelay ${offset}:`, error);
+            }
+        },
+        async loadReference() {
+            try {
+                const { data: { data } } = await this.axios.get(`/references/${this.$route.params.id}`);
                 this.reference = data;
                 this.reference.id = parseInt(this.$route.params.id);
                 this.reference.language = data.language ? { id: data.language } : null;
                 this.reference.title = title(data);
                 this.reference.subtitle = subTitle(data);
+                this.loadUsages();
 
                 this.formStatus = this.$c.PAGE_IS_SUCCESS;
                 this.$store.commit('breadcrumb/SET_ITEMS', [{
@@ -72,12 +104,20 @@ export default {
                     url: '#',
                     name: '詳細異名表',
                 }]);
-            });
+            } catch (error) {
+                console.error("load reference:", error);
+            }
+        },
 
-        this.axios.get(`/references/${this.$route.params.id}/usages`)
-            .then(({ data: { data } }) => {
-                this.usageGroups = Object.values(data);
-            });
+
+        getIndications(indicationArray) {
+            return indicationArray?.map(
+                (abbreviation) => indications.find((i) => i.abbreviation === abbreviation),
+            ).filter(Boolean);
+        },
+    },
+    mounted() {
+        this.loadReference();
     },
     computed: {
         ...mapGetters({

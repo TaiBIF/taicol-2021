@@ -58,13 +58,28 @@ export default (references, names = comboAbbr) => {
             ].filter(Boolean).join(' ');
         }
 
+        let proParte = '';
+
+        if (ref.proParte){
+            if (ref?.proParteType){
+                proParte = ref.proParteType;
+                proParte = proParte.replaceAll('＿','');
+
+                if (ref?.proParteText){
+                    proParte = proParte + ' ' + ref.proParteText;
+                }
+            } else {
+                proParte = 'pro parte';
+            }
+        }
+
         return [
             [
                 title,
                 ref.target?.publishYear,
             ].filter(Boolean).join('. '),
             ref.nameInReference ? `'${ref.nameInReference}'` : '',
-            ref.proParte ? 'pro parte' : '',
+            ref.proParte ? proParte : '',
         ].filter(Boolean).join(', ');
     })
         .filter(Boolean)

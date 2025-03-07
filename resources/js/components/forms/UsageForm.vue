@@ -344,6 +344,8 @@ export default {
                     nameInReference: r.nameInReference,
                     proParte: r.proParte,
                     isFromPublishedRef: r.isFromPublishedRef,
+                    proParteType: r.proParteType,
+                    proParteText: r.proParteText,
                 })),
                 typeSpecimens: cloneDeep(this.typeSpecimens).map((t) => ({
                     ...t,
@@ -391,7 +393,10 @@ export default {
                 indications,
             } : {},
             description: '',
-            perUsages: this.presetData.perUsages || [],
+            perUsages: this.presetData?.perUsages ? this.presetData?.perUsages.map((t) => {
+                t.proParteType = (t.proParte == true && t?.proParteText == null) ? 'pro parte' : '';
+                return t;
+            }) : [],
             typeSpecimens: this.presetData?.typeSpecimens ? this.presetData?.typeSpecimens.map((t) => {
                 t.sex = sexs.find((s) => s.id === t.sexId);
                 return t;
@@ -439,6 +444,8 @@ export default {
                     showPage: this.taxonName.properties.usage?.showPage,
                     nameInReference: this.taxonName.properties.usage?.nameInReference,
                     proParte: false,
+                    proParteType: '',
+                    proParteText: '',
                     isFromPublishedRef: true,
                 });
                 this.perUsagesIsSimpleViews.push(true);
@@ -466,6 +473,8 @@ export default {
                             showPage: element.showPage,
                             nameInReference: element.nameInReference,
                             proParte: element.proParte,
+                            proParteType: element.proParteType,
+                            proParteText: element.proParteText,
                             isFromPublishedRef: element.isFromPublishedRef,
                         });
                         this.perUsagesIsSimpleViews.push(true);
@@ -511,6 +520,8 @@ export default {
                 figure: '',
                 nameRemark: '',
                 proParte: false,
+                proParteText: '',
+                proParteType: '',
                 isFromPublishedRef: false,
             });
             this.perUsagesIsSimpleViews.push(false);

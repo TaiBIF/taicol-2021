@@ -261,6 +261,18 @@ class ReferenceController extends Controller
 
     public function usages(Request $request, $id)
     {
+
+        $offset = $request->get('offset', 0);
+        $length = 100;
+
+        $groupArray = ReferenceUsage::where('is_for_publish', 0)
+                                    ->where('reference_id', $id)
+                                    ->distinct('group')->pluck('group')->toArray();
+        sort($groupArray);
+        $groupCount = count($groupArray);
+        $groupArray = array_slice($groupArray, $offset, $length);
+
+
         $usages = ReferenceUsage::with([
             'taxonName.nomenclature',
             'taxonName.reference',
@@ -274,6 +286,7 @@ class ReferenceController extends Controller
         ])
             ->where('is_for_publish', 0)
             ->where('reference_id', $id)
+            ->whereIn('group', $groupArray)
             ->orderBy('group')
             ->orderBy('order')
             ->get();
@@ -283,7 +296,8 @@ class ReferenceController extends Controller
                 return $group->map(function ($usage) {
                     return UsageCollection::collection([$usage])->first();
                 });
-            })
+            }),
+            'group_count'=> $groupCount
         ]);
     }
 

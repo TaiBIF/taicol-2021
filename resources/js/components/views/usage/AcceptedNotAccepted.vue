@@ -21,7 +21,7 @@ export default {
 
         const referenceDOM = this.refPreview ? createElement(
             'span',
-            `${this.refPreview}.`,
+            `${this.refPreview}${ this.refPreview.endsWith('.') ? '': '.'}`,
         ) : '';
 
         if (this.taxonName) {

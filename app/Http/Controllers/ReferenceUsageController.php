@@ -51,11 +51,23 @@ class ReferenceUsageController extends Controller
             return response()->json([], 401);
         }
 
-        $usages = ReferenceUsage::where('reference_id', $id)->orderBy('group')->orderBy('order')->get();
+
+        $offset = $request->get('offset', 0);
+        $length = 100;
+
+        $groupArray = ReferenceUsage::where('reference_id', $id)
+                                    ->distinct('group')->pluck('group')->toArray();
+        sort($groupArray);
+        $groupCount = count($groupArray);
+        $groupArray = array_slice($groupArray, $offset, $length);
+
+        $usages = ReferenceUsage::where('reference_id', $id)->whereIn('group', $groupArray)->orderBy('group')->orderBy('order')->get();
+
 
         return response([
             'type' => $reference->type,
             'usages' => UsageCollection::collection($usages),
+            'group_count'=> $groupCount
         ]);
     }
 

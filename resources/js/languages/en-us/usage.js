@@ -9,6 +9,7 @@ export default {
     insertSuggestedWriting: 'Insert Suggested Writing',
     appendReference: 'Reference',
     proParteNote: 'Partial Citation/Exclusion',
+    proParteTextNote: 'Please fill in the underline content',
     additionalData: 'Additional Information from Reference',
     isInTaiwan: 'Exist in Taiwan?',
     isEndemic: 'Endemic to Taiwan',

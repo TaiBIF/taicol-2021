@@ -31,9 +31,23 @@ export default (references, names = comboLast) => {
 
         const page = [
             showPage ?? '',
-            // ref.showPage ?? '',
             ref.figure ?? '',
         ].filter(Boolean).join(', ');
+
+        let proParte = '';
+
+        if (ref.proParte){
+            if (ref?.proParteType){
+                proParte = ref.proParteType;
+                proParte = proParte.replaceAll('＿','');
+
+                if (ref?.proParteText){
+                    proParte = proParte + ' ' + ref.proParteText;
+                }
+            } else {
+                proParte = 'pro parte';
+            }
+        }
 
         return [
             [
@@ -41,7 +55,7 @@ export default (references, names = comboLast) => {
                 page,
             ].filter(Boolean).join(': '),
             ref.nameInReference ? `'${ref.nameInReference}'` : '',
-            ref.proParte ? 'pro parte' : '',
+            ref.proParte ? proParte : '',
         ].filter(Boolean).join(', ');
     }).filter(Boolean).join('; ');
 };

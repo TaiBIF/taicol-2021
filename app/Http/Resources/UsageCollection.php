@@ -34,6 +34,7 @@ class UsageCollection extends JsonResource
 
         return [
             'id' => $this->id,
+            'group' => $this->group,
             'is_title' => $this->is_title,
             'is_indent' => $this->is_indent,
             'parent_taxon_name' => $this->parentTaxonName,

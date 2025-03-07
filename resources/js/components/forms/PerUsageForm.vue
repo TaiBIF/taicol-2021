@@ -16,12 +16,6 @@
                         <div class="field">
                             <label class="label is-marked">
                                 {{ $t('common.reference') }}
-                                <label class="label is-pulled-right">
-                                    <input id="proParte" v-model="perUsage.proParte"
-                                           class="checkbox"
-                                           type="checkbox"/>
-                                    <span v-text="$t('usage.proParteNote')"/>
-                                </label>
                             </label>
                             <reference-select
                                 v-model="perUsage.target"
@@ -33,27 +27,42 @@
                     </div>
                 </div>
                 <div class="columns">
-                    <div class="column is-6">
+                    <div class="column">
                         <div class="field">
-                            <label class="label">{{ $t('reference.showPage') }}</label>
-                            <general-input v-model="perUsage.showPage"
-                                           :errors="errors[`perUsages${index}ShowPage`]"/>
-                        </div>
-                    </div>
-                    <div class="column is-6">
-                        <div class="field">
-                            <label class="label">{{ $t('reference.figure') }}</label>
-                            <general-input v-model="perUsage.figure"
-                                           :errors="errors[`perUsages${index}Figure`]"/>
+                            <label class="label">{{ $t('usage.proParteNote') }}</label>
+                            <pro-parte-select v-model="perUsage.proParteType"/>
+                            <div class="mt-[1rem]">
+                                <label class="label" :class="{ 'is-marked': requiresInput }">{{ $t('usage.proParteTextNote') }}</label>
+                                <general-input 
+                                    v-model="perUsage.proParteText"
+                                    type="text"
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="column">
-                <div class="field">
-                    <label class="label">{{ $t('taxonName.nameInReference') }}</label>
-                    <general-input v-model="perUsage.nameInReference"
-                                   :errors="errors[`perUsages${index}.customNameRemark`]"/>
+                <div class="columns">
+                    <div class="field">
+                        <label class="label">{{ $t('taxonName.nameInReference') }}</label>
+                        <general-input v-model="perUsage.nameInReference"
+                                    :errors="errors[`perUsages${index}.customNameRemark`]"/>
+                    </div>
+                </div>
+                <div class="columns">
+                    <div class="field">
+                        <label class="label">{{ $t('reference.showPage') }}</label>
+                        <general-input v-model="perUsage.showPage"
+                                        :errors="errors[`perUsages${index}ShowPage`]"/>
+                    </div>
+                </div>
+                <div class="columns">
+                    <div class="field">
+                        <label class="label">{{ $t('reference.figure') }}</label>
+                        <general-input v-model="perUsage.figure"
+                                        :errors="errors[`perUsages${index}Figure`]"/>
+                    </div>
                 </div>
             </div>
         </div>
@@ -62,6 +71,7 @@
 <script>
 import GeneralInput from '../GeneralInput.vue';
 import ReferenceSelect from '../selects/ReferenceSelect.vue';
+import ProParteSelect from '../selects/ProParteSelect.vue';
 import SimpleReferenceView from '../views/SimpleReferenceView.vue';
 
 export default {
@@ -86,6 +96,26 @@ export default {
             required: true,
         },
     },
-    components: { SimpleReferenceView, ReferenceSelect, GeneralInput },
+    watch: {
+        perUsage: {
+            deep: true,
+            handler(value) {
+                if (value.proParteType != '' && value.proParteType != null){
+                    this.perUsage.proParte = true;
+                } else {
+                    this.perUsage.proParte = false;
+                }
+            }
+        }
+    },
+    computed: {
+        requiresInput() {
+
+            if(this.perUsage?.proParteType)
+            // 必填
+            return this.perUsage.proParteType=='excl. ＿＿' || this.perUsage.proParteType=='quoad ＿＿';
+        }
+    },
+    components: { SimpleReferenceView, ReferenceSelect, GeneralInput, ProParteSelect },
 };
 </script>

@@ -115,6 +115,66 @@ export default {
             });
     },
     methods: {
+        async load1Usages(reference_id) {
+            try {
+                let offset = 0;
+                const resp = await this.axios.get(`/references/${reference_id}/usages?offset=${offset}`);
+                let data = resp.data.data;
+                let groupCount = resp.data.groupCount;
+                this.r1usages = Object.values(data);
+
+                if (groupCount > 100) {
+                    for (let i = 100; i <= groupCount; i += 100) {
+                        await this.load1UsageWithDelay(i,reference_id);
+                    }
+                }
+            } catch (error) {
+                console.error("load1usage:", error);
+            }
+        },
+        async load1UsageWithDelay(offset, reference_id) {
+            try {
+                const resp = await this.axios.get(`/references/${reference_id}/usages?offset=${offset}`);
+                let data = resp.data.data;
+                this.r1usages = [...this.r1usages, ...Object.values(data)];
+                this.r1usages = [...this.r1usages];
+
+                // wait 1 sec avoid Too Many Attempts
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            } catch (error) {
+                console.error(`load1UsageWithDelay ${offset}:`, error);
+            }
+        },
+        async load2Usages(reference_id) {
+            try {
+                let offset = 0;
+                const resp = await this.axios.get(`/references/${reference_id}/usages?offset=${offset}`);
+                let data = resp.data.data;
+                let groupCount = resp.data.groupCount;
+                this.r2usages = Object.values(data);
+
+                if (groupCount > 100) {
+                    for (let i = 100; i <= groupCount; i += 100) {
+                        await this.load2UsageWithDelay(i,reference_id);
+                    }
+                }
+            } catch (error) {
+                console.error("load1usage:", error);
+            }
+        },
+        async load2UsageWithDelay(offset, reference_id) {
+            try {
+                const resp = await this.axios.get(`/references/${reference_id}/usages?offset=${offset}`);
+                let data = resp.data.data;
+                this.r2usages = [...this.r2usages, ...Object.values(data)];
+                this.r2usages = [...this.r2usages];
+
+                // wait 1 sec avoid Too Many Attempts
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            } catch (error) {
+                console.error(`load2UsageWithDelay ${offset}:`, error);
+            }
+        },
         onChangeReference() {
             const temp = this.reference1;
             this.reference1 = this.reference2;
@@ -139,21 +199,23 @@ export default {
                 return;
             }
 
-            this.axios.get(`/references/${r.id}/usages`)
-                .then(({ data: { data } }) => {
-                    this.r1usages = data;
-                });
+            this.load1Usages(r.id);
+            // this.axios.get(`/references/${r.id}/usages`)
+            //     .then(({ data: { data } }) => {
+            //         this.r1usages = data;
+            //     });
         },
         reference2(r) {
             if (r === null) {
                 this.r2usages = {};
                 return;
             }
+            this.load2Usages(r.id);
 
-            this.axios.get(`/references/${r.id}/usages`)
-                .then(({ data: { data } }) => {
-                    this.r2usages = data;
-                });
+            // this.axios.get(`/references/${r.id}/usages`)
+            //     .then(({ data: { data } }) => {
+            //         this.r2usages = data;
+            //     });
         },
     },
 };

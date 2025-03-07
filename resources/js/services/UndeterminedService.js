@@ -70,7 +70,7 @@ export class UndeterminedService {
 
         this.referenceDOM = referencePreview ? this._c(
             'span',
-            `${referencePreview}.`,
+            `${referencePreview}${ referencePreview.endsWith('.') ? '': '.'}`,
         ) : null;
         return this;
     }
