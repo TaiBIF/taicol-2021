@@ -183,6 +183,7 @@ class UsageImportService
                     }
                 }
 
+                $commonName  = [];
                 if (isset($commonNamesString)){
 
                     $isMatch = preg_match('/(.*)\((.*),(.*)\)/', $commonNamesString, $matches);
