@@ -211,7 +211,7 @@ class ReferenceImportService
         $pageRange = $this->sheet->getCell('K' . $row)->getValue() ?? '';
         $chapter = $this->sheet->getCell('L' . $row)->getValue() ?? '';
 
-        $articleNumber = $this->sheet->getCell('M' . $row)->getValue();
+        $articleNumber = $this->sheet->getCell('M' . $row)->getValue() ?? '';
         $doi = $this->sheet->getCell('N' . $row)->getValue();
         $url = $this->sheet->getCell('O' . $row)->getValue();
         $languageString = $this->sheet->getCell('P' . $row)->getValue();
