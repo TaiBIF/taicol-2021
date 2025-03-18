@@ -41,6 +41,8 @@ class TaxonNameSimpleSubResource extends JsonResource
                     'latin_name' => $s['latin_name']
                 ];
             }),
+            'autonym_group' => $this->autonym_group,
+            'object_group' => $this->object_group,
         ];
     }
 }

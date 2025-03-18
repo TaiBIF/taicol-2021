@@ -89,5 +89,5 @@ export default {
     insertCitationOfThisName: '帶入引用文獻',
     insertTypeSpecimenOfThisName: '帶入模式標本',
     insertTypeNameOfThisName: '帶入模式學名',
-    pleaseFinishEditing: '請點入紅底學名卡片完成編輯',
+    pleaseFinishEditing: '請確認紅底學名卡片',
 };

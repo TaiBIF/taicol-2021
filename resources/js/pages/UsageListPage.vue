@@ -328,6 +328,81 @@ export default {
 
         },
         isInvalidUsage(usage, index) {
+
+            // console.log(usage.taxonName.name)
+
+            let now_usages = this.usages.filter(item => item.isDeleted !== true)
+
+            // # 1. 同一個分類群有一個以上的接受名 -> 感覺在介面上不會出現
+            if (now_usages.filter(item => item.group === usage.group && item.status === 'accepted').length > 1){
+                console.log(usage.taxonName.name, ': 同一個分類群有一個以上的接受名')
+
+                return true;
+            }
+
+            // # 2. 同一個分類群裡面沒有任何接受名 -> 介面上應該會直接跳錯誤
+
+            if (now_usages.filter(item => item.group === usage.group && item.status === 'accepted').length  == 0){
+                console.log(usage.taxonName.name, ': 同一個分類群裡面沒有任何接受名 -> 介面上應該會直接跳錯誤')
+                return true;
+            }
+
+            // # 3. 同一個學名出現在同一篇文獻中的兩個分類群(不同accepted_taxon_name_id) 且不是誤用
+            if (now_usages.filter(item => item.taxonNameId === usage.taxonNameId && item.group !== usage.group && item.status !== 'misapplied').length){
+                console.log(usage.taxonName.name, ': 同一個學名出現在同一篇文獻中的兩個分類群(不同accepted_taxon_name_id) 且不是誤用')
+                return true;
+            }
+
+            // # 一組 reference_id, accepted_taxon_name_id, taxon_name_id, 只對到一個ru_ud -> 在my namespace usage還不會有accepted_taxon_name_id, reference_id
+            if (now_usages.filter(item => item.taxonNameId === usage.taxonNameId && item.status === 'accepted').length  > 1){
+                console.log(usage.taxonName.name, ': 重複的accepted name')
+                return true;
+            }
+
+
+            // 合理：
+            // autonym 可以在同一篇文獻：兩個同時有效。
+
+            // 不合理：
+            if (usage.taxonName.objectGroup!=null){
+
+                // autonym / 同模：同一篇文獻 在不同分類群 同時出現 accepted和not-acceped
+
+                if (now_usages.filter(item => item.taxonName.objectGroup === usage.taxonName.objectGroup && item.group !== usage.group &&  item.status != usage.status && item.status !== 'misapplied').length  > 1){
+                    console.log(usage.taxonName.name, ': autonym / 同模同一篇文獻 在不同分類群 同時出現 accepted和not-acceped');
+                    return true;
+                }
+
+                // autonym / 同模：同一篇文獻中有多個not-accepted在不同分類群。
+
+                if (now_usages.filter(item => item.taxonName.objectGroup === usage.taxonName.objectGroup && item.group !== usage.group && item.status === 'not-accepted').length  > 0){
+                    console.log(usage.taxonName.name, ': autonym / 同模同一篇文獻中有多個not-accepted在不同分類群。');
+                    return true;
+                }
+
+
+                // 同模（不包含autonym）：同一篇文獻中多個accepted
+                if (usage.taxonName.autonymGroup==null){
+
+                    if (now_usages.filter(item => item.taxonName.objectGroup === usage.taxonName.objectGroup && item.group !== usage.group && item.status === 'accepted').length  > 0){
+                        console.log(usage.taxonName.name, ': 同模（不包含autonym）同一篇文獻中多個accepted');
+                        return true;
+                    }
+
+                } else {
+
+
+                    if (now_usages.filter(item => item.taxonName.autonymGroup !== usage.taxonName.autonymGroup && item.taxonName.objectGroup === usage.taxonName.objectGroup && item.group !== usage.group && item.status === 'accepted').length  > 0){
+                        console.log(usage.taxonName.name, ': 同模（不包含autonym）同一篇文獻中多個accepted');
+                        return true;
+                    }
+
+                }
+            }
+
+
+
+
             if (usage.status === '') {
                 return true;
             }
@@ -373,6 +448,7 @@ export default {
 
             this.usages.forEach((usage, index) => {
                 if (app.isInvalidUsage(usage, index)) {
+                
                     app.$store.commit('openModal', {
                         component: () => import('../components/modals/ConfirmLeaveModal.vue'),
                         props: {
@@ -611,7 +687,6 @@ export default {
                 const resp = await this.axios.get(`${url}?offset=${offset}`);
                 let data = resp.data.usages;
 
-                // this.model = [...this.model,...data];
                 this.usages = [...this.usages, ...data.map((u) => ({
                     ...u,
                     taxonNameId: u.taxonName?.id,

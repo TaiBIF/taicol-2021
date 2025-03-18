@@ -4,6 +4,13 @@
             <p>
                 {{ $t('usage.pleaseFinishEditing') }}
             </p>
+            <br>
+            <p>
+            1. 有效學名必須點進學名卡片勾選「存在於臺灣？」
+            <br>
+            2. 若有同模式學名/異名出現在不同分類群當中，請確認是否要加入「部分引用」相關標註，或確認是否有同名（homonym）的情形。
+            </p>
+
         </div>
         <div class="flex justify-end sticky bottom-0 p-4 bg-white border-t gap-2">
             <button class="button" v-on:click="onLeave">{{ $t('common.later') }}</button>
