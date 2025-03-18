@@ -68,7 +68,7 @@ class LogService
         return $this->write($type, $model->id, LogAction::UPDATE, $changes);
     }
 
-    public function writeUpdateLogWithComparison(LogType $type, Model $newModel, Model $oldModel, array $includeColumns = [], array $excludeColumns = []): Model
+    public function writeUpdateLogWithComparison(LogType $type, Model $newModel, Model $oldModel, array $includeColumns = [], array $excludeColumns = []): string
     {
         $changes = $this->diffColumn($newModel->getAttributes(), $oldModel->getAttributes());
 
@@ -90,7 +90,12 @@ class LogService
                 $changes[$key] = str_replace("properties.usage.", "", $value);
             }
         }
-        return $this->write($type, $newModel['id'], LogAction::UPDATE, $changes);
+
+        if (count($changes)){
+           $this->write($type, $newModel['id'], LogAction::UPDATE, $changes);
+        }
+        
+        return '';
     }
 
     private function diffColumn($oldModel, $newModel): array

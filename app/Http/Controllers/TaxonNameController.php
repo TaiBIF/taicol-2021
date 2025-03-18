@@ -155,6 +155,13 @@ class TaxonNameController extends Controller
             ], 404);
         }
 
+        // 同模
+        $homotypicCount = (boolean) TaxonName::where('id', '!=', $taxonName->id)
+            ->where('object_group', $taxonName->object_group)
+            ->where('object_group', '!=' , null)
+            ->where('is_publish','=',1)
+            ->count();
+
         // 同名
         $homonymsCount = (boolean) TaxonName::where('id', '!=', $taxonName->id)
             ->where('name', $taxonName->name)
@@ -238,7 +245,7 @@ class TaxonNameController extends Controller
                 // 同模式學名
                 [
                     'key' => 'homotypic',
-                    'display' => (boolean) ($taxonName->object_group != null),
+                    'display' => (boolean) $homotypicCount > 0,
                 ],
                 // 有效學名
                 [
@@ -957,6 +964,8 @@ class TaxonNameController extends Controller
         );
 
         $taxonNameLogService->saveUpdateLog($taxonName, $authorIds, $exAuthorIds);
+        $service->getAndUpdateObjectGroups();
+
         return response([
             'id' => $taxonName->id,
             'isPublish' => $request->get('is_publish', true)
@@ -1038,6 +1047,8 @@ class TaxonNameController extends Controller
         $service->saveToMyFavoriteItem();
         $logService = new LogService();
         $logService->writeCreateLog(LogType::TAXON_NAME, $taxonName->id);
+
+        $service->getAndUpdateObjectGroups();
 
         return response(TaxonNameCollection::collection([$taxonName])[0]);
     }

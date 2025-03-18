@@ -23,9 +23,9 @@
             <textarea v-model="note" :placeholder="$t('common.description')" class="textarea mb-2" rows="3"></textarea>
             <div class="buttons is-right">
                 <button class="button" v-on:click="closeModal">{{ $t('common.cancel') }}</button>
-                <button class="button" v-on:click="() => onSubmit(true)">
+                <!-- <button class="button" v-on:click="() => onSubmit(true)">
                     {{ $t('common.overwrite') }}
-                </button>
+                </button> -->
                 <button class="button" v-on:click="() => onSubmit(false)">
                     {{ $t('common.add') }}
                 </button>

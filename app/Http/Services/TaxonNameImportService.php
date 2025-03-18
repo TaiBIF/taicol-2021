@@ -178,53 +178,56 @@ class TaxonNameImportService
         $authors = $this->findPersonsByString($row, $authorsString);
         $exAuthors = $this->findPersonsByString($row, $exAuthorsString);
 
+        $taxonName = $service->saveAll([
+                    'nomenclature_id' => $nomenclature,
+                    'rank_id' => $this->ranks[strtolower($rankString)]->id,
+                    'name' => $name,
+                    'formatted_authors' => $formattedAuthorsString,
+                    'original_taxon_name_id' => $originalTaxonName ? $originalTaxonName->id : null,
+                    'type_specimens' => [],
+                    'publish_year' => $publishYear,
+                    'note' => $note,
+                    'is_hybrid' => false,
+                    'latin_genus' => $latinGenus,
+                    'latin_name' => $name,
+                    'latin_s1' => $latinS1,
+                    'reference_name' => $referenceName,
+                    'species_id' => $species ? $species->id : null,
+                    'species_layers' => $s2Rank ? [
+                        [
+                            'rank_abbreviation' => $s2Rank,
+                            'latin_name' => $latinS2,
+                        ]
+                    ] : [],
+                    'type_name' => '',
+                    'usage' => $referenceId ? [
+                        'reference_id' => $referenceId,
+                        'figure' => $citeFigure,
+                        'name_in_reference' => '',
+                        'show_page' => $page,
+                    ] : [],
 
-        return $service->saveAll([
-            'nomenclature_id' => $nomenclature,
-            'rank_id' => $this->ranks[strtolower($rankString)]->id,
-            'name' => $name,
-            'formatted_authors' => $formattedAuthorsString,
-            'original_taxon_name_id' => $originalTaxonName ? $originalTaxonName->id : null,
-            'type_specimens' => [],
-            'publish_year' => $publishYear,
-            'note' => $note,
-            'is_hybrid' => false,
-            'latin_genus' => $latinGenus,
-            'latin_name' => $name,
-            'latin_s1' => $latinS1,
-            'reference_name' => $referenceName,
-            'species_id' => $species ? $species->id : null,
-            'species_layers' => $s2Rank ? [
-                [
-                    'rank_abbreviation' => $s2Rank,
-                    'latin_name' => $latinS2,
-                ]
-            ] : [],
-            'type_name' => '',
-            'usage' => $referenceId ? [
-                'reference_id' => $referenceId,
-                'figure' => $citeFigure,
-                'name_in_reference' => '',
-                'show_page' => $page,
-            ] : [],
+                    // ICNP
+                    'is_approved_list' => false,
+                    'initial_year' => '',
 
-            // ICNP
-            'is_approved_list' => false,
-            'initial_year' => '',
+                    // ICNP
+                    'genome_composition' => '',
+                    'host' => '',
+                ],
+                    $authors->pluck('id')->toArray(),
+                    $exAuthors->pluck('id')->toArray(),
+                    $referenceId ? [
+                        'reference_id' => $referenceId,
+                        'figure' => $citeFigure,
+                        'name_in_reference' => '',
+                        'show_page' => $page,
+                    ] : [],
+                );
 
-            // ICNP
-            'genome_composition' => '',
-            'host' => '',
-        ],
-            $authors->pluck('id')->toArray(),
-            $exAuthors->pluck('id')->toArray(),
-            $referenceId ? [
-                'reference_id' => $referenceId,
-                'figure' => $citeFigure,
-                'name_in_reference' => '',
-                'show_page' => $page,
-            ] : [],
-        );
+        $service->getAndUpdateObjectGroups();
+
+        return  $taxonName;
     }
 
     private function findOriginalTaxonName(string $originNameString, ?string $originAuthorNameString, ?string $originExAuthorNameString, int $row)
