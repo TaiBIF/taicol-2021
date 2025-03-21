@@ -377,6 +377,12 @@ export default {
         const indications = indicationOptions
             .filter((i) => i.status === this.presetData.status)
             .filter((i) => this.presetData.properties.indications?.includes(i.abbreviation));
+        
+        const typeSpecimens = this.presetData?.typeSpecimens.map((t) => ({
+            ...t,
+            sex: sexs.find((s) => s.id === t.sexId),
+        }));
+
         return {
             isLoading: true,
             showAddCustomField: false,
@@ -397,10 +403,7 @@ export default {
                 t.proParteType = (t.proParte == true && t?.proParteType == null) ? 'pro parte' : t?.proParteType;
                 return t;
             }) : [],
-            typeSpecimens: this.presetData?.typeSpecimens ? this.presetData?.typeSpecimens.map((t) => {
-                t.sex = sexs.find((s) => s.id === t.sexId);
-                return t;
-            }) : [],
+            typeSpecimens: typeSpecimens || [],
             typeName: this.presetData.typeName ?? null,
             errors: {},
             nameRemark: this.presetData.nameRemark ?? '',
@@ -498,10 +501,9 @@ export default {
             this.axios.get(`/taxon-names/${this.taxonName?.id}/type-specimens`, {
             }).then(({ data}) => {
 
-
                 data.forEach(element => {
 
-                    this.typeSpecimens.push({...element});
+                    this.typeSpecimens.push({...element, sex: sexs.find((s) => s.id === element.sexId),                    });
                     this.typeSpecimensIsSimpleViews.push(true);
 
                 });

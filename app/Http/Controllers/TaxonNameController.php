@@ -1117,6 +1117,7 @@ class TaxonNameController extends Controller
                     if (array_key_exists('collectors', $t)){
                         $t['collectors'] = PersonCollection::collection(Person::whereIn('id',array_column($t['collectors'], 'id'))->get());
                     }
+                    $t['country'] = isset($t['country_id']) ? Country::find($t['country_id']) : null;
                     return $t;
                 }) ?? [],
         );

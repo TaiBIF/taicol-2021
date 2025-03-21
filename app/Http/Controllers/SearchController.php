@@ -350,8 +350,8 @@ class SearchController extends Controller
                             $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
                             $word_wo_rank = str_replace($replace_words, ' ', $word);
 
-                            $query->whereRaw("MATCH(search_name) AGAINST (? IN BOOLEAN MODE)", ["\"$word_wo_rank\""]);
-                            $query->orWhereRaw("MATCH(`name`) AGAINST (? IN BOOLEAN MODE)", ["\"$word\""]);
+                            $query->whereRaw("MATCH(search_name) AGAINST (? IN BOOLEAN MODE)", ["%$word_wo_rank%"]);
+                            $query->orWhereRaw("MATCH(`name`) AGAINST (? IN BOOLEAN MODE)", ["%$word%"]);
                             // $query->whereRaw('search_name like ? ', '%' . $word_wo_rank . '%');
                             // $query->orWhereRaw( 'name like ? ' , '%' . $word . '%');
 
@@ -403,6 +403,8 @@ class SearchController extends Controller
         if ($request->get('sortby') === 'publish_year') {
             $query->orderBy('taxon_names.publish_year', $request->get('direction'));
         }
+
+        // TODO 這邊也要加上order
 
         $taxonNames = $query->paginate($perPage);
 
