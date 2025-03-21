@@ -273,6 +273,7 @@ import AuthorName from '../../AuthorName.vue';
 import { subTitle } from '../../../utils/preview/reference';
 import TaxonNameLabel from '../TaxonNameLabel.vue';
 import TaxonNameFullLabel from '../TaxonNameFullLabel.vue';
+import sexs from '../../selects/sexs';
 
 export default {
     components: { TaxonNameFullLabel, TaxonNameLabel, AuthorName },
@@ -365,7 +366,9 @@ export default {
                     this[`logOffset`] = logOffset;
                 });
         },
-        showTypeSpecimen: (specimen) => combo([specimen]),
+        showTypeSpecimen(specimen){ 
+            return combo([{...specimen,  sex: sexs.find((s) => s.id === specimen?.sexId),}])
+        },
         renderPersonFullName(person, type) {
             return fullName(person);
         },
