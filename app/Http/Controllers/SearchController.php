@@ -83,10 +83,8 @@ class SearchController extends Controller
                 ->orWhereRaw("MATCH(middle_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"]);
 
             $query = $queryA->union($queryB)
-                            ->orderByRaw(
-                        "CASE WHEN LOWER(`title`) = '{$keyword}' THEN 0 WHEN LOWER(`title`) LIKE '{$keyword}%' THEN 1 WHEN LOWER(`title`) LIKE '% {$keyword}' THEN 2 ELSE 3 END");;
+                            ->orderByRaw("CASE WHEN LOWER(`title`) = '{$keyword}' THEN 0 WHEN LOWER(`title`) LIKE '{$keyword}%' THEN 1 WHEN LOWER(`title`) LIKE '% {$keyword}' THEN 2 ELSE 3 END");;
             
-
             // $query->whereIn('n', ['person', 'taxon_name'])
             //     ->orderByRaw(
             //         "CASE WHEN LOWER(`title`) = '{$keyword}' THEN 0 WHEN LOWER(`title`) LIKE '{$keyword}%' THEN 1 WHEN LOWER(`title`) LIKE '% {$keyword}' THEN 2 ELSE 3 END");
@@ -333,8 +331,6 @@ class SearchController extends Controller
                     ->orderBy('references.publish_year');
             },
         ])
-            ->where('taxon_names.is_publish', '=', 1)
-            ->where('taxon_names.deleted_at', '=', null)
             ->leftJoin('ranks', 'taxon_names.rank_id', 'ranks.id');
 
         try {
@@ -347,13 +343,12 @@ class SearchController extends Controller
                         $query->where(function ($query) use ($word) {
 
 
+
                             $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
                             $word_wo_rank = str_replace($replace_words, ' ', $word);
 
-                            $query->whereRaw("MATCH(search_name) AGAINST (? IN BOOLEAN MODE)", ["%$word_wo_rank%"]);
-                            $query->orWhereRaw("MATCH(`name`) AGAINST (? IN BOOLEAN MODE)", ["%$word%"]);
-                            // $query->whereRaw('search_name like ? ', '%' . $word_wo_rank . '%');
-                            // $query->orWhereRaw( 'name like ? ' , '%' . $word . '%');
+                            $query->whereRaw('search_name like ? ', '%' . $word_wo_rank . '%');
+                            $query->orWhereRaw( 'name like ? ' , '%' . $word . '%');
 
                             // Check if the word contains Chinese
                             if (preg_match('/\p{Han}+/u', $word)) {
@@ -404,8 +399,6 @@ class SearchController extends Controller
             $query->orderBy('taxon_names.publish_year', $request->get('direction'));
         }
 
-        // TODO 這邊也要加上order
-
         $taxonNames = $query->paginate($perPage);
 
         return response()->json([
@@ -416,6 +409,7 @@ class SearchController extends Controller
             'last_page' => $taxonNames->lastPage(),
         ]);
     }
+
 
     public function person(Request $request)
     {
