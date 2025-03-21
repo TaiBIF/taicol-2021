@@ -55,19 +55,26 @@ class TaxonNameController extends Controller
         } else {
 
             $keyword = trim(strtolower($request->get('keyword', '')));
-            $query = TaxonName::select('taxon_names.*')->with([
-                'authors', 'exAuthors', 'reference', 'reference.authors',
-                'nomenclature', 'rank', 'originalTaxonName.authors'
-            ])
-                ->leftJoin('ranks', 'taxon_names.rank_id', 'ranks.id')
-                ->where('is_publish', '=', true)
-                ->whereRaw('LOWER(`name`) like ? ', ['%' . $keyword . '%'])
-                ->orWhereHas('authors', function (Builder $query) use ($keyword) {
-                    $query->whereRaw('LOWER(`last_name`) like ? ', ['%' . $keyword . '%'])
-                        ->orWhereRaw('LOWER(`first_name`) like ? ', ['%' . $keyword . '%'])
-                        ->orWhereRaw('LOWER(`middle_name`) like ? ', ['%' . $keyword . '%'])
-                        ->orWhereRaw('LOWER(`abbreviation_name`) like ? ', ['%' . $keyword . '%']);
-                });
+
+            $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
+            $keyword_wo_rank = str_replace($replace_words, ' ', $keyword);
+
+
+            $queryA = TaxonName::selectRaw("'taxon_name' as n, id, name as title")
+                ->where('deleted_at',null)
+                ->where('is_publish',1)
+                ->whereRaw("MATCH(search_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword_wo_rank*"])
+                ->orWhereRaw("MATCH(`name`) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"]);
+
+            $queryB = Person::selectRaw("'person' as n, id, concat(last_name,', ',first_name,' ',middle_name) as title")
+                ->whereRaw("MATCH(last_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"])
+                ->orWhereRaw("MATCH(first_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"])
+                ->orWhereRaw("MATCH(middle_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"]);
+
+            $query = $queryA->union($queryB)
+                            ->orderByRaw(
+                        "CASE WHEN LOWER(`title`) = '{$keyword}' THEN 0 WHEN LOWER(`title`) LIKE '{$keyword}%' THEN 1 WHEN LOWER(`title`) LIKE '% {$keyword}' THEN 2 ELSE 3 END");;
+            
 
             if ($keyword === '' && $strict) {
                 return response()->json([
@@ -91,9 +98,24 @@ class TaxonNameController extends Controller
                 $query->orderBy('taxon_names.publish_year', $request->get('direction'));
             }
 
-            $taxonNames = $query->orderByRaw(
-                "CASE WHEN LOWER(`name`) = '{$keyword}' THEN 0 WHEN LOWER(`name`) LIKE '{$keyword}%' THEN 1 WHEN LOWER(`name`) LIKE '% {$keyword}' THEN 2 ELSE 3 END"
-            )
+
+            $taxonNames = 
+                TaxonName::select('taxon_names.*')->with([
+                    'authors.country', 'exAuthors.country', 'reference',
+                    'nomenclature',
+                    'rank',
+                    'originalTaxonName.authors',
+                    'originalTaxonName.exAuthors',
+                    'hybridParents',
+                ])
+                    ->leftJoin('ranks', 'taxon_names.rank_id', 'ranks.id')
+                    ->whereIn('taxon_names.id', $query->limit($perPage)->pluck('id'))
+                    // ->get();
+
+            // $taxonNames = $query
+                ->orderByRaw(
+                    "CASE WHEN LOWER(`name`) = '{$keyword}' THEN 0 WHEN LOWER(`name`) LIKE '{$keyword}%' THEN 1 WHEN LOWER(`name`) LIKE '% {$keyword}' THEN 2 ELSE 3 END"
+                )
                 ->orderBy('taxon_names.name')
                 ->limit($perPage)
                 ->get();

@@ -54,24 +54,72 @@ class SearchController extends Controller
 {
     /**
      * 針對單一 keyword，自所有 model 中取得結果
+     * for 下拉選單自動填入
      * @param Request $request
      * @return JsonResponse
      */
     public function index(Request $request)
     {
+
         $type = $request->get('type', '');
         $keyword = trim(strtolower($request->get('keyword', '')));
 
-        $query = AllModel::where('title', 'like', "%$keyword%");
+        // $query = AllModel::where('title', 'like', "%$keyword%");
 
         if ($type == 'taxon-names') {
-            $query->whereIn('n', ['person', 'taxon_name'])
-                ->orderByRaw(
-                    "CASE WHEN LOWER(`title`) = '{$keyword}' THEN 0 WHEN LOWER(`title`) LIKE '{$keyword}%' THEN 1 WHEN LOWER(`title`) LIKE '% {$keyword}' THEN 2 ELSE 3 END");
+
+            $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
+            $keyword_wo_rank = str_replace($replace_words, ' ', $keyword);
+
+            $queryA = TaxonName::selectRaw("'taxon_name' as n, id, name as title")
+                ->where('deleted_at',null)
+                ->where('is_publish',1)
+                ->whereRaw("MATCH(search_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword_wo_rank*"])
+                ->orWhereRaw("MATCH(`name`) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"]);
+
+            $queryB = Person::selectRaw("'person' as n, id, concat(last_name,', ',first_name,' ',middle_name) as title")
+                ->whereRaw("MATCH(last_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"])
+                ->orWhereRaw("MATCH(first_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"])
+                ->orWhereRaw("MATCH(middle_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"]);
+
+            $query = $queryA->union($queryB)
+                            ->orderByRaw(
+                        "CASE WHEN LOWER(`title`) = '{$keyword}' THEN 0 WHEN LOWER(`title`) LIKE '{$keyword}%' THEN 1 WHEN LOWER(`title`) LIKE '% {$keyword}' THEN 2 ELSE 3 END");;
+            
+
+            // $query->whereIn('n', ['person', 'taxon_name'])
+            //     ->orderByRaw(
+            //         "CASE WHEN LOWER(`title`) = '{$keyword}' THEN 0 WHEN LOWER(`title`) LIKE '{$keyword}%' THEN 1 WHEN LOWER(`title`) LIKE '% {$keyword}' THEN 2 ELSE 3 END");
+
+
+
         } else if ($type === 'references') {
-            $query->whereIn('n', ['person', 'reference']);
+            // $query->whereIn('n', ['person', 'reference']);
+
+
+            $queryA = Reference::selectRaw("'reference' as n, id, title")
+                ->where('deleted_at',null)
+                ->where('is_publish',1)
+                ->WhereRaw("MATCH(title) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"]);
+
+            $queryB = Person::selectRaw("'person' as n, id, concat(last_name,', ',first_name,' ',middle_name) as title")
+                ->where('deleted_at',null)
+                ->whereRaw("MATCH(last_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"])
+                ->orWhereRaw("MATCH(first_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"])
+                ->orWhereRaw("MATCH(middle_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"]);
+
+            $query = $queryA->union($queryB);
+
+
         } else if ($type === 'persons') {
-            $query->whereIn('n', ['person']);
+            // $query->whereIn('n', ['person']);
+
+            $query = Person::selectRaw("'person' as n, id, concat(last_name,', ',first_name,' ',middle_name) as title")
+            ->where('deleted_at',null)
+            ->whereRaw("MATCH(last_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"])
+            ->orWhereRaw("MATCH(first_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"])
+            ->orWhereRaw("MATCH(middle_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"]);
+
         } else {
             return response()->json([
                 'data' => [],
@@ -130,7 +178,6 @@ class SearchController extends Controller
                 }
             }
         }
-
 
         return response()->json([
             'data' => $all,
@@ -287,6 +334,7 @@ class SearchController extends Controller
             },
         ])
             ->where('taxon_names.is_publish', '=', 1)
+            ->where('taxon_names.deleted_at', '=', null)
             ->leftJoin('ranks', 'taxon_names.rank_id', 'ranks.id');
 
         try {
@@ -302,9 +350,10 @@ class SearchController extends Controller
                             $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
                             $word_wo_rank = str_replace($replace_words, ' ', $word);
 
-                            $query->whereRaw('search_name like ? ', '%' . $word_wo_rank . '%');
-                            $query->orWhereRaw( 'name like ? ' , '%' . $word . '%');
-
+                            $query->whereRaw("MATCH(search_name) AGAINST (? IN BOOLEAN MODE)", ["\"$word_wo_rank\""]);
+                            $query->orWhereRaw("MATCH(`name`) AGAINST (? IN BOOLEAN MODE)", ["\"$word\""]);
+                            // $query->whereRaw('search_name like ? ', '%' . $word_wo_rank . '%');
+                            // $query->orWhereRaw( 'name like ? ' , '%' . $word . '%');
 
                             // Check if the word contains Chinese
                             if (preg_match('/\p{Han}+/u', $word)) {

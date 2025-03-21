@@ -26,6 +26,7 @@
             </template>
             <template v-slot:option="option">
                 <div>
+                    <div v-if="isSearching">Searching...</div>
                     <span v-html="option.name"/>
                     <span class="is-pulled-right is-inline-block">
                         <i v-if="option.type === 'person'"
@@ -83,6 +84,7 @@ export default {
         return {
             keywords: this.value,
             options: [],
+            isSearching: false,
         };
     },
     methods: {
@@ -149,6 +151,7 @@ export default {
                 return;
             }
 
+            this.isSearching = true;
             this.axios.get('/search', {
                 params: {
                     keyword,
@@ -156,11 +159,14 @@ export default {
                 },
             })
                 .then(({ data: { data } }) => {
+
                     app.options = data.map(({ title, type }, index) => ({
                         index,
                         name: title,
                         type: type.replace(/_/, '-'),
                     }));
+                    this.isSearching = false;
+
                 });
         }),
         markedResult(value, keyword) {
