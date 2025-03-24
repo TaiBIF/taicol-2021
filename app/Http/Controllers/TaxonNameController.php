@@ -60,20 +60,24 @@ class TaxonNameController extends Controller
             $keyword_wo_rank = str_replace($replace_words, ' ', $keyword);
 
 
-            $queryA = TaxonName::selectRaw("'taxon_name' as n, id, name as title")
-                ->where('deleted_at',null)
-                ->where('is_publish',1)
-                ->whereRaw("MATCH(search_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword_wo_rank*"])
-                ->orWhereRaw("MATCH(`name`) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"]);
+            $queryA = TaxonName::selectRaw("'taxon_name' as n, id, name as title, search_name as search_title")
+                    ->where('deleted_at', null)
+                    ->where('is_publish', 1)
+                    ->where(function($query) use ($keyword, $keyword_wo_rank){
+                        $query
+                        ->whereRaw("MATCH(search_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword_wo_rank*"])
+                        ->orWhereRaw("MATCH(`name`) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"]);
+                    });
 
-            $queryB = Person::selectRaw("'person' as n, id, concat(last_name,', ',first_name,' ',middle_name) as title")
+            $queryB = Person::selectRaw("'person' as n, id, concat(last_name,', ',first_name,' ',middle_name) as title, concat(last_name,', ',first_name,' ',middle_name) as search_title")
                 ->whereRaw("MATCH(last_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"])
                 ->orWhereRaw("MATCH(first_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"])
                 ->orWhereRaw("MATCH(middle_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"]);
 
             $query = $queryA->union($queryB)
                             ->orderByRaw(
-                        "CASE WHEN LOWER(`title`) = '{$keyword}' THEN 0 WHEN LOWER(`title`) LIKE '{$keyword}%' THEN 1 WHEN LOWER(`title`) LIKE '% {$keyword}' THEN 2 ELSE 3 END");;
+                        // "CASE WHEN LOWER(`title`) = '{$keyword}' OR LOWER(`search_title`) = '{$keyword_wo_rank}'  THEN 0 WHEN LOWER(`title`) LIKE '{$keyword}%' OR LOWER(`search_title`) LIKE '{$keyword_wo_rank}%' THEN 1 WHEN LOWER(`title`) LIKE '% {$keyword}' OR LOWER(`search_title`) LIKE '% {$keyword_wo_rank}' THEN 2 ELSE 3 END");;
+                        "CASE WHEN LOWER(`search_title`) = '{$keyword_wo_rank}'  THEN 0 WHEN LOWER(`search_title`) LIKE '{$keyword_wo_rank}%' THEN 1 WHEN LOWER(`search_title`) LIKE '% {$keyword_wo_rank}' THEN 2 ELSE 3 END");;
             
 
             if ($keyword === '' && $strict) {
@@ -114,7 +118,9 @@ class TaxonNameController extends Controller
 
             // $taxonNames = $query
                 ->orderByRaw(
-                    "CASE WHEN LOWER(`name`) = '{$keyword}' THEN 0 WHEN LOWER(`name`) LIKE '{$keyword}%' THEN 1 WHEN LOWER(`name`) LIKE '% {$keyword}' THEN 2 ELSE 3 END"
+                    // "CASE WHEN LOWER(`name`) = '{$keyword}' THEN 0 WHEN LOWER(`name`) LIKE '{$keyword}%' THEN 1 WHEN LOWER(`name`) LIKE '% {$keyword}' THEN 2 ELSE 3 END"
+                    "CASE WHEN LOWER(`search_name`) = '{$keyword_wo_rank}'  THEN 0 WHEN LOWER(`search_name`) LIKE '{$keyword_wo_rank}%' THEN 1 WHEN LOWER(`search_name`) LIKE '% {$keyword_wo_rank}' THEN 2 ELSE 3 END"
+
                 )
                 ->orderBy('taxon_names.name')
                 ->limit($perPage)
