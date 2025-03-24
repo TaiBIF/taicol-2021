@@ -406,7 +406,7 @@
                         <div v-for="(typeSpecimen, index) in typeSpecimens" class="column is-6">
                             <div class="box">
                                 <a class="close-button is-pulled-right"
-                                   v-on:click="(index) => typeSpecimens.splice(index, 1)">
+                                    v-on:click="onRemoveTypeSpecimens(index)">
                                 </a>
                                 <br/><br/>
                                 <type-specimen :ref="`typespecimen_${index}`"
@@ -818,6 +818,9 @@ export default {
         },
         onDeleteSpeciesLayer() {
             return this.speciesLayers.splice(-1);
+        },
+        onRemoveTypeSpecimens(index){
+            this.typeSpecimens.splice(index, 1);
         },
         submit: debounce(function (isPublish) {
             const isEdit = !!this.presetData?.id;
