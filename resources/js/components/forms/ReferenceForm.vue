@@ -337,6 +337,7 @@
     </div>
 </template>
 <script>
+import { debounce } from 'lodash';
 import BookSelect from '../selects/BookSelect.vue';
 import GeneralInput from '../GeneralInput.vue';
 import ReferenceTypeSelect from '../selects/ReferenceTypeSelect.vue';
@@ -396,6 +397,27 @@ export default {
         tempCoverUrl() {
             return this.reference.cover ? window.URL.createObjectURL(this.reference.cover) : '';
         },
+        formData() {
+            const reference = {
+                ...this.reference,
+                authors: this.targetAuthors.map((author) => author.id),
+                language: this.targetLanguage?.id || '',
+                properties: {
+                    ...this.reference.properties,
+                    bookTitle: this.targetBook?.title || null,
+                    bookTitleAbbreviation: (this.reference.properties?.bookTitleAbbreviation
+                        || this.targetBook?.titleAbbreviation
+                        || this.targetBook?.title),
+                },
+                image: this.reference.cover ?  getBase64(this.reference.cover) : null,
+            };
+
+            return {
+                ...reference,
+                title: title(reference),
+                subtitle: subTitle({ ...reference, authors: this.targetAuthors }),
+            }
+        }
     },
     data() {
         return {
@@ -474,60 +496,32 @@ export default {
                 this.reference.properties.bookTitleAbbreviation = '';
             }
         },
-        async submit(isPublish) {
+        submit: debounce(function (isPublish) {
 
-            const app = this;
-            const method = app.$route.name === 'reference-edit' ? 'PUT' : 'POST';
-            const url = app.$route.name === 'reference-edit' ? `/references/${app.reference.id}` : '/references';
-
-            const reference = {
-                ...app.reference,
-                isPublish,
-                authors: app.targetAuthors.map((author) => author.id),
-                language: app.targetLanguage?.id || '',
-                properties: {
-                    ...app.reference.properties,
-                    bookTitle: app.targetBook?.title || null,
-                    bookTitleAbbreviation: (app.reference.properties?.bookTitleAbbreviation
-                        || app.targetBook?.titleAbbreviation
-                        || app.targetBook?.title),
-                },
-                image: app.reference.cover ? await getBase64(app.reference.cover) : null,
-            };
-
-            // compute reference title and subtitle with properties
-            const data = {
-                ...reference,
-                title: title(reference),
-                subtitle: subTitle({ ...reference, authors: this.targetAuthors }),
-            };
-
-            return new Promise((resolve, reject) => {
-                app
-                    .axios({ method, url, data })
-                    .then(({ data }) => {
-                        app.onAfterSubmit(data);
-                        resolve();
-                    })
-                    .catch(({ errors, status, message }) => {
-                        if (status === 409 && message === 'Reference exist') {
-                            openNotify(this.$t('reference.exist'), 'is-danger');
-                        } else if (status === 409 &&  message === 'Reference draft exist') {
-                            app.$store.commit('openModal', {
-                                component: () => import('../modals/ConfirmDraftModal.vue'),
-                                props: {
-                                    onLeave: () => {
-                                        app.$store.commit('closeModal');
-                                    },
-                                },
-                            });
-                        } else {
-                            app.errors = errors;
-                        }
-                        reject();
+            this.axios({
+                method: this.$route.name === 'reference-edit' ? 'PUT' : 'POST',
+                url: this.$route.name === 'reference-edit' ? `/references/${this.reference.id}` : '/references',
+                data: { ...this.formData, 'isPublish': isPublish },
+            }).then(({ data }) => {
+                this.onAfterSubmit(data);
+                openNotify(this.$t('common.saveSuccess'));
+            }).catch(({ status, message, errors }) => {
+                if (status === 409 &&  message === 'Reference exist') {
+                    openNotify(this.$t('reference.exist'), 'is-danger');
+                } else if (status === 409 &&  message === 'Reference draft exist') {
+                    this.$store.commit('openModal', {
+                        component: () => import('../modals/ConfirmDraftModal.vue'),
+                        props: {
+                            onLeave: () => {
+                                this.$store.commit('closeModal');
+                            },
+                        },
                     });
+                } else {
+                    this.errors = errors;
+                }
             });
-        },
+        }),
     },
     components: {
         ReferenceCheckListTypeSelect,

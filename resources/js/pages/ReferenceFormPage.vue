@@ -19,23 +19,20 @@
             </div>
             <div class="flex gap-2 justify-end">
                 <button class="button m-0"
-                    v-on:click="goBack()"
-                    v-text="$t('common.goBack')"/>
-                <button :class="{'is-loading': isLoading}"
-                        class="button"
-                        v-if="!isPublished"
-                        v-on:click="() => submit(false)"
-                        v-text="$t('common.saveAsDraft')"/>
-                <button :class="{'is-loading': isLoading}"
-                        class="button"
-                        v-if="!isPublished"
-                        v-on:click="() => submit(true)"
-                        v-text="$t('common.publish')"/>
-                <button :class="{'is-loading': isLoading}"
-                        class="button"
-                        v-if="isPublished"
-                        v-on:click="() => submit(true)"
-                        v-text="$t('common.save')"/>
+                            v-on:click="goBack()"
+                            v-text="$t('common.goBack')"/>
+                    <button class="button m-0"
+                            v-if="!isPublished" 
+                            v-on:click="onSubmit(false)"
+                            v-text="$t('common.saveAsDraft')"/>
+                    <button class="button m-0"
+                            v-if="!isPublished"
+                            v-on:click="onSubmit(true)"
+                            v-text="$t('common.publish')"/>
+                    <button class="button m-0"
+                            v-if="isPublished"
+                            v-on:click="onSubmit(true)"
+                            v-text="$t('common.save')"/>
             </div>
         </div>
     </div>
@@ -142,18 +139,15 @@ export default {
                     }
                 });
         },
-        submit: debounce(function (isPublish) {
-            this.isLoading = true;
-            this.$refs.form
-                .submit(isPublish)
-                .catch(() => {
-                    this.isLoading = false;
-                });
-        }),
+        onSubmit(isPublish) {
+            this.$refs.form.submit(isPublish);
+        },
         onAfterFormSubmit(data) {
             // 如果是草稿的話 留在編輯頁面
             if (data.isPublish == false){
-                this.reload();
+                // this.reload();
+                this.$router.push({ name: 'reference-edit', params: { id: data.id } });
+
             } else {
                 this.$router.push({ name: 'reference-page', params: { id: data.id } });
             }

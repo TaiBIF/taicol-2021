@@ -107,7 +107,6 @@ export default {
                 this.commonName = commonName;
 
                 tabs.forEach(({ key, display }) => {
-                    console.log(key, display);
                     this.onToggle(key, display);
                 });
 
