@@ -22,7 +22,7 @@ const statusMap = [
     'accepted' => 'o',
     'not-accepted' => 'x',
     'misapplied' => '≠',
-    'unknown' => '?',
+    'undetermined' => '?',
 ];
 
 

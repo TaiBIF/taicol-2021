@@ -87,8 +87,8 @@ class SearchController extends Controller
                 ->orWhereRaw("MATCH(middle_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"]);
 
             $query = $queryA->union($queryB)
-                            ->orderByRaw("CASE WHEN LOWER(`search_title`) = '{$keyword_wo_rank}' THEN 0 WHEN LOWER(`search_title`) LIKE '{$keyword_wo_rank}%' THEN 1 WHEN LOWER(`search_title`) LIKE '% {$keyword_wo_rank}' THEN 2 ELSE 3 END");;
-            
+                            ->orderByRaw("CASE WHEN LOWER(`title`) = '{$keyword}' OR LOWER(`search_title`) = '{$keyword_wo_rank}'  THEN 0 WHEN LOWER(`title`) LIKE '{$keyword}%' OR LOWER(`search_title`) LIKE '{$keyword_wo_rank}%' THEN 1 WHEN LOWER(`title`) LIKE '% {$keyword}' OR LOWER(`search_title`) LIKE '% {$keyword_wo_rank}' THEN 2 ELSE 3 END");
+                            
         } else if ($type === 'references') {
             // $query->whereIn('n', ['person', 'reference']);
 

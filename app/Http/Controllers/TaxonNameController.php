@@ -6,6 +6,7 @@ use App\Http\Requests\TaxonNameRequest;
 use App\Http\Resources\PersonCollection;
 use App\Http\Resources\ReferenceCollection;
 use App\Http\Resources\TaxonNameCollection;
+use App\Http\Resources\TaxonNameSelectCollection;
 use App\Http\Resources\TaxonNameSimpleSubResource;
 use App\Http\Resources\BookCollection;
 use App\Http\Resources\TaxonNameResource;
@@ -75,9 +76,7 @@ class TaxonNameController extends Controller
                 ->orWhereRaw("MATCH(middle_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"]);
 
             $query = $queryA->union($queryB)
-                            ->orderByRaw(
-                        // "CASE WHEN LOWER(`title`) = '{$keyword}' OR LOWER(`search_title`) = '{$keyword_wo_rank}'  THEN 0 WHEN LOWER(`title`) LIKE '{$keyword}%' OR LOWER(`search_title`) LIKE '{$keyword_wo_rank}%' THEN 1 WHEN LOWER(`title`) LIKE '% {$keyword}' OR LOWER(`search_title`) LIKE '% {$keyword_wo_rank}' THEN 2 ELSE 3 END");;
-                        "CASE WHEN LOWER(`search_title`) = '{$keyword_wo_rank}'  THEN 0 WHEN LOWER(`search_title`) LIKE '{$keyword_wo_rank}%' THEN 1 WHEN LOWER(`search_title`) LIKE '% {$keyword_wo_rank}' THEN 2 ELSE 3 END");;
+                            ->orderByRaw("CASE WHEN LOWER(`title`) = '{$keyword}' OR LOWER(`search_title`) = '{$keyword_wo_rank}'  THEN 0 WHEN LOWER(`title`) LIKE '{$keyword}%' OR LOWER(`search_title`) LIKE '{$keyword_wo_rank}%' THEN 1 WHEN LOWER(`title`) LIKE '% {$keyword}' OR LOWER(`search_title`) LIKE '% {$keyword_wo_rank}' THEN 2 ELSE 3 END");
             
 
             if ($keyword === '' && $strict) {
@@ -116,11 +115,8 @@ class TaxonNameController extends Controller
                     ->whereIn('taxon_names.id', $query->limit($perPage)->pluck('id'))
                     // ->get();
 
-            // $taxonNames = $query
                 ->orderByRaw(
-                    // "CASE WHEN LOWER(`name`) = '{$keyword}' THEN 0 WHEN LOWER(`name`) LIKE '{$keyword}%' THEN 1 WHEN LOWER(`name`) LIKE '% {$keyword}' THEN 2 ELSE 3 END"
-                    "CASE WHEN LOWER(`search_name`) = '{$keyword_wo_rank}'  THEN 0 WHEN LOWER(`search_name`) LIKE '{$keyword_wo_rank}%' THEN 1 WHEN LOWER(`search_name`) LIKE '% {$keyword_wo_rank}' THEN 2 ELSE 3 END"
-
+                    "CASE WHEN LOWER(`name`) = '{$keyword}' OR LOWER(`search_name`) = '{$keyword_wo_rank}'  THEN 0 WHEN LOWER(`name`) LIKE '{$keyword}%' OR LOWER(`search_name`) LIKE '{$keyword_wo_rank}%' THEN 1 WHEN LOWER(`name`) LIKE '% {$keyword}' OR LOWER(`search_name`) LIKE '% {$keyword_wo_rank}' THEN 2 ELSE 3 END"
                 )
                 ->orderBy('taxon_names.name')
                 ->limit($perPage)
