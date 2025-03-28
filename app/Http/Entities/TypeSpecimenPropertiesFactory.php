@@ -13,6 +13,7 @@ class TypeSpecimenPropertiesFactory
             case TypeSpecimen::TYPE_IMAGE:
             case TypeSpecimen::TYPE_PHOTO:
             case TypeSpecimen::TYPE_DNA:
+            case TypeSpecimen::TYPE_STRAIN:
                 return new OtherSpecimenPropertiesEntity();
         }
     }

@@ -15,4 +15,5 @@ class TypeSpecimen extends Model
     const TYPE_IMAGE = 2;
     const TYPE_PHOTO = 3;
     const TYPE_DNA = 4;
+    const TYPE_STRAIN = 5;
 }
