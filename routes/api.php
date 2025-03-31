@@ -74,6 +74,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('references/{id}/usages-edit/{usageId}', 'ReferenceUsageController@update');
     Route::put('reference/{id}/usages-properties', 'ReferenceUsageController@updateUsageProperties');
 
+    // 新增俗名
+    Route::post('common-name', 'ReferenceUsageController@updateCommonName');
+
     // 我的名錄
     Route::resource('namespaces', 'MyNamespaceController');
     Route::post('namespaces/import/{referenceId}', 'MyNamespaceController@import');

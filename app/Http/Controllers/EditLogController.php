@@ -7,12 +7,14 @@ use App\ImportUsageLog;
 use App\Log;
 use App\Http\Resources\EditLogCollection;
 use App\Http\Resources\UsageLogCollection;
+use App\Http\Resources\CommonNameEditLogCollection;
 use Illuminate\Http\Request;
 
 const LogTypeMap = [
     'taxonname' => 1,
     'reference' => 2,
     'person' => 3,
+    'common_name' => 4,
 ];
 
 
@@ -37,6 +39,21 @@ class EditLogController extends Controller
                     ->get(); 
                     
             $logs = UsageLogCollection::collection($logs);
+
+        } else if ($log_type=='commonname'){
+
+            $logs = ImportUsageLog::
+                    select('import_usage_logs.created_at','action','user_id','reference_usages.id','reference_usages.taxon_name_id')
+                    ->join('reference_usages', 'reference_usage_id', '=', 'reference_usages.id')
+                    ->where('import_usage_logs.reference_id','=', 95)
+                    ->where('import_usage_logs.action_log_id', '=', NULL)
+                    ->orderBy('created_at')
+                    ->limit(5)
+                    ->offset($offset)
+                    ->get(); 
+                    
+            $logs = CommonNameEditLogCollection::collection($logs);
+
 
         } else {
 

@@ -16,6 +16,9 @@
                 <router-link :to="{name: 'person-create'} " class="navbar-item"
                              v-text="$t('person.create')"/>
 
+                <router-link :to="{name: 'common-name-create'} " class="navbar-item"
+                             v-text="$t('taxonName.createCommonName')"/>
+
                 <router-link :to="{name: 'namespace-list'} " class="navbar-item"
                              v-text="$t('header.menu.myNamespaces')"/>
 

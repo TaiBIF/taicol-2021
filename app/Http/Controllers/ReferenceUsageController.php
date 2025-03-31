@@ -158,7 +158,6 @@ class ReferenceUsageController extends Controller
     {
         $taxonNameId = $request->get('taxon_name_id');
 
-        $typeSpecimens = $request->get('type_specimens');
         $status = $request->get('status');
 
         $request->validate([
@@ -647,6 +646,139 @@ class ReferenceUsageController extends Controller
         return response([]);
     }
 
+
+    public function updateCommonName(Request $request)
+    {
+
+        $request->validate([
+            'taxon_name_id' => 'required',
+            'properties.common_names.*.name' => 'required',
+            'properties.common_names.*.language' => 'required',
+        ], [
+            'required' => 'usage.required',
+        ]);
+
+
+        DB::beginTransaction();
+
+        $usage = $request->all();
+
+        // 整理common_names
+        if (isset($usage['properties']['common_names'])){
+
+            $new_common_names = [];
+            foreach ($usage['properties']['common_names'] as $name_c){
+                
+                $name = $name_c['name'];
+                
+                foreach (array_keys($this->common_names_var) as $cc_key) {
+                    $name = str_replace($cc_key,$this->common_names_var[$cc_key],$name);
+                };
+
+                $new_name_c = Array(
+                    "area" =>  $name_c['area'],
+                    "name" =>  trim(str_replace("\x00", "", $name)),
+                    "language" =>  $name_c['language']
+                );
+
+                array_push($new_common_names, $new_name_c);
+                
+            }
+
+            $usage['properties']['common_names'] = $new_common_names;
+        }
+
+        // 加上需要的欄位
+
+
+        $usage['properties']['is_in_taiwan'] = null;
+
+        $currentUsage = new ReferenceUsage();
+        $currentUsage->reference_id = 95; # common name backbone
+        $currentUsage->is_for_publish = false;
+        $currentUsage->is_title = false;
+        $currentUsage->is_indent = false;
+        $currentUsage->status = 'accepted';
+        $currentUsage->taxon_name_id = (int) $usage['taxon_name_id'];
+        $currentUsage->accepted_taxon_name_id = (int) $usage['taxon_name_id'];
+        $currentUsage->group = 1;
+        $currentUsage->order = 1;
+        $currentUsage->name_remark = '';
+        $currentUsage->custom_name_remark = '';
+        $currentUsage->per_usages = [];
+        $currentUsage->type_specimens = [];
+
+        // 自動帶入上階層 
+        $parent = DB::table('accepted_usages')
+        ->select('parent_taxon_name_id')
+        ->where('taxon_name_id', $currentUsage->taxon_name_id)
+        ->first();
+
+        $parent = $parent->parent_taxon_name_id ?? null;
+
+        if (empty($parent)){
+
+            $nowName = TaxonName::find($currentUsage->taxon_name_id);
+            $speciesLayer = $nowName->properties['species_layers'];
+
+            if (count($speciesLayer) == 1) {
+                $parent = $nowName->properties['species_id'];
+            } else if (count($speciesLayer) == 2){
+                $parentTaxonNameString = $nowName->properties['latin_genus'] . ' '  . $nowName->properties['latin_s1'];
+                $parentTaxonNameString .= ' ' . $speciesLayer[0]['rank_abbreviation'] . ' ' . $speciesLayer[0]['latin_name'];
+                $nomenclatureId = $nowName->nomenclature_id;
+        
+                $parent = TaxonName::where('name', $parentTaxonNameString)
+                                    ->where('nomenclature_id', $nomenclatureId)
+                                    ->first()->id;
+            } else if ($nowName->rank_id == 34) {
+                // 種
+                $parentTaxonNameString = $nowName->properties['latin_genus'];
+                $nomenclatureId = $nowName->nomenclature_id;
+
+                $parent_query = TaxonName::where('name', $parentTaxonNameString)
+                                    ->where('nomenclature_id', $nomenclatureId);
+                if ($parent_query->count() > 0){
+                    $parent = $parent_query->first()->id;
+                }
+
+            }
+        }
+
+        $currentUsage->parent_taxon_name_id = $parent;
+
+        $currentUsage->properties = $usage['properties'];
+        $currentUsage->save();
+
+        // 這邊要加上編輯log
+
+
+        $edit_log = new ImportUsageLog();
+        $edit_log->reference_usage_id = $currentUsage->id;
+        $edit_log->action = ImportUsageLog::ACTION_COMMON_NAME_UPDATE;
+        $edit_log->reference_id = $currentUsage->reference_id;
+        $edit_log->taxon_name_id = $currentUsage->taxon_name_id;
+        $edit_log->user_id = $request->user()->id;
+
+        $edit_log->save();
+
+        try {
+
+            DB::commit();
+
+            return response()->json([
+                'data' => $usage
+            ]);
+
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+            Log::error("[usage] - udpate::fail {$e->getMessage()}");
+            return response()->json([
+                'message' => 'error'
+            ], 500);
+        }
+    }
 
 
     private function snakeToCamel($input): string

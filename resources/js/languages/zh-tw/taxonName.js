@@ -1,6 +1,7 @@
 export default {
     create: '新增學名',
     edit: '編輯學名',
+    createCommonName: '新增俗名',
 
     authors: '作者',
     author: {
@@ -76,4 +77,8 @@ export default {
     goCompareReference: '前往異名表比較',
 
     nameId: '學名編碼',
+    name: '學名',
+    viewTaxonName: '檢視學名',
+    commonNameSaved: '建立俗名成功',
+
 };

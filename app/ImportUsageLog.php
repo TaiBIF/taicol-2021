@@ -16,6 +16,9 @@ class ImportUsageLog extends Model
     const ACTION_USAGE_UPDATE = 4;
     const ACTION_USAGE_DELETE = 5;
 
+    # 編輯俗名
+    const ACTION_COMMON_NAME_UPDATE = 6;
+
     const UPDATED_AT = null;
 
     public function user()

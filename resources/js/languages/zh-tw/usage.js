@@ -90,4 +90,8 @@ export default {
     insertTypeSpecimenOfThisName: '帶入模式標本',
     insertTypeNameOfThisName: '帶入模式學名',
     pleaseFinishEditing: '請確認紅底學名卡片',
+    validateTips: '提示：',
+    validateTip1: '有效學名必須點進學名卡片勾選「存在於臺灣？」',
+    validateTip2: '若有同模式學名/異名出現在不同分類群當中，請確認是否要加入「部分引用」相關標註，或確認是否有同名（homonym）的情形。',
+    validateTip3: '設定「標題」的學名卡片並非有效的學名使用，如無重複顯示學名的需求，則不需要設定「標題」。',
 };

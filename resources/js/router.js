@@ -200,6 +200,14 @@ const routes = [
         },
     },
     {
+        name: 'common-name-create',
+        path: 'common-name',
+        component: () => import(/* webpackChunkName: "common-name-form-page" */ './pages/CommonNameEditPage.vue'),
+        meta: {
+            backgroundColor: 'grey',
+        },
+    },
+    {
         name: 'taxon-name-usages-compare',
         path: 'taxon-names/:id/compare',
         component: () => import(/* webpackChunkName: "usage-compare-page" */'./pages/UsageComparePage.vue'),

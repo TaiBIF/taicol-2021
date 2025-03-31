@@ -1,6 +1,7 @@
 export default {
     create: 'Add Name',
     edit: 'Edit Name',
+    createCommonName: 'Add Common Name',
 
     authors: 'Author(s)',
     author: {
@@ -88,4 +89,8 @@ export default {
     goCompareReference: 'Compare',
 
     nameId: 'Name ID',
+    name: 'Name',
+    viewTaxonName: 'View Taxon Name',
+    commonNameSaved: 'Common name created',
+
 };

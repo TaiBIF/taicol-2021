@@ -90,4 +90,8 @@ export default {
     insertTypeSpecimenOfThisName: 'Insert Type Specimen of This Name',
     insertTypeNameOfThisName: 'Insert Type Name of This Name',
     pleaseFinishEditing: 'Please check red cards.',
+    validateTips: 'Tips:',
+    validateTip1: 'An accepted name usage must have the "Exists in Taiwan?" option selected.',
+    validateTip2: 'If the same type name/synonym appears under different taxonomic groups, please check whether to add a "partial citation" note or verify if it’s a homonym.',
+    validateTip3: `Setting a scientific name card as a "Title" is not considered an accepted name usage. If there's no need for repeated display of the scientific name, setting it as a "Title" is unnecessary.`,
 };
