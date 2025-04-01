@@ -14,5 +14,6 @@ export default {
         personImport: '人名匯入',
         referenceImport: '文獻匯入',
         taxonNameImport: '學名匯入',
+        usageCheck: '學名使用檢查',
     },
 };

@@ -49,6 +49,10 @@ Route::get('taxon-names/{id}/per_usages', 'TaxonNameController@per_usages');
 Route::get('taxon-names/{id}/type-specimens', 'TaxonNameController@typeSpecimens');
 Route::get('/doi', 'ReferenceController@fetchDoi');
 
+// 檢查usage
+Route::get('/get-unchecked-usage', 'ReferenceUsageController@getUncheckedUsage');
+Route::get('/update-usage-check', 'ReferenceUsageController@updateUsageCheck');
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', 'UserController@index');
     Route::post('/logout', 'UserController@logout');

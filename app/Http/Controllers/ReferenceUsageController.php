@@ -781,6 +781,43 @@ class ReferenceUsageController extends Controller
     }
 
 
+    public function getUncheckedUsage(Request $request) {
+
+        $rows = DB::table('api_usage_check')->where('is_checked',0)->where('error_type','!=',11)->get();
+        $lastUpdated = DB::table('api_usage_check')->max('updated_at');
+
+        return response()->json([
+            'usages' => $rows,
+            'last_updated' => $lastUpdated
+        ]);
+        
+    }
+
+    public function updateUsageCheck(Request $request) {
+
+        $url = "https://api.taicol.tw/v2/update_check_usage";
+
+        $curl = curl_init();
+        curl_setopt($curl, CURLOPT_URL, $url);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($curl, CURLOPT_TIMEOUT, 120);
+        $result = curl_exec($curl);
+
+        $jsonResult = json_decode($result, true);
+
+        if ($jsonResult['status']['code']==200){
+            return response()->json([
+                'message' => 'done'
+            ]);
+        } else {
+            return response()->json([
+                'message' => 'fail'
+            ]);
+
+        }
+
+    }
+
     private function snakeToCamel($input): string
     {
         return lcfirst(str_replace(' ', '', ucwords(str_replace('_', ' ', $input))));

@@ -14,5 +14,6 @@ export default {
         personImport: 'Person Import',
         referenceImport: 'Reference Import',
         taxonNameImport: 'Taxon Name Import',
+        usageCheck: 'Usage Check',
     },
 };

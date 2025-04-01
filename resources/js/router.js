@@ -312,6 +312,16 @@ const routes = [
                 },
             },
             {
+                name: 'admin-usage-check',
+                path: 'usage-check',
+                component: () => import(
+                    /* webpackChunkName: "taxon-name-import-page" */ './pages/admin/UsageCheckPage.vue'
+                ),
+                meta: {
+                    backgroundColor: 'grey',
+                },
+            },
+            {
                 name: 'admin-test',
                 path: 'test',
                 component: () => import(
