@@ -172,7 +172,7 @@ class TaxonNameService
 
         $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
 
-        if ($rank->id==34 && $isHybrid == true){
+        if ($rank->id==34 && $isHybrid == true && $nomenclature->group !== 'virus'){
 
             $search_name =  $data['latin_genus'] . ' ' . $data['latin_s1'];
 

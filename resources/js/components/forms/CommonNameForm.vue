@@ -118,12 +118,12 @@ import GeneralInput from '../GeneralInput.vue';
 import LanguageSelect from '../selects/LanguageSelect.vue';
 
 export default {
-    props: {
-        onAfterSubmit: {
-            type: Function,
-            required: true,
-        },
-    },
+    // props: {
+    //     onAfterSubmit: {
+    //         type: Function,
+    //         required: true,
+    //     },
+    // },
     mounted() {
         this.onAddCommonName();
         this.fetchEditLog('commonname', 0);
@@ -179,7 +179,7 @@ export default {
                 data: { ...this.formData},
             }).then(({ data }) => {
                 
-                this.onAfterSubmit(data);
+                // this.onAfterSubmit(data);
 
                 this.$store.commit('openModal', {
                     component: () => import('../modals/ConfirmCommonNameModal.vue'),

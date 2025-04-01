@@ -459,11 +459,13 @@ class MyNamespaceUsageController extends Controller
                     ->first();
 
                     $parent = $parent->parent_taxon_name_id ?? null;
+                    
+                    $nowName = TaxonName::find($currentUsage->taxon_name_id);
+                    $nomenclatureId = $nowName->nomenclature_id;
 
-                    if (empty($parent)){
+                    if (empty($parent) && $nomenclatureId != 4){
                     // 如果是種的話 自動帶入屬
 
-                        $nowName = TaxonName::find($currentUsage->taxon_name_id);
                         $speciesLayer = $nowName->properties['species_layers'];
 
                         if (count($speciesLayer) == 1) {
@@ -473,16 +475,12 @@ class MyNamespaceUsageController extends Controller
                             // 種下下
                             $parentTaxonNameString = $nowName->properties['latin_genus'] . ' '  . $nowName->properties['latin_s1'];
                             $parentTaxonNameString .= ' ' . $speciesLayer[0]['rank_abbreviation'] . ' ' . $speciesLayer[0]['latin_name'];
-                            $nomenclatureId = $nowName->nomenclature_id;
-                    
                             $parent = TaxonName::where('name', $parentTaxonNameString)
                                                 ->where('nomenclature_id', $nomenclatureId)
                                                 ->first()->id;
                         } else if ($nowName->rank_id == 34) {
                             // 種
                             $parentTaxonNameString = $nowName->properties['latin_genus'];
-                            $nomenclatureId = $nowName->nomenclature_id;
-
                             $parent_query = TaxonName::where('name', $parentTaxonNameString)
                                                 ->where('nomenclature_id', $nomenclatureId);
                             if ($parent_query->count() > 0){

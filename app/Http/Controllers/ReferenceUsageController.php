@@ -541,10 +541,12 @@ class ReferenceUsageController extends Controller
                     ->first();
 
                     $parent = $parent->parent_taxon_name_id ?? null;
+                    
+                    $nowName = TaxonName::find($currentUsage->taxon_name_id);
+                    $nomenclatureId = $nowName->nomenclature_id;
 
-                    if (empty($parent)){
+                    if (empty($parent) && $nomenclatureId != 4){
 
-                        $nowName = TaxonName::find($currentUsage->taxon_name_id);
                         $speciesLayer = $nowName->properties['species_layers'];
 
                         if (count($speciesLayer) == 1) {
@@ -552,7 +554,6 @@ class ReferenceUsageController extends Controller
                         } else if (count($speciesLayer) == 2){
                             $parentTaxonNameString = $nowName->properties['latin_genus'] . ' '  . $nowName->properties['latin_s1'];
                             $parentTaxonNameString .= ' ' . $speciesLayer[0]['rank_abbreviation'] . ' ' . $speciesLayer[0]['latin_name'];
-                            $nomenclatureId = $nowName->nomenclature_id;
                     
                             $parent = TaxonName::where('name', $parentTaxonNameString)
                                                 ->where('nomenclature_id', $nomenclatureId)
@@ -560,7 +561,6 @@ class ReferenceUsageController extends Controller
                         } else if ($nowName->rank_id == 34) {
                             // 種
                             $parentTaxonNameString = $nowName->properties['latin_genus'];
-                            $nomenclatureId = $nowName->nomenclature_id;
 
                             $parent_query = TaxonName::where('name', $parentTaxonNameString)
                                                 ->where('nomenclature_id', $nomenclatureId);
@@ -716,9 +716,11 @@ class ReferenceUsageController extends Controller
 
         $parent = $parent->parent_taxon_name_id ?? null;
 
-        if (empty($parent)){
+        $nowName = TaxonName::find($currentUsage->taxon_name_id);
+        $nomenclatureId = $nowName->nomenclature_id;
 
-            $nowName = TaxonName::find($currentUsage->taxon_name_id);
+        if (empty($parent) && $nomenclatureId != 4){
+
             $speciesLayer = $nowName->properties['species_layers'];
 
             if (count($speciesLayer) == 1) {
@@ -726,7 +728,6 @@ class ReferenceUsageController extends Controller
             } else if (count($speciesLayer) == 2){
                 $parentTaxonNameString = $nowName->properties['latin_genus'] . ' '  . $nowName->properties['latin_s1'];
                 $parentTaxonNameString .= ' ' . $speciesLayer[0]['rank_abbreviation'] . ' ' . $speciesLayer[0]['latin_name'];
-                $nomenclatureId = $nowName->nomenclature_id;
         
                 $parent = TaxonName::where('name', $parentTaxonNameString)
                                     ->where('nomenclature_id', $nomenclatureId)
@@ -734,7 +735,6 @@ class ReferenceUsageController extends Controller
             } else if ($nowName->rank_id == 34) {
                 // 種
                 $parentTaxonNameString = $nowName->properties['latin_genus'];
-                $nomenclatureId = $nowName->nomenclature_id;
 
                 $parent_query = TaxonName::where('name', $parentTaxonNameString)
                                     ->where('nomenclature_id', $nomenclatureId);
