@@ -1,16 +1,17 @@
 <template>
     <div>
-        <div class="px-16 py-12 w-[400px] text-center">
+        <div class="px-16 pt-6 w-[400px] text-center">
             <p>
                 {{ $t('usage.pleaseFinishEditing') }}
             </p>
-            <br>
-            <p>
-            1. 有效學名必須點進學名卡片勾選「存在於臺灣？」
-            <br>
-            2. 若有同模式學名/異名出現在不同分類群當中，請確認是否要加入「部分引用」相關標註，或確認是否有同名（homonym）的情形。
-            </p>
-
+        </div>
+        <div class="px-6 py-4 w-[400px]">
+            {{ $t('usage.validateTips') }}
+            <ol class="px-6">
+                <li>{{ $t('usage.validateTip1') }}</li>
+                <li>{{ $t('usage.validateTip2') }}</li>
+                <li>{{ $t('usage.validateTip3') }}</li>
+            </ol>
         </div>
         <div class="flex justify-end sticky bottom-0 p-4 bg-white border-t gap-2">
             <button class="button" v-on:click="onLeave">{{ $t('common.later') }}</button>
@@ -44,3 +45,9 @@ export default defineComponent({
     },
 });
 </script>
+<style lang="scss" scoped>
+ol {
+  list-style-type: decimal !important;
+}
+
+</style>

@@ -223,6 +223,7 @@ export default {
             items.splice(-1);
             this.$store.commit('breadcrumb/SET_ITEMS', items);
         }
+
     },
     computed: {
         usageInfoImagePath() {
@@ -331,30 +332,33 @@ export default {
 
             // console.log(usage.taxonName.name)
 
-            let now_usages = this.usages.filter(item => item.isDeleted !== true)
+            let now_usages = this.usages.filter(item => item.isDeleted !== true);
 
             // # 1. 同一個分類群有一個以上的接受名 -> 感覺在介面上不會出現
-            if (now_usages.filter(item => item.group === usage.group && item.status === 'accepted').length > 1){
+            if (now_usages.filter(item => item.group === usage.group && item.status === 'accepted' && item.isTitle === false).length > 1){
                 console.log(usage.taxonName.name, ': 同一個分類群有一個以上的接受名')
-
                 return true;
             }
 
             // # 2. 同一個分類群裡面沒有任何接受名 -> 介面上應該會直接跳錯誤
 
-            if (now_usages.filter(item => item.group === usage.group && item.status === 'accepted').length  == 0){
-                console.log(usage.taxonName.name, ': 同一個分類群裡面沒有任何接受名 -> 介面上應該會直接跳錯誤')
+            let accepted_usages = now_usages.filter(item => item.group === usage.group && item.status === 'accepted' && item.isTitle === false).length
+            // 除非有相同的name
+            let accepted_usages_2 = now_usages.filter(item => item.taxonName.name === usage.taxonName.name && item.status === 'accepted' && item.isTitle === false).length
+
+            if (accepted_usages == 0 && accepted_usages_2 == 0){
+                console.log(usage.taxonName.name, ': 同一個分類群裡面沒有任何接受名')
                 return true;
             }
 
             // # 3. 同一個學名出現在同一篇文獻中的兩個分類群(不同accepted_taxon_name_id) 且不是誤用
-            if (now_usages.filter(item => item.taxonNameId === usage.taxonNameId && item.group !== usage.group && item.status !== 'misapplied').length){
+            if (now_usages.filter(item => item.taxonNameId === usage.taxonNameId && item.group !== usage.group && item.status !== 'misapplied' && item.isTitle === false).length > 1){
                 console.log(usage.taxonName.name, ': 同一個學名出現在同一篇文獻中的兩個分類群(不同accepted_taxon_name_id) 且不是誤用')
                 return true;
             }
 
-            // # 一組 reference_id, accepted_taxon_name_id, taxon_name_id, 只對到一個ru_ud -> 在my namespace usage還不會有accepted_taxon_name_id, reference_id
-            if (now_usages.filter(item => item.taxonNameId === usage.taxonNameId && item.status === 'accepted').length  > 1){
+            // # 一組 reference_id, accepted_taxon_name_id, taxon_name_id, 只對到一個ru_id -> 在my namespace usage還不會有accepted_taxon_name_id, reference_id
+            if (now_usages.filter(item => item.taxonNameId === usage.taxonNameId && item.status === 'accepted' && item.isTitle === false).length  > 1){
                 console.log(usage.taxonName.name, ': 重複的accepted name')
                 return true;
             }
@@ -368,14 +372,14 @@ export default {
 
                 // autonym / 同模：同一篇文獻 在不同分類群 同時出現 accepted和not-acceped
 
-                if (now_usages.filter(item => item.taxonName.objectGroup === usage.taxonName.objectGroup && item.group !== usage.group &&  item.status != usage.status && item.status !== 'misapplied').length  > 1){
+                if (now_usages.filter(item => item.taxonName.objectGroup === usage.taxonName.objectGroup && item.group !== usage.group && item.status != usage.status && item.status !== 'misapplied' && item.isTitle === false).length  > 0){
                     console.log(usage.taxonName.name, ': autonym / 同模同一篇文獻 在不同分類群 同時出現 accepted和not-acceped');
                     return true;
                 }
 
                 // autonym / 同模：同一篇文獻中有多個not-accepted在不同分類群。
 
-                if (now_usages.filter(item => item.taxonName.objectGroup === usage.taxonName.objectGroup && item.group !== usage.group && item.status === 'not-accepted').length  > 0){
+                if (now_usages.filter(item => item.taxonName.objectGroup === usage.taxonName.objectGroup && item.group !== usage.group && item.status === 'not-accepted').length  > 1){
                     console.log(usage.taxonName.name, ': autonym / 同模同一篇文獻中有多個not-accepted在不同分類群。');
                     return true;
                 }
@@ -384,15 +388,15 @@ export default {
                 // 同模（不包含autonym）：同一篇文獻中多個accepted
                 if (usage.taxonName.autonymGroup==null){
 
-                    if (now_usages.filter(item => item.taxonName.objectGroup === usage.taxonName.objectGroup && item.group !== usage.group && item.status === 'accepted').length  > 0){
+                    if (now_usages.filter(item => item.taxonName.objectGroup === usage.taxonName.objectGroup && item.status === 'accepted' && item.isTitle === false).length  > 1){
+
                         console.log(usage.taxonName.name, ': 同模（不包含autonym）同一篇文獻中多個accepted');
                         return true;
                     }
 
                 } else {
 
-
-                    if (now_usages.filter(item => item.taxonName.autonymGroup !== usage.taxonName.autonymGroup && item.taxonName.objectGroup === usage.taxonName.objectGroup && item.group !== usage.group && item.status === 'accepted').length  > 0){
+                    if (now_usages.filter(item => item.taxonName.autonymGroup !== usage.taxonName.autonymGroup && item.taxonName.objectGroup === usage.taxonName.objectGroup && item.status === 'accepted' && item.isTitle === false ).length  > 1){
                         console.log(usage.taxonName.name, ': 同模（不包含autonym）同一篇文獻中多個accepted');
                         return true;
                     }
@@ -401,24 +405,47 @@ export default {
             }
 
 
-
-
             if (usage.status === '') {
                 return true;
             }
 
-            if (
-                usage.status === 'accepted' &&
-                (!('isInTaiwan' in usage.properties) || usage.properties.isInTaiwan === null)
-            ) {
+            if (usage.isTitle === false && usage.status === 'accepted' &&  (!('isInTaiwan' in usage.properties) || usage.properties.isInTaiwan === null)) {
+                console.log(usage.taxonName.name, ': 地位為accepted，但沒有勾選存在於台灣');
                 return true;
             }
 
-            if (usage.status !== 'accepted' && index === 0) {
-                return true;
+            // if (usage.status !== 'accepted' && index === 0) {
+            //     return true;
+            // }
+
+            if (usage.isTitle === true && usage.status == 'not-accepted') {
+                console.log(usage.taxonName.name, ': 非接受名不得設定為標題');
             }
 
             return false;
+        },
+        isNotAllowedUsage(usage, index){
+
+            let now_usages = this.usages;
+
+            // # 1. 同一個分類群有一個以上的接受名 -> 感覺在介面上不會出現
+            if (now_usages.filter(item => item.group === usage.group && item.status === 'accepted' && item.isTitle === false).length > 1){                
+                openNotify('發生錯誤，同一個分類群有一個以上的接受名', 'is-danger');
+            }
+
+            let accepted_usages = now_usages.filter(item => item.group === usage.group && item.status === 'accepted' && item.isTitle === false).length
+            // 除非有相同的name
+            let accepted_usages_2 = now_usages.filter(item => item.taxonName.name === usage.taxonName.name && item.status === 'accepted' && item.isTitle === false).length
+
+            if (accepted_usages == 0 && accepted_usages_2 == 0){
+                openNotify('發生錯誤，同一個分類群裡面沒有任何接受名', 'is-danger');
+            }
+
+            // # 3. isTitle=true，status=not-accepted
+            if (usage.isTitle === true && usage.status == 'not-accepted') {
+                openNotify('發生錯誤，非接受名不得設定為標題', 'is-danger');
+            }
+
         },
         loadConfigs() {
             const { id } = this.$route.params;
@@ -476,7 +503,25 @@ export default {
                 ];
             }
 
-            this.onSubmit();
+            let isValid = true;
+
+            if (typeof event.moved !== 'undefined') {
+                if (event.moved.oldIndex == 0 && event.moved.element.status=='accepted'){
+                    // 如果還有其他group是not-accepted的話就有問題
+                    let not_accepted_usages = this.usages.filter(item => item.group == event.moved.element.group && item.status === 'not-accepted');
+                    if (not_accepted_usages.length > 0){
+                        openNotify('發生錯誤，同一分類群必須要有一個接受名', 'is-danger');
+                        this.refresh();
+                        isValid = false;
+                        
+                    }
+                }
+            }
+
+            if (isValid) {
+                this.onSubmit();
+            } 
+
         },
         onTab(e, index) {
             if (this.isUsageFormSimple) {
@@ -492,6 +537,11 @@ export default {
             e.preventDefault();
             this.usages[index].isIndent = newIndent;
             this.usages[index].status = newIndent ? 'not-accepted' : 'accepted';
+
+            if (newIndent){
+                this.usages[index].isTitle = false;
+            }
+
             this.$nextTick(function () {
                 this.onSubmit();
             });
@@ -513,9 +563,22 @@ export default {
         onToggleTitle(e, index) {
             e.stopPropagation();
             this.usages[index].isTitle = !this.usages[index].isTitle;
-            this.$nextTick(function () {
-                this.onSubmit();
-            });
+
+            let accepted_usages = this.usages.filter(item => item.group == this.usages[index].group && item.status === 'accepted' && item.isTitle==false)
+            // 除非有相同的name
+            let accepted_usages_2 = this.usages.filter(item => item.taxonName.name == this.usages[index].taxonName.name && item.status === 'accepted' && item.isTitle==false)
+
+
+            if (accepted_usages.length==0 && accepted_usages_2.length==0 ){
+                openNotify('發生錯誤，唯一的有效學名不得為標題', 'is-danger');
+                // 再改回來
+                this.usages[index].isTitle = !this.usages[index].isTitle;
+            } else {
+                this.$nextTick(function () {
+                    this.onSubmit();
+                });
+            }
+
         },
         onImportUsages() {
             this.$store.commit('openModal', {
@@ -527,7 +590,6 @@ export default {
             });
         },
         onRemove(e, index) {
-
             e.stopPropagation();
             this.usages[index].isDeleted = true;
             this.onSubmit();
@@ -677,6 +739,11 @@ export default {
                     }                
                 } 
                 this.isLoading = false;
+                this.usages.forEach((usage, index) => {
+                    this.isNotAllowedUsage(usage, index)
+                })
+
+
 
             } catch (error) {
                 console.error("load usage:", error);
@@ -708,21 +775,6 @@ export default {
             const url
                 = this.configs.type === 'namespace' ? `/namespaces/${id}/usages` : `/references/${id}/usages-edit`;
 
-            // 從這邊修改
-            // this.axios
-            //     .get(url)
-            //     .then(({ data }) => {
-
-            //         this.isLoading = false;
-            //         this.model = data;
-            //         // this.usages = [...this.usages, ...data.usages.map((u) => ({
-            //         //     ...u,
-            //         //     taxonNameId: u.taxonName?.id,
-            //         //     parentTaxonNameId: u.parentTaxonName?.id,
-            //         // }))]
-                    
-            //         ;
-            //     });
             this.loadUsages(url);
         },
         getIndications(indicationArray) {
