@@ -21,27 +21,27 @@ class TaxonNameListCollection extends JsonResource
         $speciesLayer = isset($this->properties['species_layers']) ? $this->properties['species_layers'] : [];
 
         // find root & parent group
-        $currentTaxonNameId = $this->id;
+        // $currentTaxonNameId = $this->id;
 
         $parentGroupId = null;
-        $rootId = null;
+        // $rootId = null;
 
-        while ($currentTaxonNameId != null) {
-            $currentTaxonName = DB::table('accepted_usages')
-                ->select('taxon_name_id', 'parent_taxon_name_id')
-                ->where('taxon_name_id', $currentTaxonNameId)
-                ->first();
+        // while ($currentTaxonNameId != null) {
+        //     $currentTaxonName = DB::table('accepted_usages')
+        //         ->select('taxon_name_id', 'parent_taxon_name_id')
+        //         ->where('taxon_name_id', $currentTaxonNameId)
+        //         ->first();
 
-            $parent = TaxonName::select('rank_id', 'id')->find($currentTaxonNameId);
+        //     $parent = TaxonName::select('rank_id', 'id')->find($currentTaxonNameId);
 
-            if ($parent && in_array($parent->rank_id, [3, 12, 18, 22, 26]) && $parentGroupId == null && $currentTaxonNameId != $this->id)
-                $parentGroupId = $parent->id;
-            // if ($currentTaxonName && $parent->rank_id == 3 && $currentTaxonName->parent_taxon_name_id == null)
-            if ($currentTaxonName && $parent->rank_id == 3)
-                $rootId = $currentTaxonNameId;
+        //     if ($parent && in_array($parent->rank_id, [3, 12, 18, 22, 26]) && $parentGroupId == null && $currentTaxonNameId != $this->id)
+        //         $parentGroupId = $parent->id;
+        //     // if ($currentTaxonName && $parent->rank_id == 3 && $currentTaxonName->parent_taxon_name_id == null)
+        //     if ($currentTaxonName && $parent->rank_id == 3)
+        //         $rootId = $currentTaxonNameId;
 
-            $currentTaxonNameId = $currentTaxonName ? $currentTaxonName->parent_taxon_name_id : null;
-        }
+        //     $currentTaxonNameId = $currentTaxonName ? $currentTaxonName->parent_taxon_name_id : null;
+        // }
 
         $species = $this->properties['species_id'] ? TaxonName::find($this->properties['species_id']) : null;
 
@@ -87,7 +87,8 @@ class TaxonNameListCollection extends JsonResource
                     'latin_name' => $s['latin_name']
                 ];
             }),
-            'root' => $rootId ? TaxonName::find($rootId) : null,
+            // 'root' => $rootId ? TaxonName::find($rootId) : null,
+            'root' => $this->kingdom_taxon_name_id ? TaxonName::find($this->kingdom_taxon_name_id) : null,
             'parent_group' => $parentGroupId ? TaxonName::find($parentGroupId) : null,
             'common_name_tw' => $commonNameTw ? $commonNameTw['name'] : '',
         ];

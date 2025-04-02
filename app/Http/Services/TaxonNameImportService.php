@@ -163,6 +163,7 @@ class TaxonNameImportService
         $citeFigure = $this->sheet->getCell('Q' . $row)->getCalculatedValue();
         $publishYear = $this->sheet->getCell('R' . $row)->getCalculatedValue();
         $note = $this->sheet->getCell('S' . $row)->getCalculatedValue();
+        $kindomNameString = $this->sheet->getCell('T' . $row)->getCalculatedValue();
 
         $originalTaxonName = null;
         if ($originNameString) {
@@ -171,6 +172,15 @@ class TaxonNameImportService
 
         if (!$originalTaxonName && $originNameString) {
             $this->throwError($row, "找不到 $originNameString");
+        }
+
+        $kingdomTaxonName = null;
+        if ($kindomNameString) {
+            $kingdomTaxonName = $this->findKingdomTaxonName($kindomNameString, $row);
+        }
+
+        if (!$kingdomTaxonName && $kindomNameString) {
+            $this->throwError($row, "找不到 $kindomNameString");
         }
 
         $species = TaxonName::where('name', "$latinGenus $latinS1")->first();
@@ -249,6 +259,13 @@ class TaxonNameImportService
         }
 
         return $originNameQuery->first();
+    }
+
+    private function findKingdomTaxonName(string $kingdomNameString, int $row)
+    {
+        $kingdomNameQuery = TaxonName::where('name', $kingdomNameString)->where('rank_id',3);
+
+        return $kingdomNameQuery->first();
     }
 
     public function getErrorRows()

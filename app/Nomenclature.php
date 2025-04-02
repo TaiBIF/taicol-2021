@@ -16,4 +16,9 @@ class Nomenclature extends Model
     {
         return $this->belongsToMany(Rank::class)->orderBy('order');
     }
+
+    public function kingdoms()
+    {
+        return $this->belongsToMany(TaxonName::class);
+    }
 }

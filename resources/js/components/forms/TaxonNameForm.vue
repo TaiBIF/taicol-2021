@@ -71,6 +71,19 @@
                     />
                 </div>
             </div>
+            <div class="column is-2" v-if="isUnderKingdom">
+                <div class="field">
+                    <label class="label">
+                        {{ $t('taxonName.kingdom') }}
+                    </label>
+                    <kingdom-select ref="kingdomSelect"
+                                 v-model="targetKingdom"
+                                 :errors="errors.kingdomTaxonNameId"
+                                 :options="kingdomOptions"
+                    />
+                                 <!-- :disabled="isEdit" -->
+                </div>
+            </div>
 
             <!-- 雜交親代 -->
             <div v-if="isNeedHybridFormula" class="column is-5">
@@ -479,6 +492,7 @@ import { mapGetters } from 'vuex';
 import PersonSelect from '../selects/PersonSelect.vue';
 import NomenclatureSelect from '../selects/NomenclatureSelect.vue';
 import GeneralInput from '../GeneralInput.vue';
+import KingdomSelect from '../selects/KingdomSelect.vue';
 import RankSelect from '../selects/RankSelect.vue';
 import TaxonNameSelect from '../selects/TaxonNameSelect.vue';
 import ReferenceSelect from '../selects/ReferenceSelect.vue';
@@ -501,8 +515,9 @@ export default {
         },
     },
     data() {
-        const { presetData } = this;
-        const typeSpecimens = this.presetData?.typeSpecimens.map((t) => ({
+
+       const { presetData } = this;
+       const typeSpecimens = this.presetData?.typeSpecimens.map((t) => ({
             ...t,
             sex: sexs.find((s) => s.id === t.sexId),
         }));
@@ -521,7 +536,10 @@ export default {
             initialYear: presetData?.properties?.initialYear || '',
             rankOptions: this.$store.state.nomenclature.items
                 .find((n) => n.id === presetData?.nomenclature.id)?.ranks ?? [],
+            kingdomOptions: this.$store.state.nomenclature.items
+                .find((n) => n.id === presetData?.nomenclature.id)?.kingdoms ?? [],
             targetOriginalTaxonName: presetData?.originalTaxonName,
+            targetKingdom: presetData?.kingdomTaxonName,
 
             latinName: presetData?.properties?.latinName || '',
             latinGenus: presetData?.properties?.latinGenus || '',
@@ -564,6 +582,7 @@ export default {
         ...mapGetters({
             genusRank: 'rank/getGenusRank',
             speciesRank: 'rank/getSpeciesRank',
+            kingdomRank: 'rank/getKingdomRank',
         }),
         isEdit() {
             return !!this.id;
@@ -629,6 +648,9 @@ export default {
         },
         isUnderSpecies() {
             return this.targetRank?.order > this.speciesRank.order;
+        },
+        isUnderKingdom() {
+            return this.targetRank?.order > this.kingdomRank.order;
         },
         isOverSpeciesLayer() {
             if (this.targetNomenclature?.group === 'bacteria' && this.speciesLayers.length === 1) {
@@ -713,6 +735,7 @@ export default {
                 latinS1: this.latinS1 ? this.latinS1 : this.species?.properties.latinS1,
                 nomenclatureId: this.targetNomenclature?.id || null,
                 rankId: this.targetRank?.id || null,
+                kingdomTaxonNameId: this.targetKingdom?.id || null,
                 authors: this.targetAuthors.map((a) => a.id),
                 exAuthors: this.targetExAuthors.map((a) => a.id),
                 isApprovedList: this.isApprovedList || false,
@@ -784,6 +807,7 @@ export default {
             handler(nomenclature) {
                 this.targetRank = null;
                 this.rankOptions = nomenclature?.ranks;
+                this.kingdomOptions = nomenclature?.kingdoms;
             },
             deep: true,
         },
@@ -862,6 +886,7 @@ export default {
         PersonSelect,
         TypeSpecimen,
         Tooltip,
+        KingdomSelect
     },
 };
 </script>

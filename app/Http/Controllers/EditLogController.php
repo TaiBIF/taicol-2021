@@ -47,7 +47,7 @@ class EditLogController extends Controller
                     ->join('reference_usages', 'reference_usage_id', '=', 'reference_usages.id')
                     ->where('import_usage_logs.reference_id','=', 95)
                     ->where('import_usage_logs.action_log_id', '=', NULL)
-                    ->orderBy('created_at')
+                    ->orderBy('created_at','desc')
                     ->limit(5)
                     ->offset($offset)
                     ->get(); 

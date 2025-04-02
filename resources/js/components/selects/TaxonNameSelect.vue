@@ -120,14 +120,17 @@ export default {
             });
         },
         fetchFilteredTaxonNames: debounce(function ({ value, keyword }) {
-            this.isLoading = true;
-            this.filteredTaxonNames = [];
-            this.axios.get('taxon-names', {
-                params: { keyword, strict: true },
-            }).then(({ data: { data } }) => {
-                this.filteredTaxonNames = data;
-                this.isLoading = false;
-            });
+
+            if (keyword.length > 1){
+                this.isLoading = true;
+                this.filteredTaxonNames = [];
+                this.axios.get('taxon-names', {
+                    params: { keyword, strict: true },
+                }).then(({ data: { data } }) => {
+                    this.filteredTaxonNames = data;
+                    this.isLoading = false;
+                });
+            }
         }),
     },
 };

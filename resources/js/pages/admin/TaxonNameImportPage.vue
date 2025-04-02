@@ -50,6 +50,7 @@
                         <td>cite_figure</td>
                         <td>year</td>
                         <td>note</td>
+                        <td>kingdom_name</td>
                     </tr>
                     </thead>
                 </table>

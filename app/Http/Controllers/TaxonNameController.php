@@ -124,7 +124,8 @@ class TaxonNameController extends Controller
         }
 
         return response()->json([
-            'data' => TaxonNameCollection::collection($taxonNames),
+            // 'data' => TaxonNameCollection::collection($taxonNames),
+            'data' => TaxonNameSelectCollection::collection($taxonNames),
         ]);
     }
 
@@ -893,6 +894,7 @@ class TaxonNameController extends Controller
             return response([], 404);
         }
 
+        Log::info($request->all());
         $taxonNameLogService = new TaxonNameLogService();
         $taxonNameLogService->initOriginData($taxonName);
 
@@ -981,6 +983,7 @@ class TaxonNameController extends Controller
             'host' => $request->get('host'),
 
             'is_publish' => $request->get('is_publish'),
+            'kingdom_taxon_name_id' => $request->get('kingdom_taxon_name_id'),
         ],
             $authorIds,
             $exAuthorIds,
@@ -1062,6 +1065,7 @@ class TaxonNameController extends Controller
             'genome_composition' => $request->get('genome_composition'),
             'host' => $request->get('host'),
             'is_publish' => $request->get('is_publish'),
+            'kingdom_taxon_name_id' => $request->get('kingdom_taxon_name_id'),
         ],
             $authorIds,
             $request->get('ex_authors', []),
