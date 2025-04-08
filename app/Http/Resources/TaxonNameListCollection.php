@@ -7,6 +7,7 @@ use App\TaxonName;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class TaxonNameListCollection extends JsonResource
 {
@@ -21,27 +22,31 @@ class TaxonNameListCollection extends JsonResource
         $speciesLayer = isset($this->properties['species_layers']) ? $this->properties['species_layers'] : [];
 
         // find root & parent group
-        // $currentTaxonNameId = $this->id;
+        $currentTaxonNameId = $this->id;
 
         $parentGroupId = null;
         // $rootId = null;
 
-        // while ($currentTaxonNameId != null) {
-        //     $currentTaxonName = DB::table('accepted_usages')
-        //         ->select('taxon_name_id', 'parent_taxon_name_id')
-        //         ->where('taxon_name_id', $currentTaxonNameId)
-        //         ->first();
+        while ($currentTaxonNameId != null) {
+            $currentTaxonName = DB::table('accepted_usages')
+                ->select('taxon_name_id', 'parent_taxon_name_id')
+                ->where('taxon_name_id', $currentTaxonNameId)
+                ->first();
 
-        //     $parent = TaxonName::select('rank_id', 'id')->find($currentTaxonNameId);
+            if ($currentTaxonName != null){
 
-        //     if ($parent && in_array($parent->rank_id, [3, 12, 18, 22, 26]) && $parentGroupId == null && $currentTaxonNameId != $this->id)
-        //         $parentGroupId = $parent->id;
-        //     // if ($currentTaxonName && $parent->rank_id == 3 && $currentTaxonName->parent_taxon_name_id == null)
-        //     if ($currentTaxonName && $parent->rank_id == 3)
-        //         $rootId = $currentTaxonNameId;
+                $currentTaxonNameId = $currentTaxonName->parent_taxon_name_id;
+                
+                $parent = TaxonName::select('rank_id', 'id')->find($currentTaxonNameId);
 
-        //     $currentTaxonNameId = $currentTaxonName ? $currentTaxonName->parent_taxon_name_id : null;
-        // }
+                if ($parent && in_array($parent->rank_id, [3, 12, 18, 22, 26]) && $parentGroupId == null && $currentTaxonNameId != $this->id){
+                    $parentGroupId = $parent->id;
+                    $currentTaxonNameId = null;
+                } 
+            } else {
+                $currentTaxonNameId = null;
+            }
+        }
 
         $species = $this->properties['species_id'] ? TaxonName::find($this->properties['species_id']) : null;
 
