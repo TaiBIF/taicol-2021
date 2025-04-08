@@ -120,10 +120,10 @@ export default {
             });
         },
         fetchFilteredTaxonNames: debounce(function ({ value, keyword }) {
+            this.filteredTaxonNames = [];
 
             if (keyword.length > 1){
                 this.isLoading = true;
-                this.filteredTaxonNames = [];
                 this.axios.get('taxon-names', {
                     params: { keyword, strict: true },
                 }).then(({ data: { data } }) => {
