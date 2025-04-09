@@ -784,7 +784,7 @@ class ReferenceUsageController extends Controller
     public function getUncheckedUsage(Request $request) {
 
         $rows = DB::table('api_usage_check')->where('is_checked',0)->where('error_type','!=',11)->get();
-        $lastUpdated = DB::table('api_usage_check')->max('updated_at');
+        $lastUpdated = DB::table('api_usage_check')->where('error_type','=',11)->max('updated_at');
 
         return response()->json([
             'usages' => $rows,
@@ -805,11 +805,15 @@ class ReferenceUsageController extends Controller
 
         $jsonResult = json_decode($result, true);
 
+
         if ($jsonResult['status']['code']==200){
             return response()->json([
                 'message' => 'done'
             ]);
         } else {
+
+            Log::info(   $jsonResult );
+
             return response()->json([
                 'message' => 'fail'
             ]);

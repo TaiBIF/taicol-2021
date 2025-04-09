@@ -15,9 +15,9 @@
                 <!-- 列出is_checked=0的資料 -->
                 <div class="p-4">
                     <p class="mb-3">上次檢查時間：{{ lastUpdated }}</p>
-                    <p class="mb-3">尚未確認usage，請至api_usage_check確認詳細資訊：</p>
-                    <button :disabled="isLoading" class="button" v-on:click="getUncheckedUsage">更新下列表格</button>
-
+                    <p class="mb-3">尚未確認usage👇(請至api_usage_check確認詳細資訊)
+</p>
+                   
                     <table class="table text-[14px] is-fullwidth max-w-full has-text-grey">
                         <thead class="font-bold">
                         <tr>
@@ -34,6 +34,8 @@
                         </tr>
                         </tbody>
                     </table>
+                    <button :disabled="isLoading" class="button" v-on:click="getUncheckedUsage">確認完畢更新表格</button>
+
                 </div>
 
             </div>
