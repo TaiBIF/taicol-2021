@@ -153,11 +153,12 @@ export const combo = (typeSpecimens) => {
         return '';
     }
 
+    
     return Object.entries(groupBy(typeSpecimens, 'use'))
         .filter(([useKey]) => useKey !== 'null')
         .map(([useKey, typeSpecimens]) => {
             // 首字大寫
-            const useString = useKey.charAt(0).toUpperCase() + useKey.slice(1);
+            let useString = useKey.charAt(0).toUpperCase() + useKey.slice(1);
 
             let typeSpecimensString = '';
             if (useKey === 'lectotype') {
@@ -170,7 +171,18 @@ export const combo = (typeSpecimens) => {
                         return renderLectotypeOtherTypeSpecimen(typeSpecimen);
                     }).join('; ');
             } else if (useKey === 'type') {
-                typeSpecimensString = comboTypeStrain(typeSpecimens);
+                typeSpecimensString = typeSpecimens
+                .map((typeSpecimen) => {
+                    if (typeSpecimen.kind === 5) {
+                        useString = null;
+                        return comboTypeStrain(typeSpecimens)
+                    } else if (typeSpecimen.kind === 1){
+                        return renderGeneralTypeSpecimen(typeSpecimen);
+                    }
+                    return renderGeneralOtherTypeSpecimen(typeSpecimen);
+                }).join('; ');
+
+                // typeSpecimensString = comboTypeStrain(typeSpecimens);
             } else {
                 typeSpecimensString = typeSpecimens
                     .map((typeSpecimen) => {
