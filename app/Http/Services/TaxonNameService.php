@@ -197,7 +197,7 @@ class TaxonNameService
         $this->taxonName->publish_year = $data['publish_year'];
         $this->taxonName->note = $data['note'] ?? '';
         $this->taxonName->is_publish = $data['is_publish'] ?? true;
-        $this->taxonName->kingdom_taxon_name_id = $data['kingdom_taxon_name_id'] ?? true;
+        $this->taxonName->kingdom_taxon_name_id = $data['kingdom_taxon_name_id'] ?? null;
         $this->taxonName->save();
 
         return $this->taxonName;

@@ -194,6 +194,7 @@ class TaxonNameImportService
                     'name' => $name,
                     'formatted_authors' => $formattedAuthorsString,
                     'original_taxon_name_id' => $originalTaxonName ? $originalTaxonName->id : null,
+                    'kingdom_taxon_name_id' => $kingdomTaxonName ? $kingdomTaxonName->id : null,
                     'type_specimens' => [],
                     'publish_year' => $publishYear,
                     'note' => $note,

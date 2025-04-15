@@ -894,7 +894,6 @@ class TaxonNameController extends Controller
             return response([], 404);
         }
 
-        Log::info($request->all());
         $taxonNameLogService = new TaxonNameLogService();
         $taxonNameLogService->initOriginData($taxonName);
 
