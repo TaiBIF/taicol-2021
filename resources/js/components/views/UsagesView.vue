@@ -105,8 +105,7 @@ import { mapGetters } from 'vuex';
 import FavoriteButton from '../FavoriteButton.vue';
 import UsagePreview from '../UsagePreview.vue';
 import UsagePropertyTags from './UsagePropertyTags.vue';
-
-import indications from '../selects/indications';
+import indications from '../selects/map/indications';
 
 export default {
     props: {

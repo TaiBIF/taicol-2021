@@ -29,7 +29,7 @@
 
 <script>
 import tSelect from '../Select.vue';
-import proPartes from './proParte';
+import proPartes from './map/proParte';
 
 export default  {
   props: {

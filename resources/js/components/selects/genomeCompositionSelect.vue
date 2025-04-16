@@ -17,7 +17,7 @@
 </template>
 <script>
 import Select from '../Select.vue';
-import genomeComposition from './genomeComposition';
+import genomeComposition from './map/genomeComposition';
 
 export default {
     components: {

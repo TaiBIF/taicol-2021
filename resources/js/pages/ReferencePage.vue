@@ -60,7 +60,7 @@ import ReferenceView from '../components/views/ReferenceView.vue';
 import { subTitle, title } from '../utils/preview/reference';
 import AuthorName from '../components/AuthorName.vue';
 import UsagePreview from '../components/UsagePreview.vue';
-import indications from '../components/selects/indications';
+import indications from '../components/selects/map/indications';
 // import Page from './Page.vue';
 
 export default {

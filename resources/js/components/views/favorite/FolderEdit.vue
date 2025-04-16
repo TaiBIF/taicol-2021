@@ -161,7 +161,7 @@
 import { groupBy } from 'lodash';
 import TaxonNameFullLabel from '../TaxonNameFullLabel.vue';
 import UsagePreview from '../../UsagePreview.vue';
-import indications from '../../selects/indications';
+import indications from '../../selects/map/indications';
 
 export default {
     props: {

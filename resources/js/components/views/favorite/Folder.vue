@@ -114,7 +114,7 @@ import draggable from 'vuedraggable';
 import { groupBy } from 'lodash';
 import TaxonNameFullLabel from '../TaxonNameFullLabel';
 import UsagePreview from '../../UsagePreview';
-import indications from '../../selects/indications';
+import indications from '../../selects/map/indications';
 
 export default {
     props: {

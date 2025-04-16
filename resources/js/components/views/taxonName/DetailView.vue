@@ -273,7 +273,7 @@ import AuthorName from '../../AuthorName.vue';
 import { subTitle } from '../../../utils/preview/reference';
 import TaxonNameLabel from '../TaxonNameLabel.vue';
 import TaxonNameFullLabel from '../TaxonNameFullLabel.vue';
-import sexs from '../../selects/sexs';
+import sexs from '../../selects/map/sexs';
 
 export default {
     components: { TaxonNameFullLabel, TaxonNameLabel, AuthorName },

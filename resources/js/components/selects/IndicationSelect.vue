@@ -24,7 +24,7 @@
 </template>
 <script>
 import Select from '../Select.vue';
-import indications from './indications';
+import indications from './map/indications';
 
 export default {
     components: {

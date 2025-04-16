@@ -17,7 +17,7 @@
 </template>
 <script>
     import Select from '../Select';
-    import sexs from './sexs';
+    import sexs from './map/sexs';
 
     export default {
         components: {

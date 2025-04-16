@@ -187,7 +187,7 @@ import { openNotify } from '../utils';
 import AuthorName from '../components/AuthorName.vue';
 import UsagePreview from '../components/UsagePreview.vue';
 import Tooltip from '../components/Tooltip.vue';
-import indications from '../components/selects/indications';
+import indications from '../components/selects/map/indications';
 import downloadUsageHtmlToDoc from '../utils/downloadUsageHtmlToDoc';
 import StatusDot from '../components/StatusDot.vue';
 import UsagePropertyShortTags from '../components/views/UsagePropertyShortTags.vue';

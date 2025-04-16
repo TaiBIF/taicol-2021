@@ -499,7 +499,7 @@ import ReferenceSelect from '../selects/ReferenceSelect.vue';
 import TypeSpecimen from './TypeSpecimen.vue';
 import { openNotify } from '../../utils';
 import SimpleReferenceView from '../views/SimpleReferenceView.vue';
-import sexs from '../selects/sexs';
+import sexs from '../selects/map/sexs';
 import { authorNameStringFactory, factory } from '../../utils/preview/person';
 import ReferenceContainer from '../ReferenceContainer.vue';
 import TaxonNameLabel from '../views/TaxonNameLabel.vue';
@@ -539,7 +539,7 @@ export default {
             kingdomOptions: this.$store.state.nomenclature.items
                 .find((n) => n.id === presetData?.nomenclature.id)?.kingdoms ?? [],
             targetOriginalTaxonName: presetData?.originalTaxonName,
-            targetKingdom: presetData?.kingdomTaxonName,
+            targetKingdom: presetData?.kingdomTaxonName ?? null,
 
             latinName: presetData?.properties?.latinName || '',
             latinGenus: presetData?.properties?.latinGenus || '',

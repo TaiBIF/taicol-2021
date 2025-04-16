@@ -35,8 +35,8 @@
     </div>
 </template>
 <script>
-import indications from './selects/indications';
-import statuses from './selects/status';
+import indications from './selects/map/indications';
+import statuses from './selects/map/status';
 
 export default {
     props: {

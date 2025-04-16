@@ -18,7 +18,7 @@
 </template>
 <script>
 import Select from '../Select.vue';
-import Status from './status';
+import Status from './map/status';
 
 export default {
     components: {
