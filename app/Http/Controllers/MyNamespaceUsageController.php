@@ -18,32 +18,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use App\Http\Utils\CommonNameArray;
 
 class MyNamespaceUsageController extends Controller
 {
-    private $common_names_var = ['葉' => '葉',
-                                '蘭' => '蘭',
-                                '裂' => '裂',
-                                '輻' => '輻',
-                                '良' => '良',
-                                '螺' => '螺',
-                                '笠' => '笠',
-                                '琉' => '琉',
-                                '離' => '離',
-                                '刺' => '刺',
-                                '律' => '律',
-                                '裡' => '裡',
-                                '里' => '里',
-                                '梨' => '梨',
-                                '輪' => '輪',
-                                '呂' => '呂',
-                                '利' => '利',
-                                '柳' => '柳',
-                                '金' => '金',
-                                '羽' => '羽',
-                                '狀' => '狀',
-                                '來' => '來',
-                                '綠' => '綠'];
 
     public function index(Request $request, $namespaceId)
     {
@@ -256,8 +234,8 @@ class MyNamespaceUsageController extends Controller
                     
                     $name = $name_c['name'];
                     
-                    foreach (array_keys($this->common_names_var) as $cc_key) {
-                        $name = str_replace($cc_key,$this->common_names_var[$cc_key],$name);
+                    foreach (array_keys(CommonNameArray::get()) as $cc_key) {
+                        $name = str_replace($cc_key,CommonNameArray::get()[$cc_key],$name);
                     };
 
                     $new_name_c = Array(
@@ -405,8 +383,8 @@ class MyNamespaceUsageController extends Controller
                         
                         $name = $name_c['name'];
                         
-                        foreach (array_keys($this->common_names_var) as $cc_key) {
-                            $name = str_replace($cc_key,$this->common_names_var[$cc_key],$name);
+                        foreach (array_keys(CommonNameArray::get()) as $cc_key) {
+                            $name = str_replace($cc_key,CommonNameArray::get()[$cc_key],$name);
                         };
     
                         $new_name_c = Array(
