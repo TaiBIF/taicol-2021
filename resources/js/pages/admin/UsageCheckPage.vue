@@ -2,11 +2,11 @@
     <div class="w-full h-full">
         <div class="container flex flex-col h-full">
             <div class="bg-white">
-                <div class="pt-2 flex items-center">
+
+                <div class="py-3 flex items-center">
                     <p class="ml-4 font-bold text-3xl inline">{{ $t('header.adminMenu.usageCheck') }}</p>
                 </div>
-
-                <div class="flex p-4 gap-1">
+                <div class="flex px-4 mb-4 gap-1">
                     <div class="w-full">
                     <button :disabled="isLoading" class="button" v-on:click="onSubmit">開始檢查</button>
                     </div>
@@ -92,7 +92,7 @@ export default {
 
                 if ( data['message'] == 'done'){
                     this.lastUpdated = data['lastUpdated'];
-                    openNotify(this.$t('common.saveSuccess'));
+                    openNotify(this.$t('common.checkSuccess'));
                     this.getUncheckedUsage();
                 } else {
                     openNotify('發生錯誤', 'is-danger');

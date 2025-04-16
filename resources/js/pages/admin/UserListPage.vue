@@ -2,7 +2,8 @@
     <page :preload="onFetchUsers">
         <div class="overflow-y-auto h-full">
             <div class="container">
-                <div class="pt-2">
+                <div class="py-3">
+                    <p class="font-bold text-3xl inline">{{ $t('header.adminMenu.userManagement') }}</p>
                     <router-link
                         :to="{name: 'admin-user-edit', params: {id: 'create'}}"
                         class="button is-pulled-right">{{ $t('user.create') }}

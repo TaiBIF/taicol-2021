@@ -1,6 +1,9 @@
 <template>
     <div class="container flex flex-col h-full py-6 mb-4">
         <div class="box h-full content-h-limit overflow-y-auto">
+            <div class="py-3 flex items-center">
+                    <p class="ml-3 font-bold text-3xl inline">{{ $t('reference.create') }}</p>
+            </div>
             <not-found-view v-if="formStatus === $c.PAGE_IS_NOTFOUND"/>
             <reference-form v-else-if="formStatus === $c.PAGE_IS_SUCCESS"
                             ref="form"

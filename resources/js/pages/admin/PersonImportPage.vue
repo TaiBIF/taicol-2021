@@ -2,7 +2,10 @@
     <div class="w-full h-full">
         <div class="container flex flex-col h-full">
             <div class="bg-white">
-                <div class="flex p-4 gap-1">
+                <div class="py-3 flex items-center">
+                    <p class="ml-4 font-bold text-3xl inline">{{ $t('header.adminMenu.personImport') }}</p>
+                </div>
+                <div class="flex px-4 pb-4 gap-1">
                     <div class="w-full">
                         <input
                             class="input is-fullwidth"

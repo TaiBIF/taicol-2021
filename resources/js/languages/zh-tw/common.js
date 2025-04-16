@@ -22,6 +22,7 @@ export default {
     bottomOfResults: '資料最底，共計 {total} 筆',
     createSuccess: '建立成功',
     saveSuccess: '儲存成功',
+    checkSuccess: '檢查完成',
     deleteSuccess: '刪除成功',
     loading: '載入中',
 
