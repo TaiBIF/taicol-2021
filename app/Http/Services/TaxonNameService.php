@@ -121,10 +121,10 @@ class TaxonNameService
         // 替代名 / 拼法相異學名
         if ($nomenclature->group !== 'virus') {
             if (isset($data['replacement_name'])){
-                $properties['replacement_name'] = $data['replacement_name'];
+               $replacement_name = $data['replacement_name'];
             }
             if (isset($data['spelling_variation'])){
-                $properties['spelling_variation'] = $data['spelling_variation'];
+                $spelling_variation = $data['spelling_variation'];
             }
         }
 
@@ -198,6 +198,8 @@ class TaxonNameService
         $this->taxonName->note = $data['note'] ?? '';
         $this->taxonName->is_publish = $data['is_publish'] ?? true;
         $this->taxonName->kingdom_taxon_name_id = $data['kingdom_taxon_name_id'] ?? null;
+        $this->taxonName->replacement_name = $replacement_name ?? null;
+        $this->taxonName->spelling_variation = $spelling_variation ?? null;
         $this->taxonName->save();
 
         return $this->taxonName;
@@ -355,35 +357,29 @@ class TaxonNameService
 
             $nowUpdatingName = TaxonName::find($updatingNameId);
 
-            // 重新query一次 取得更新後的
-            $objectNameIds = Array();
-            array_push($objectNameIds, $nowUpdatingName->id);
-
-            // 自己是別人的original_taxon_name_id
-
-            array_push($objectNameIds, ...TaxonName::where('original_taxon_name_id', '=', $nowUpdatingName->id)
-               ->pluck('id')->toArray());
-
-
-            if (isset($nowUpdatingName->original_taxon_name_id)){
-                $originalTaxonNameId = $nowUpdatingName->original_taxon_name_id;
-                array_push($objectNameIds, ...TaxonName::where('original_taxon_name_id', '=', $originalTaxonNameId)
-                        ->orWhere('id', '=', $originalTaxonNameId)->pluck('id')->toArray());
-            }
-
-            if (isset($nowUpdatingName->properties['spelling_variation'])){
-                $spellingVariationId = $nowUpdatingName->properties['spelling_variation'];
-                array_push($objectNameIds, ...TaxonName::whereRaw('JSON_EXTRACT(properties, "$.spelling_variation")'.  "=" . $spellingVariationId  )
-                ->orWhere('id', '=', $spellingVariationId)->pluck('id')->toArray());
-            }
-
-
-            if (isset($nowUpdatingName->properties['replacement_name'])){
-                $replacementNameId = $nowUpdatingName->properties['replacement_name'];
-                array_push($objectNameIds, ...TaxonName::whereRaw('JSON_EXTRACT(properties, "$.replacement_name")'.  "=" . $replacementNameId  )
-                ->orWhere('id', '=', $replacementNameId)->pluck('id')->toArray());
-            }
-
+            $results = DB::select("
+                    WITH RECURSIVE related_ids AS (
+                        SELECT *
+                        FROM taxon_names
+                        WHERE id = ?
+                
+                        UNION
+                
+                        SELECT t.*
+                        FROM taxon_names t
+                        JOIN related_ids r
+                        ON t.original_taxon_name_id = r.id
+                            OR t.spelling_variation = r.id
+                            OR t.replacement_name = r.id
+                            OR t.id = r.original_taxon_name_id
+                            OR t.id = r.spelling_variation
+                            OR t.id = r.replacement_name
+                    )
+                    SELECT DISTINCT id FROM related_ids
+                ", [$updatingNameId]);
+                
+                // 轉成單純的 id 陣列
+                $objectNameIds = collect($results)->pluck('id')->all();
 
             $objectNameIds = array_unique($objectNameIds);
 
@@ -414,14 +410,34 @@ class TaxonNameService
         }
 
         // 處理autonym_group
+        // TODO 也要處理所有同模學名的autonym group
+
+        $updatingNameIds = array_merge($updatingNameIds, $objectNameIds);
+        $updatingNameIds = array_unique($updatingNameIds);
+
 
         foreach ($updatingNameIds as $updatingNameId){
+
+
+            $nowUpdatingName = TaxonName::find($updatingNameId);
+
 
             $autonymNameIds = Array();
             array_push($autonymNameIds, $nowUpdatingName->id);
 
             # 找到latin genus latin s1 相同 & 且species_layer=latin s1的
+            # 要包含和自己同名的 後面才能正確排除掉
             if ($nowUpdatingName->rank_id == 34){
+
+                // 和自己同名
+                array_push($autonymNameIds, ...TaxonName::where('nomenclature_id', '=' , $nowUpdatingName->nomenclature_id)
+                                            ->where('rank_id', '=' , 34)
+                                            ->WhereRaw('JSON_EXTRACT(properties, "$.latin_genus") = ?', $nowUpdatingName->properties['latin_genus'] )
+                                            ->WhereRaw('JSON_EXTRACT(properties, "$.latin_s1") = ?', $nowUpdatingName->properties['latin_s1'] )
+                                            ->pluck('id')->toArray()
+                );
+                
+                // 其他人
                 array_push($autonymNameIds, ...TaxonName::where('nomenclature_id', '=' , $nowUpdatingName->nomenclature_id)
                                             ->WhereRaw('JSON_EXTRACT(properties, "$.latin_genus") = ?', $nowUpdatingName->properties['latin_genus'] )
                                             ->WhereRaw('JSON_EXTRACT(properties, "$.latin_s1") = ?', $nowUpdatingName->properties['latin_s1'] )
@@ -429,7 +445,18 @@ class TaxonNameService
                                             ->whereRaw('JSON_EXTRACT(properties, "$.species_layers[0].latin_name") = ?', $nowUpdatingName->properties['latin_s1'])
                                             ->pluck('id')->toArray()
                 );
+
             } else if ($nowUpdatingName->rank_id > 34 && $nowUpdatingName->rank_id < 47 && count($nowUpdatingName->properties['species_layers']) == 1 ){
+
+                // 和自己同名
+                array_push($autonymNameIds, ...TaxonName::where('nomenclature_id', '=' , $nowUpdatingName->nomenclature_id)
+                                            ->WhereRaw('JSON_EXTRACT(properties, "$.latin_genus") = ?', $nowUpdatingName->properties['latin_genus'] )
+                                            ->WhereRaw('JSON_EXTRACT(properties, "$.latin_s1") = ?', $nowUpdatingName->properties['latin_s1'] )
+                                            ->whereRaw('JSON_LENGTH(JSON_EXTRACT(properties, "$.species_layers")) = 1')
+                                            ->whereRaw('JSON_EXTRACT(properties, "$.species_layers[0].latin_name") = ?', $nowUpdatingName->properties['species_layers'][0]['latin_name'])
+                                            ->pluck('id')->toArray()
+                                        );
+
                 # 1. 自己是種下, 要往上找種 & 往下找種下下
                 # 先找種 要先確認自己的後面兩個一樣
                 if ($nowUpdatingName->properties['latin_s1']==$nowUpdatingName->properties['species_layers'][0]['latin_name']){
@@ -451,6 +478,19 @@ class TaxonNameService
                 );
 
             } else if ($nowUpdatingName->rank_id > 34 && $nowUpdatingName->rank_id < 47 && count($nowUpdatingName->properties['species_layers']) == 2 ){
+
+                // 和自己同名
+
+                array_push($autonymNameIds, ...TaxonName::where('nomenclature_id', '=' , $nowUpdatingName->nomenclature_id)
+                ->WhereRaw('JSON_EXTRACT(properties, "$.latin_genus") = ?', $nowUpdatingName->properties['latin_genus'] )
+                ->WhereRaw('JSON_EXTRACT(properties, "$.latin_s1") = ?', $nowUpdatingName->properties['latin_s1'] )
+                ->whereRaw('JSON_LENGTH(JSON_EXTRACT(properties, "$.species_layers")) = 2')
+                ->whereRaw('JSON_EXTRACT(properties, "$.species_layers[0].latin_name") = ?',  $nowUpdatingName->properties['species_layers'][0]['latin_name'])
+                ->whereRaw('JSON_EXTRACT(properties, "$.species_layers[1].latin_name") = ?',  $nowUpdatingName->properties['species_layers'][1]['latin_name'])
+                ->pluck('id')->toArray()
+                );
+
+
                 # 2. 自己是種下下, 要往上找種下 & 往下找種下下下
                 # 先找種下 要先確認自己的後面兩個一樣
                 if ($nowUpdatingName->properties['species_layers'][0]['latin_name']==$nowUpdatingName->properties['species_layers'][1]['latin_name']){
@@ -473,6 +513,20 @@ class TaxonNameService
                 ->pluck('id')->toArray()
                 );
             } else if ($nowUpdatingName->rank_id > 34 && $nowUpdatingName->rank_id < 47 && count($nowUpdatingName->properties['species_layers']) == 3 ){
+
+
+                // 和自己同名
+
+                array_push($autonymNameIds, ...TaxonName::where('nomenclature_id', '=' , $nowUpdatingName->nomenclature_id)
+                ->WhereRaw('JSON_EXTRACT(properties, "$.latin_genus") = ?', $nowUpdatingName->properties['latin_genus'] )
+                ->WhereRaw('JSON_EXTRACT(properties, "$.latin_s1") = ?', $nowUpdatingName->properties['latin_s1'] )
+                ->whereRaw('JSON_LENGTH(JSON_EXTRACT(properties, "$.species_layers")) = 3')
+                ->whereRaw('JSON_EXTRACT(properties, "$.species_layers[0].latin_name") = ?',  $nowUpdatingName->properties['species_layers'][0]['latin_name'])
+                ->whereRaw('JSON_EXTRACT(properties, "$.species_layers[1].latin_name") = ?',  $nowUpdatingName->properties['species_layers'][1]['latin_name'])
+                ->whereRaw('JSON_EXTRACT(properties, "$.species_layers[2].latin_name") = ?',  $nowUpdatingName->properties['species_layers'][2]['latin_name'])
+                ->pluck('id')->toArray()
+                );
+
                 # 3. 自己是種下下下, 要往上找種下下 (目前沒有再往下的例子)
                 # 先找種下下 要先確認自己的後面兩個一樣
                 if ($nowUpdatingName->properties['species_layers'][1]['latin_name']==$nowUpdatingName->properties['species_layers'][2]['latin_name']){
@@ -489,8 +543,13 @@ class TaxonNameService
 
             $autonymNameIds = array_unique($autonymNameIds);
 
+            $result = DB::table('taxon_names')
+            ->selectRaw('DISTINCT JSON_LENGTH(JSON_EXTRACT(properties, "$.species_layers")) as species_layer_length')
+            ->whereIn('id', $autonymNameIds)
+            ->pluck('species_layer_length');
+        
+            if (count($autonymNameIds)>1 && count($result) > 1){
 
-            if (count($autonymNameIds)>1){
 
                 # 如果在種階層有同名的問題 必須多判斷作者相同的才會是一樣的autonym group
                 $checkNames = TaxonName::select('name', DB::raw('COUNT(*) as count'))->whereIn('id',$autonymNameIds)->where('rank_id',34)->groupBy('name')->get()->toArray();
@@ -520,10 +579,13 @@ class TaxonNameService
                     $nowObjectGroup = TaxonName::max('object_group') + 1;
                 }
 
-                // $nowObjectGroup = TaxonName::max('object_group') + 1;
+                // 只能確定同樣的autonym_group會有一樣的object_group
+                // 但一樣的object_group 不一定會有一樣的autonym_group
 
+                TaxonName::whereIn('id',$autonymNameIds)->update(['autonym_group' => $nowAutonymGroup, 'object_group' => $nowObjectGroup]);
 
-                TaxonName::whereIn('id',$autonymNameIds)->update(['autonym_group' => $nowAutonymGroup, 'object_group' => $nowObjectGroup]);;
+                // 要把object_group都改成一樣 因為現在都被組在一起了
+                TaxonName::whereIn('object_group',$nowObjectGroups)->update(['object_group' => $nowObjectGroup]);;
 
 
             } else {

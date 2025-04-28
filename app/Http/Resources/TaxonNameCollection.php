@@ -57,8 +57,11 @@ class TaxonNameCollection extends JsonResource
         ])[0] : null;
 
 
-        $replacementName = isset($this->properties['replacement_name']) ? TaxonName::find($this->properties['replacement_name']) : null;
-        $spellingVariation = isset($this->properties['spelling_variation']) ? TaxonName::find($this->properties['spelling_variation']) : null;
+        // $replacementName = isset($this->properties['replacement_name']) ? TaxonName::find($this->properties['replacement_name']) : null;
+        // $spellingVariation = isset($this->properties['spelling_variation']) ? TaxonName::find($this->properties['spelling_variation']) : null;
+
+        $replacementName = isset($this->replacement_name) ? TaxonName::find($this->replacement_name) : null;
+        $spellingVariation = isset($this->spelling_variation) ? TaxonName::find($this->spelling_variation) : null;
 
         $commonNameUsage = $this->usages->first();
         $commonNameTw = collect($commonNameUsage->properties['common_names'] ?? [])->where('language', 'zh-tw')->first();
@@ -76,7 +79,7 @@ class TaxonNameCollection extends JsonResource
             ] : [],
             'original_taxon_name' => $this->originalTaxonName ? TaxonNameCollection::collection([$this->originalTaxonName])[0] : null,
             'replacement_name' => $replacementName ? new TaxonNameSimpleSubResource($replacementName) : null,
-            'spelling_variation' =>  $replacementName ? new TaxonNameSimpleSubResource($spellingVariation) : null,
+            'spelling_variation' =>  $spellingVariation ? new TaxonNameSimpleSubResource($spellingVariation) : null,
             'rank' => $this->rank,
             'authors' => PersonCollection::collection($this->authors),
             'ex_authors' => PersonCollection::collection($this->exauthors),
