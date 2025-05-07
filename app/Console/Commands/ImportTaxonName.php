@@ -129,12 +129,15 @@ class ImportTaxonName extends Command
                 $species = TaxonName::where('name', "$latinGenus $latinS1")->first();
                 $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × ','× '];
 
+                $search_name = str_replace($replace_words, ' ', $name);
+                $search_name = str_replace(["(", ")",'-',"'",'"'], '',  $search_name);
+
                 $taxonName = new TaxonName();
                 $taxonName->nomenclature_id = $nomenclature;
                 $taxonName->rank_id = isset($ranksF[strtolower($rankString)]) ? $ranksF[strtolower($rankString)]->id : null;
                 $taxonName->original_taxon_name_id = $originName ? $originName->id : null;
                 $taxonName->name = $name;
-                $taxonName->search_name = str_replace($replace_words, ' ', $name);
+                $taxonName->search_name = $search_name;
                 $taxonName->formatted_name = implode(' ', [$latinGenus, $latinS1]);
                 $taxonName->formatted_authors = $authorsString ?? '';
                 $taxonName->publish_year = $publishYear;

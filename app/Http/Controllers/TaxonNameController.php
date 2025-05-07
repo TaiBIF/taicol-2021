@@ -56,10 +56,10 @@ class TaxonNameController extends Controller
         } else {
 
             $keyword = trim(strtolower($request->get('keyword', '')));
+            $keyword = preg_replace('/[+\-><\(\)~*\"\'@]/', '', $keyword);
 
             $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
             $keyword_wo_rank = str_replace($replace_words, ' ', $keyword);
-
 
             $queryA = TaxonName::selectRaw("'taxon_name' as n, id, name as title, search_name as search_title")
                     ->where('deleted_at', null)

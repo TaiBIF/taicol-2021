@@ -63,12 +63,14 @@ class SearchController extends Controller
 
         $type = $request->get('type', '');
         $keyword = trim(strtolower($request->get('keyword', '')));
+        $keyword = preg_replace('/[+\-><\(\)~*\"@]/', ' ', $keyword);
 
         // $query = AllModel::where('title', 'like', "%$keyword%");
 
         if ($type == 'taxon-names') {
 
             $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
+            $keyword = preg_replace('/[+\-><\(\)~*\"\'@]/', '', $keyword);
             $keyword_wo_rank = str_replace($replace_words, ' ', $keyword);
 
             $queryA = TaxonName::selectRaw("'taxon_name' as n, id, name as title, search_name as search_title")
@@ -88,7 +90,7 @@ class SearchController extends Controller
 
             $query = $queryA->union($queryB)
                             ->orderByRaw("CASE WHEN LOWER(`title`) = '{$keyword}' OR LOWER(`search_title`) = '{$keyword_wo_rank}'  THEN 0 WHEN LOWER(`title`) LIKE '{$keyword}%' OR LOWER(`search_title`) LIKE '{$keyword_wo_rank}%' THEN 1 WHEN LOWER(`title`) LIKE '% {$keyword}' OR LOWER(`search_title`) LIKE '% {$keyword_wo_rank}' THEN 2 ELSE 3 END");
-                            
+
         } else if ($type === 'references') {
             // $query->whereIn('n', ['person', 'reference']);
 
@@ -132,6 +134,7 @@ class SearchController extends Controller
 
         $all = [];
         foreach ($modelGroup as $n => $models) {
+
             if ($n === 'person') {
                 $persons = PersonCollection::collection(Person::whereIn('id', $models->pluck('id'))->get()->load('country'))->keyBy('id');
                 foreach ($models as $model) {
@@ -348,6 +351,7 @@ class SearchController extends Controller
                         $query->where(function ($query) use ($word) {
 
                             $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
+                            $word = preg_replace('/[+\-><\(\)~*\"\'@]/', '', $word);
                             $word_wo_rank = str_replace($replace_words, ' ', $word);
 
                             $query->whereRaw('search_name like ? ', '%' . $word_wo_rank . '%');
