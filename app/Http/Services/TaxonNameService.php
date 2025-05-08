@@ -351,9 +351,11 @@ class TaxonNameService
         // $originalObjectGroup = $taxonName->object_group;
 
         // $nowUpdatingName = TaxonName::find($updatingNameId);
-        if ($originalObjectGroup != null){
-            $originalObjectNameIds = TaxonName::where('object_group',$taxonName->object_group)->pluck('id')->toArray();
-        } 
+        // if ($originalObjectGroup != null){
+        //     $originalObjectNameIds = TaxonName::where('object_group',$taxonName->object_group)->pluck('id')->toArray();
+        // } else {
+        //     $originalObjectNameIds = [];
+        // }
         
         // else {
         //     $updatingNameIds = [ $taxonName->id ];
@@ -583,13 +585,13 @@ class TaxonNameService
 
         }
 
-        // TODO 確定有沒有人留在原本的object group 有的話要用loop一個一個檢查
+        // 確定有沒有人留在原本的object group 有的話要用loop一個一個檢查
 
+        if ($originalObjectGroup != null){
 
-        $diff = array_merge(array_diff($objectNameIds, $originalObjectNameIds), array_diff($originalObjectNameIds, $objectNameIds)); 
+            $diff = TaxonName::where('object_group',$originalObjectGroup)->pluck('id')->toArray();
 
-        
-        foreach ($diff as $updatingNameId){
+            foreach ($diff as $updatingNameId){
 
                 $nowUpdatingName = TaxonName::find($updatingNameId);
 
@@ -638,6 +640,14 @@ class TaxonNameService
             }
 
         }
+
+
+        }
+
+
+        // $diff = array_merge(array_diff($objectNameIds, $originalObjectNameIds), array_diff($originalObjectNameIds, $objectNameIds)); 
+
+        
 
     }
     
