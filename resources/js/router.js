@@ -269,6 +269,14 @@ const routes = [
             backgroundColor: 'grey',
         },
     },
+    {
+        name: 'classification-build',
+        path: 'classification',
+        component: () => import(/* webpackChunkName: "classification-form-page" */ './pages/ClassificationEditPage.vue'),
+        meta: {
+            backgroundColor: 'grey',
+        },
+    },
 
     /**
      * 管理員介面

@@ -8,8 +8,9 @@ use App\Reference;
 use App\TaxonName;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Log;
 
-class UsageCollection extends JsonResource
+class TmpUsageCollection extends JsonResource
 {
     /**
      * Transform the resource into an array.
@@ -32,28 +33,27 @@ class UsageCollection extends JsonResource
             ])->find((int) $this->properties['type_name'])
         ])[0] : null;
 
+        $typeSpecimens = collect($this->type_specimens) ?? [];
+
+        $typeSpecimens = (count($typeSpecimens) > 0) ? $typeSpecimens->map(function($typeSpecimen) {
+            $typeSpecimen['country'] = isset($typeSpecimen['country_id']) ? Country::find($typeSpecimen['country_id']) : null;
+            $typeSpecimen['collectors'] = PersonCollection::collection(Person::whereIn('id', $typeSpecimen['collector_ids'] ?? [])->get());
+            return $typeSpecimen;
+        }) : [];
+
         return [
             'id' => $this->id,
             'group' => $this->group,
-            'is_title' => $this->is_title,
-            'is_indent' => $this->is_indent,
             'parent_taxon_name' => $this->parentTaxonName,
             'taxon_name' => TaxonNameSimpleSubResource::collection([$this->taxonName])[0],
             'status' => $this->status,
-            'type_specimens' => collect($this->type_specimens)->map(function($typeSpecimen) {
-                $typeSpecimen['country'] = isset($typeSpecimen['country_id']) ? Country::find($typeSpecimen['country_id']) : null;
-                $typeSpecimen['collectors'] = PersonCollection::collection(Person::whereIn('id', $typeSpecimen['collector_ids'] ?? [])->get());
-                return $typeSpecimen;
-            }),
+            'type_specimens' => $typeSpecimens,
             'type_name' => $typeName,
-            'properties' => (object)$this->properties,
+            'properties' => $this->properties,
             'per_usages' => $perUsages->map(function($u) {
                 $u['target'] = isset($u['reference_id']) ? Reference::with('authors')->find($u['reference_id']) : null;
                 return $u;
             }),
-            'name_remark' => $this->name_remark,
-            'custom_name_remark' => $this->custom_name_remark,
-            'updated_at' => $this->updated_at->format('Y-m-d H:i:s'),
         ];
     }
 }

@@ -24,6 +24,7 @@ export default {
     saveSuccess: 'Save Success',
     deleteSuccess: 'Delete Success',
     loading: 'Loading',
+    clear: 'Clear',
 
     save: 'Save',
     delete: 'Delete',

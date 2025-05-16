@@ -45,6 +45,13 @@ class ReferenceController extends Controller
         }
 
 
+        if ($request->get('hideCreate')==='true'){
+
+            $referenceQuery->whereHas('usages', function ($query) {
+                $query->whereNull('deleted_at');
+            });
+        }
+
         if ($request->get('sortby') === 'type') {
             $referenceQuery->orderBy('type', $request->get('direction'));
         }

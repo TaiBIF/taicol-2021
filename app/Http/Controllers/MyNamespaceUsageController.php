@@ -14,6 +14,8 @@ use App\Person;
 use App\Rank;
 use App\Reference;
 use App\TaxonName;
+use App\TmpNamespaceUsage;
+use App\ImportChecklistLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -31,7 +33,7 @@ class MyNamespaceUsageController extends Controller
             return response()->json([], 401);
         }
 
-        $offset = 0;
+        $offset = $request->get('offset', 0);
         $length = 100;
 
         $groupArray = MyNamespaceUsage::where('namespace_id', $namespaceId)
@@ -453,9 +455,11 @@ class MyNamespaceUsageController extends Controller
                             // 種下下
                             $parentTaxonNameString = $nowName->properties['latin_genus'] . ' '  . $nowName->properties['latin_s1'];
                             $parentTaxonNameString .= ' ' . $speciesLayer[0]['rank_abbreviation'] . ' ' . $speciesLayer[0]['latin_name'];
-                            $parent = TaxonName::where('name', $parentTaxonNameString)
-                                                ->where('nomenclature_id', $nomenclatureId)
-                                                ->first()->id;
+                            $parent_query = TaxonName::where('name', $parentTaxonNameString)
+                                                ->where('nomenclature_id', $nomenclatureId);
+                            if ($parent_query->count() > 0){
+                                $parent = $parent_query->first()->id;
+                            }                        
                         } else if ($nowName->rank_id == 34) {
                             // 種
                             $parentTaxonNameString = $nowName->properties['latin_genus'];
@@ -520,4 +524,172 @@ class MyNamespaceUsageController extends Controller
         ]);
 
     }
+
+
+    public function importChecklist(Request $request){
+        $tmpChecklistId = $request->get('tmp_checklist_id');
+
+        $request->validate([
+            'title' => 'required',
+        ]);
+
+
+        # 從 tmp_checklist_usages抓資料
+
+        DB::beginTransaction();
+
+
+        try {
+            $namespace = new MyNamespace();
+            $namespace->title = $request->get('title');
+            $namespace->type = 1; // 預設為純名錄
+
+            $request->user()->namespaces()->save($namespace);
+
+
+
+            // 存 edit log
+            $importLog = new ImportChecklistLog();
+            $importLog->user_id = $request->user()->id;
+            $importLog->namespace_id = $namespace->id;
+            $importLog->only_in_taiwan = $request->get('only_in_taiwan') === 'yes' ? 1 : 0;
+            $importLog->exclude_cultured = $request->get('exclude_cultured') === 'yes' ? 1 : 0;
+
+            $filter_method = new \stdClass();
+
+            if ($request->get('method') === 1) {
+
+                $filter_method->type = "higher_taxa";
+                $filter_method->taxon_id = $request->get('taxon_ids');
+
+
+            } else if  ($request->get('method') === 2) {
+
+
+                $filter_method->type = "reference";
+                // $filter_method->value = $request->get('taxon_ids');
+
+
+            } else if  ($request->get('method') === 3) {
+
+                $filter_method->type = "region";
+                $filter_method->county = $request->get('county');
+                $filter_method->municipality = $request->get('municipality');
+
+
+            }
+
+            $importLog->filter_method = $filter_method;
+            $refs = $request->get('references');
+            $importLog->included_references = implode(',', $refs);
+            $importLog->save();
+
+            $usages = TmpNamespaceUsage::where('tmp_checklist_id', $tmpChecklistId)->get();
+
+            // $group = 0;
+            foreach ($usages as $index => $usage) {
+
+                $currentUsage = new MyNamespaceUsage();
+                $currentUsage->namespace_id = $namespace->id;
+                $currentUsage->is_for_publish = false;
+
+                $currentUsage->status = $usage['status'];
+                $currentUsage->type_specimens = $usage['type_specimens'];
+                $currentUsage->properties = count($usage['properties']) > 0 ? $usage['properties'] : (object)  null ;                
+                $currentUsage->per_usages = $usage['per_usages'];
+                $currentUsage->name_remark = '';
+                $currentUsage->custom_name_remark = '';
+                $currentUsage->taxon_name_id = (int) $usage['taxon_name_id'];
+                
+                // 自動帶入上階層 優先採用usage
+                // TODO 這邊是不是只需要自動帶入status是接受的上階層就好
+                $parent = $usage['parent_taxon_name_id'] ?? DB::table('accepted_usages')
+                ->select('parent_taxon_name_id')
+                ->where('taxon_name_id', $currentUsage->taxon_name_id)
+                ->first();
+
+                $parent = $parent->parent_taxon_name_id ?? null;
+                
+                $nowName = TaxonName::find($currentUsage->taxon_name_id);
+                $nomenclatureId = $nowName->nomenclature_id;
+
+                if (empty($parent) && $nomenclatureId != 4){
+                // 如果是種的話 自動帶入屬
+
+                    $speciesLayer = $nowName->properties['species_layers'];
+
+                    if (count($speciesLayer) == 1) {
+                        // 種下
+                        $parent = $nowName->properties['species_id'];
+                    } else if (count($speciesLayer) == 2){
+                        // 種下下
+                        $parentTaxonNameString = $nowName->properties['latin_genus'] . ' '  . $nowName->properties['latin_s1'];
+                        $parentTaxonNameString .= ' ' . $speciesLayer[0]['rank_abbreviation'] . ' ' . $speciesLayer[0]['latin_name'];
+                        $parent_query = TaxonName::where('name', $parentTaxonNameString)
+                                            ->where('nomenclature_id', $nomenclatureId);
+
+                        if ($parent_query->count() > 0){
+                            $parent = $parent_query->first()->id;
+                        }
+                    
+                    } else if ($nowName->rank_id == 34) {
+                        // 種
+                        $parentTaxonNameString = $nowName->properties['latin_genus'];
+                        $parent_query = TaxonName::where('name', $parentTaxonNameString)
+
+                                            ->where('nomenclature_id', $nomenclatureId);
+                        if ($parent_query->count() > 0){
+                            $parent = $parent_query->first()->id;
+                        }
+
+                    }
+                }
+
+                $currentUsage->parent_taxon_name_id = $parent;
+
+                $currentUsage->group = $usage->group;
+                $currentUsage->order = $usage->order;
+
+                $currentUsage->is_title = 0;
+                // 根據status給is_indent
+                $currentUsage->is_indent = $usage['status'] !== 'accepted' ? 1 : 0;
+                $currentUsage->save();
+            }
+
+            // 清空tmp_checklist_usage
+
+            TmpNamespaceUsage::where('tmp_checklist_id', $tmpChecklistId)->delete();
+
+            DB::commit();
+
+
+            return response([
+                'data' =>  $namespace->id,
+            ]);
+
+
+
+        } catch (\Exception $e) {
+            Log::info($e);
+
+            DB::rollBack();
+
+            return response([
+                'data' =>  null,
+            ]);
+
+
+        }
+
+
+    }
+
+    public function clearChecklist(Request $request){
+        $tmpChecklistId = $request->get('tmp_checklist_id');
+        TmpNamespaceUsage::where('tmp_checklist_id', $tmpChecklistId)->delete();
+
+
+    }
+
+
 }

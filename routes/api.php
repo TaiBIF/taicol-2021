@@ -48,6 +48,10 @@ Route::get('taxon-names/{id}/parents', 'TaxonNameController@parents');
 Route::get('taxon-names/{id}/per_usages', 'TaxonNameController@per_usages');
 Route::get('taxon-names/{id}/type-specimens', 'TaxonNameController@typeSpecimens');
 Route::get('/doi', 'ReferenceController@fetchDoi');
+Route::get('/higher-taxa', 'ReferenceUsageController@higherTaxa');
+Route::get('/selected-usages', 'ReferenceUsageController@usages');
+Route::get('/tmp-usages', 'ReferenceUsageController@tmpUsages');
+Route::get('/selected-references', 'ReferenceUsageController@references');
 
 // 檢查usage
 Route::get('/get-unchecked-usage', 'ReferenceUsageController@getUncheckedUsage');
@@ -92,6 +96,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('namespaces/{namespaceId}/usages-properties', 'MyNamespaceUsageController@updateUsageProperties');
 
     Route::post('/import/namespaces/{id}/usages', 'MyNamespaceUsageController@import');
+    Route::post('/import/checklist/usages', 'MyNamespaceUsageController@importChecklist');
+    Route::post('/clear/checklist/usages', 'MyNamespaceUsageController@clearChecklist');
 
     Route::middleware('auth.admin')->group(function () {
         Route::get('/users', 'UserController@list');

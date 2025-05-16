@@ -19,11 +19,29 @@
                 <router-link :to="{name: 'common-name-create'} " class="navbar-item"
                              v-text="$t('taxonName.createCommonName')"/>
 
-                <router-link :to="{name: 'namespace-list'} " class="navbar-item"
+                <!-- <router-link :to="{name: 'namespace-list'} " class="navbar-item"
                              v-text="$t('header.menu.myNamespaces')"/>
 
                 <router-link :to="{name: 'favorite-folder-list'} " class="navbar-item"
-                             v-text="$t('header.menu.myCollection')"/>
+                             v-text="$t('header.menu.myCollection')"/> -->
+
+
+                <a v-if="authenticated"
+                   :class="{active: showCollectionSubMenu}"
+                   class="navbar-item"
+                   v-on:mouseenter="() => (showCollectionSubMenu = true)"
+                   v-on:mouseleave="() => (showCollectionSubMenu = false)"
+                >
+                    {{ $t('header.collection') }}
+                    <div class="submenu">
+                        <router-link :to="{name: 'namespace-list'} " class="item"
+                             v-text="$t('header.collectionMenu.myNamespaces')"/>
+                        <router-link :to="{name: 'favorite-folder-list'} " class="item"
+                                    v-text="$t('header.collectionMenu.myCollection')"/>
+                        <router-link :to="{name: 'classification-build'} " class="item"
+                                    v-text="$t('header.collectionMenu.buildClassification')"/>
+                    </div>
+                </a>
 
                 <a v-if="user.roleId === 1"
                    :class="{active: showAdminSubMenu}"
@@ -120,6 +138,7 @@ export default {
             showAdminSubMenu: false,
             showUserSubMenu: false,
             showLanguageSubMenu: false,
+            showCollectionSubMenu: false,
         };
     },
     computed: {

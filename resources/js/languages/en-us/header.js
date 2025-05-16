@@ -1,6 +1,7 @@
 export default {
     title: 'Scientific Names Management Tool',
     admin: 'Admin',
+    collection: 'Collection',
     menu: {
         myCollection: 'My Collection',
         myNamespaces: 'My Checklist',
@@ -15,5 +16,10 @@ export default {
         referenceImport: 'Reference Import',
         taxonNameImport: 'Taxon Name Import',
         usageCheck: 'Usage Check',
+    },
+    collectionMenu: {
+        myCollection: 'My Collection',
+        myNamespaces: 'My Checklist',
+        buildClassification: 'Build Classification'
     },
 };

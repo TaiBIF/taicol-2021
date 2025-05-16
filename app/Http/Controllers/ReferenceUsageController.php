@@ -6,15 +6,18 @@ use App\ImportUsageLog;
 use App\Http\Resources\PersonCollection;
 use App\Http\Resources\TaxonNameCollection;
 use App\Http\Resources\UsageCollection;
+use App\Http\Resources\TmpUsageCollection;
 use App\Person;
 use App\Rank;
 use App\Reference;
 use App\ReferenceUsage;
+use App\TmpNamespaceUsage;
 use App\TaxonName;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Http\Utils\CommonNameArray;
+use App\Http\Resources\ReferenceCollection;
 
 class ReferenceUsageController extends Controller
 {
@@ -531,9 +534,11 @@ class ReferenceUsageController extends Controller
                             $parentTaxonNameString = $nowName->properties['latin_genus'] . ' '  . $nowName->properties['latin_s1'];
                             $parentTaxonNameString .= ' ' . $speciesLayer[0]['rank_abbreviation'] . ' ' . $speciesLayer[0]['latin_name'];
                     
-                            $parent = TaxonName::where('name', $parentTaxonNameString)
-                                                ->where('nomenclature_id', $nomenclatureId)
-                                                ->first()->id;
+                            $parent_query = TaxonName::where('name', $parentTaxonNameString)
+                                                ->where('nomenclature_id', $nomenclatureId);
+                            if ($parent_query->count() > 0){
+                                $parent = $parent_query->first()->id;
+                            }                        
                         } else if ($nowName->rank_id == 34) {
                             // 種
                             $parentTaxonNameString = $nowName->properties['latin_genus'];
@@ -705,9 +710,12 @@ class ReferenceUsageController extends Controller
                 $parentTaxonNameString = $nowName->properties['latin_genus'] . ' '  . $nowName->properties['latin_s1'];
                 $parentTaxonNameString .= ' ' . $speciesLayer[0]['rank_abbreviation'] . ' ' . $speciesLayer[0]['latin_name'];
         
-                $parent = TaxonName::where('name', $parentTaxonNameString)
-                                    ->where('nomenclature_id', $nomenclatureId)
-                                    ->first()->id;
+                $parent_query = TaxonName::where('name', $parentTaxonNameString)
+                                    ->where('nomenclature_id', $nomenclatureId);
+                if ($parent_query->count() > 0){
+                    $parent = $parent_query->first()->id;
+                }
+            
             } else if ($nowName->rank_id == 34) {
                 // 種
                 $parentTaxonNameString = $nowName->properties['latin_genus'];
@@ -797,6 +805,252 @@ class ReferenceUsageController extends Controller
         }
 
     }
+
+    public function higherTaxa(Request $request) {
+
+        $keyword = $request->get('keyword');
+
+        // 預設包含栽培豢養 & 不僅限台灣物種
+        $url = "https:/web-staging.taicol.tw/get_autocomplete_taxon_by_solr?from=nametool&with_cultured=on&keyword=" . $keyword;
+
+        $curl = curl_init();
+        curl_setopt($curl, CURLOPT_URL, $url);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($curl, CURLOPT_TIMEOUT, 120);
+        $result = curl_exec($curl);
+        $jsonResult = json_decode($result, true);
+
+        return response()->json($jsonResult);
+
+    }
+
+    public function references(Request $request) {
+
+        $method = $request->get('method');
+        $onlyInTaiwan = $request->get('onlyInTaiwan');
+        $excludeCultured = $request->get('excludeCultured');
+        $county = $request->get('county');
+        $municipality = $request->get('municipality');
+        $higherTaxa = $request->get('higherTaxa');
+
+        if (isset($higherTaxa))
+            $higherTaxa = implode(",", $higherTaxa); 
+
+        // method == 1 -> higherTaxa 串接 TaiCOL API
+
+        if ( $method == 1)
+            $url = "https://api-staging.taicol.tw/get_taxon_by_higher?only_in_taiwan=" . $onlyInTaiwan . '&exclude_cultured=' . $excludeCultured . '&higher_taxa=' . $higherTaxa ;
+
+        // method == 3 > Region 串接 TBIA API
+
+        else if ( $method == 3)
+            $url = "https://dev.tbiadata.tw/get_taxon_by_region?only_in_taiwan=" . $onlyInTaiwan . '&exclude_cultured=' . $excludeCultured . '&county=' . urlencode($county) . '&municipality=' . urlencode($municipality) ;
+
+        $curl = curl_init();
+        curl_setopt($curl, CURLOPT_URL, $url);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($curl, CURLOPT_TIMEOUT, 120);
+        $result = curl_exec($curl);
+        $jsonResult = json_decode($result, true);
+
+
+        if (count($jsonResult) > 0){
+
+            // 這邊要取得對應的usage 並回傳reference object 供使用者在前端選擇要哪些
+
+            $references = Reference::whereIn('id', function ($query) use ($jsonResult) {
+                $query->selectRaw('distinct reference_id')
+                    ->from('api_taxon_usages')
+                    ->whereIn('taxon_id', $jsonResult)
+                    ->where('is_deleted', 0);
+            })
+            ->where('is_publish', 1)->get();
+
+            $hasBackbone = $references->contains(function ($item) {
+                return $item->type === Reference::TYPE_BACKBONE || $item->type === Reference::TYPE_SUPER_BACKBONE;
+            });
+            
+            $references = $references->filter(function ($item) {
+                return $item->type !== Reference::TYPE_BACKBONE && $item->type !== Reference::TYPE_SUPER_BACKBONE;
+            });
+
+            $references = ReferenceCollection::collection($references);
+        } else {
+            $references = [];
+            $hasBackbone = false;
+        }
+
+
+        return response()->json([
+            'data' => $references,
+            'hasBackbone' => $hasBackbone,
+            'taxonIds' => $jsonResult,
+        ]);
+
+    }
+
+
+    // 按下產生名錄之後
+    public function usages(Request $request) {
+
+        $tmp_checklist_id = null;
+
+        $method = $request->get('method');
+        $onlyInTaiwan = $request->get('onlyInTaiwan');
+        $excludeCultured = $request->get('excludeCultured');
+        $taxonIds = $request->get('taxonIds');
+
+
+        // 如果是使用較高分類群納入 不應該加這個參數才對 不然會只有回傳高階層的那個taxon
+        // $higherTaxa = $request->get('higherTaxa'); 
+
+        // 取得要納入的文獻list
+        $references = $request->get('references',[]);
+
+        if (count($references)> 0){
+
+            $hasBackbone = in_array("0", $references, false); // 第三個參數 true 代表用嚴格比對（型別也要一樣）
+
+            $result = array_filter(
+                array_map('intval', $references),
+                function ($value) {
+                    return $value !== 0;
+                }
+            );
+
+
+            $result = array_values($result);
+
+
+            // 如果有選擇backbone的話 要把backbone加上去
+            if ($hasBackbone == true){
+                $backbones = Reference::whereIn('type', [Reference::TYPE_BACKBONE, Reference::TYPE_SUPER_BACKBONE])->pluck('id')->toArray();
+                array_push($result, ...$backbones);
+            }
+
+
+            // 1 & 2 取得taxonIDs之後也要搜尋reference_usages表
+            // method == 3 -> 搜尋reference_usages表
+            $usageQuery = ReferenceUsage::select('reference_id','group')->whereIn('reference_id', $result);
+
+            $usages = [];
+            if ($method==2){
+
+                // 先取得對應的所有分類群
+
+                // $usageQuery = ReferenceUsage::select('reference_id','group')->whereIn('reference_id', $result);
+                $usageQuery->where('status','accepted');
+
+                if ($onlyInTaiwan=='yes')
+                $usageQuery->where('properties->is_in_taiwan', 1);
+                if ($excludeCultured=='yes')
+                $usageQuery->where(function ($query) {
+                    $query->where(DB::raw('json_unquote(json_extract(properties, "$.\"alien_type\""))'), '!=', 'cultured')
+                        ->orWhere(DB::raw('json_extract(properties, "$.\"alien_type\"")'), null);
+                });
+            
+            } else {
+
+                // 如果是method = 1 or 3的時候
+                // $usageQuery = ReferenceUsage::select('reference_id','group')->whereIn('reference_id', $result);
+
+                $usageQuery->whereIn('id', function ($query) use ($taxonIds) {
+                    $query->selectRaw('distinct reference_usage_id')
+                        ->from('api_taxon_usages')
+                        ->whereIn('taxon_id', $taxonIds)
+                        // ->whereIn('reference_id', $result)
+                        ->where('is_deleted', 0);
+                });
+
+        
+            }
+
+            $usages = $usageQuery->get();
+
+            if (count($usages)>0){
+ 
+                // 彙整usage 並顯示簡易異名表 -> 串接TaiCOL API
+                
+                // API URL
+                $usage_url = "https://api-staging.taicol.tw/generate_checklist";
+
+                // 初始化 cURL
+                $ch = curl_init($usage_url);
+                
+                // 設定 options
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_POST, true);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($usages));
+                curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                    'Content-Type: application/json'
+                ]);
+                
+                // 執行 cURL 並取得回應
+                $response = curl_exec($ch);
+                
+                // 關閉 cURL
+                curl_close($ch);
+                
+                // 解析 JSON 回傳
+                $resp = json_decode($response, true);
+
+                // 從這邊取得tmp_checklist_id 回傳給前端
+                // 前端再根據之前寫過的load usages 顯示出usage
+
+                $tmp_checklist_id = $resp['tmp_checklist_id'];
+            }
+        }
+
+        return response()->json([
+            'data' => $tmp_checklist_id,
+        ]);
+    }
+
+
+    public function tmpUsages(Request $request)
+    {
+
+        $tmp_checklist_id = $request->get('tmp_checklist_id');
+        $offset = intval($request->get('offset', 0));
+
+        $length = 100;
+
+        $groupArray = TmpNamespaceUsage::where('tmp_checklist_id', $tmp_checklist_id)
+                                    ->distinct('group')->pluck('group')->toArray();
+
+        sort($groupArray);
+        $groupCount = count($groupArray);
+        $groupArray = array_slice($groupArray, $offset, $length);
+
+
+        $usages = TmpNamespaceUsage::with([
+            'taxonName.nomenclature',
+            'taxonName.reference',
+            'taxonName.rank',
+            'taxonName.authors',
+            'taxonName.exAuthors',
+            'taxonName.reference.authors',
+            'taxonName.originalTaxonName',
+            'taxonName.originalTaxonName.authors',
+            'taxonName.originalTaxonName.exAuthors',
+        ])
+            // ->where('is_for_publish', 0)
+            ->where('tmp_checklist_id', $tmp_checklist_id)
+            ->whereIn('group', $groupArray)
+            ->orderBy('group')
+            ->orderBy('order')
+            ->get();
+
+        return response()->json([
+            'data' => $usages->groupBy('group')->map(function ($group) {
+                return $group->map(function ($usage) {
+                    return TmpUsageCollection::collection([$usage])->first();
+                });
+            }),
+            'group_count'=> $groupCount
+        ]);
+    }
+
 
     private function snakeToCamel($input): string
     {

@@ -7,17 +7,21 @@
               clearable
               label="title"
               v-on:input="onUpdateValue"
-              v-on:typing="fetchFilteredReference"
-    >
+              v-on:typing="fetchFilteredReference">
         <template v-slot:option="{ option }">
             {{ option.title }}
             <span class="help has-text-grey-light"
                   v-text="`${option.subtitle}`"/>
         </template>
         <template v-slot:no-options>
-            {{ $t('common.enterForOptions') }} {{ $t('common.or') }}
-            <a v-on:click="onAddReferenceFormLayer"
-               v-text="$t('reference.create')"/>
+            <div v-if="!hideCreate">
+                {{ $t('common.enterForOptions') }} {{ $t('common.or') }}
+                <a v-on:click="onAddReferenceFormLayer"
+                v-text="$t('reference.create')"/>
+            </div>
+            <div v-else>
+                {{ $t('common.enterForOptions') }}
+            </div>
         </template>
     </t-select>
 </template>
@@ -37,6 +41,10 @@ export default {
         errors: {
             type: Array,
         },
+        hideCreate: {
+            type: Boolean,
+            default: false
+        }
     },
     data() {
         return {
@@ -55,12 +63,14 @@ export default {
             this.isLoading = true;
             if (!keyword) {
                 this.isLoading = false;
-                this.filteredReferences = [];
+                // this.filteredReferences = [];
                 return;
             }
 
+            let hideCreate = this.hideCreate;
+
             this.axios.get('/references', {
-                params: { keyword },
+                params: { keyword, hideCreate },
             }).then(({ data: { data } }) => {
                 this.filteredReferences = data;
             }).catch(() => {

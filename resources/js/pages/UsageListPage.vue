@@ -330,8 +330,6 @@ export default {
         },
         isInvalidUsage(usage, index) {
 
-            // console.log(usage.taxonName.name)
-
             let now_usages = this.usages.filter(item => item.isDeleted !== true);
 
             // # 1. 同一個分類群有一個以上的接受名 -> 感覺在介面上不會出現

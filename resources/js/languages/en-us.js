@@ -12,6 +12,7 @@ import user from './en-us/user';
 import collect from './en-us/collect';
 import validation from './en-us/validation';
 import guideline from './en-us/guideline';
+import classification from './en-us/classification';
 
 export default {
     functions: {
@@ -31,4 +32,5 @@ export default {
     indexPage,
     loginPage,
     guideline,
+    classification
 };

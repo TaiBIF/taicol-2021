@@ -20,7 +20,7 @@ export default [
         name: 'Region',
         display: {
             'en-us': 'Region',
-            'zh-tw': '以地區篩選分類群',
+            'zh-tw': '選擇地區',
         },
     },
 ];

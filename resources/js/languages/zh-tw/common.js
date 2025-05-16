@@ -25,6 +25,7 @@ export default {
     checkSuccess: '檢查完成',
     deleteSuccess: '刪除成功',
     loading: '載入中',
+    clear: '清除輸入',
 
     save: '儲存',
     delete: '刪除',

@@ -1,6 +1,7 @@
 export default {
     title: '物種學名管理工具',
     admin: '管理員功能',
+    collection: '收藏管理',
     menu: {
         myCollection: '我的收藏',
         myNamespaces: '我的名錄',
@@ -15,5 +16,10 @@ export default {
         referenceImport: '文獻匯入',
         taxonNameImport: '學名匯入',
         usageCheck: '學名使用檢查',
+    },
+    collectionMenu: {
+        myCollection: '我的收藏',
+        myNamespaces: '我的名錄',
+        buildClassification: '建立分類觀'
     },
 };

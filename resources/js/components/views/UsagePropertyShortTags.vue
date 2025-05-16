@@ -29,7 +29,7 @@ export default defineComponent({
     props: {
         p: {
             type: Object,
-            required: true,
+            required: true
         },
     },
 });
