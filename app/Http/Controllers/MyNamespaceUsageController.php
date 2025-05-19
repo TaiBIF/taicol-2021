@@ -21,6 +21,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use App\Http\Utils\CommonNameArray;
+use App\Exports\UsagesExport;
+use Maatwebsite\Excel\Facades\Excel;
+
 
 class MyNamespaceUsageController extends Controller
 {
@@ -525,6 +528,10 @@ class MyNamespaceUsageController extends Controller
 
     }
 
+    public function export(Request $request, $id)
+    {
+        return Excel::download(new UsagesExport($id), 'usages.xlsx');
+    }
 
     public function importChecklist(Request $request){
         $tmpChecklistId = $request->get('tmp_checklist_id');
@@ -684,12 +691,10 @@ class MyNamespaceUsageController extends Controller
 
     }
 
-    public function clearChecklist(Request $request){
+    public function clearChecklist(Request $request)
+    {
         $tmpChecklistId = $request->get('tmp_checklist_id');
         TmpNamespaceUsage::where('tmp_checklist_id', $tmpChecklistId)->delete();
-
-
     }
-
 
 }

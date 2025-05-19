@@ -15,6 +15,7 @@ export default {
 
     downloadDoc: '下載 Word 檔',
     importUsages: '匯入分類群',
+    exportUsages: '匯出分類群',
     add: '加入',
     usageTitle: '標題',
     exampleDownload: '範本下載',

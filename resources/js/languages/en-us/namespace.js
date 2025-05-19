@@ -15,6 +15,7 @@ export default {
 
     downloadDoc: 'Download Word',
     importUsages: 'Import Usages',
+    exportUsages: 'Export Usages',
     add: 'Add',
     usageTitle: 'Title',
     exampleDownload: 'Example Download',

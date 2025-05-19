@@ -56,6 +56,7 @@ Route::get('/selected-references', 'ReferenceUsageController@references');
 // 檢查usage
 Route::get('/get-unchecked-usage', 'ReferenceUsageController@getUncheckedUsage');
 Route::get('/update-usage-check', 'ReferenceUsageController@updateUsageCheck');
+Route::get('/export/namespaces/{id}/usages', 'MyNamespaceUsageController@export');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', 'UserController@index');

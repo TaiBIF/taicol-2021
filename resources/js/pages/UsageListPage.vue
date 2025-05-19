@@ -39,6 +39,11 @@
                         v-on:click="onImportUsages">
                     {{ $t('namespace.importUsages') }}
                 </button>
+                <button v-if="configs.type === 'namespace'"
+                        class="button is-small"
+                        v-on:click="onExportUsages">
+                    {{ $t('namespace.exportUsages') }}
+                </button>
                 <button class="button is-small"
                         v-on:click="onToggleSimpleForm">
                     {{ isListSimple ? $t('namespace.listDetail') : $t('namespace.listSimple') }}
@@ -586,6 +591,19 @@ export default {
                     refresh: this.refresh,
                 },
             });
+        },
+        async onExportUsages(){
+
+            const response = await fetch(`/api/export/namespaces/${this.model.id}/usages`);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'usages.xlsx';
+            a.click();
+            window.URL.revokeObjectURL(url);
+
         },
         onRemove(e, index) {
             e.stopPropagation();
