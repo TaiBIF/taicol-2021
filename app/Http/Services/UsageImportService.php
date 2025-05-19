@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Illuminate\Support\Facades\Log;
 use App\Http\Utils\CommonNameArray;
+use App\Reference;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 class UsageImportService
 {
@@ -79,29 +81,151 @@ class UsageImportService
         $order = 0;
         $nomenclatures = Nomenclature::select('id', 'name')->get()->keyBy('name');
         $ranks = Rank::select('id', 'key')->get()->keyBy('key');
+
+        // 讀取欄位名稱（第一列）
+
+        $highestColumn = $this->sheet->getHighestColumn();
+        $highestColumnIndex = Coordinate::columnIndexFromString($highestColumn);
+        
+        
+        $headers = [];
+        for ($col = 1; $col <= $highestColumnIndex; $col++) {
+            $header = $this->sheet->getCellByColumnAndRow($col, 1)->getValue();
+            $headers[$header] = $col;
+        }
+
         try {
             for ($row = 2; $row <= $this->sheet->getHighestRow(); $row++) {
-                $nomenclature = $this->sheet->getCell('A' . $row)->getCalculatedValue();
-                $rank = $this->sheet->getCell('B' . $row)->getCalculatedValue();
-                $name = $this->sheet->getCell('C' . $row)->getCalculatedValue();
-                $authorsString = $this->sheet->getCell('D' . $row)->getCalculatedValue();
-                $parentTaxonNameString = $this->sheet->getCell('E' . $row)->getCalculatedValue();
-                $status = $this->sheet->getCell('F' . $row)->getCalculatedValue();
-                $commonNamesString = $this->sheet->getCell('I' . $row)->getCalculatedValue();
 
-                $isInTaiwan = $this->sheet->getCell('J' . $row)->getCalculatedValue();
-                $distributionTw = $this->sheet->getCell('K' . $row)->getCalculatedValue();
-                $isEndemic = $this->sheet->getCell('L' . $row)->getCalculatedValue();
-                $alienType = $this->sheet->getCell('M' . $row)->getCalculatedValue();
-                $isFossil = $this->sheet->getCell('N' . $row)->getCalculatedValue();
-                $isTerrestrial = $this->sheet->getCell('O' . $row)->getCalculatedValue();
-                $isFreshwater = $this->sheet->getCell('P' . $row)->getCalculatedValue();
-                $isBrackish = $this->sheet->getCell('Q' . $row)->getCalculatedValue();
-                $isMarine = $this->sheet->getCell('R' . $row)->getCalculatedValue();
-                $alienStatusNote = $this->sheet->getCell('S' . $row)->getCalculatedValue();
-                $isNewRecord = $this->sheet->getCell('T' . $row)->getCalculatedValue();
+                $nomenclature = $this->sheet->getCellByColumnAndRow($headers['nomenclature'], $row)->getCalculatedValue();
+                $rank = $this->sheet->getCellByColumnAndRow($headers['rank'], $row)->getCalculatedValue();
+                $name = $this->sheet->getCellByColumnAndRow($headers['name'], $row)->getCalculatedValue();
+                $authorsString = $this->sheet->getCellByColumnAndRow($headers['authors'], $row)->getCalculatedValue();
+                $parentTaxonNameString = $this->sheet->getCellByColumnAndRow($headers['parant_taxon'], $row)->getCalculatedValue();
+                $status = $this->sheet->getCellByColumnAndRow($headers['usage_status'], $row)->getCalculatedValue();
+                $commonNamesStrings = $this->sheet->getCellByColumnAndRow($headers['common_name'], $row)->getCalculatedValue();
 
-                $isIndent = (bool) $this->sheet->getCell('H' . $row)->getCalculatedValue();
+                $isInTaiwan = $this->sheet->getCellByColumnAndRow($headers['is_in_taiwan'], $row)->getCalculatedValue();
+                $distributionTw = $this->sheet->getCellByColumnAndRow($headers['distribution_in_tw'], $row)->getCalculatedValue();
+                $isEndemic = $this->sheet->getCellByColumnAndRow($headers['is_endemic'], $row)->getCalculatedValue();
+                $alienType = $this->sheet->getCellByColumnAndRow($headers['alien_type'], $row)->getCalculatedValue();
+                $isFossil = $this->sheet->getCellByColumnAndRow($headers['is_fossil'], $row)->getCalculatedValue();
+                $isTerrestrial = $this->sheet->getCellByColumnAndRow($headers['is_terrestrial'], $row)->getCalculatedValue();
+                $isFreshwater = $this->sheet->getCellByColumnAndRow($headers['is_freshwater'], $row)->getCalculatedValue();
+                $isBrackish = $this->sheet->getCellByColumnAndRow($headers['is_brackish'], $row)->getCalculatedValue();
+                $isMarine = $this->sheet->getCellByColumnAndRow($headers['is_marine'], $row)->getCalculatedValue();
+                $alienStatusNote = $this->sheet->getCellByColumnAndRow($headers['alien_status_note'], $row)->getCalculatedValue();
+                $isNewRecord = $this->sheet->getCellByColumnAndRow($headers['is_new_record'], $row)->getCalculatedValue();
+
+                $isIndent = (bool) $this->sheet->getCellByColumnAndRow($headers['is_indent'], $row)->getCalculatedValue();
+
+                // 2025 05 新增
+                $note = $this->sheet->getCellByColumnAndRow($headers['note'], $row)->getCalculatedValue();
+
+                $usageReferences = $this->sheet->getCellByColumnAndRow($headers['usage_references'], $row)->getCalculatedValue();
+
+                $perUsages = [];
+                if (isset($usageReferences)){
+                    $usageReferences = explode("|", $usageReferences);
+
+                    foreach ($usageReferences as $usageReference){
+                        $usageReference = str_replace(["(", ")"], '',  $usageReference);
+                        $usageReference = explode(",", $usageReference);
+                        if (count($usageReference)==4){
+                            // 要確定reference_id有沒有存在在資料庫中
+                            if (Reference::find($usageReference[0])->get()){
+
+                                // ([reference_id],[show_page],[figure],[pro_parte])
+                                $now_usage = array();
+                                $now_usage['reference_id'] = $usageReference[0];
+
+                                if ($usageReference[1] !== ''){
+                                    $now_usage['show_page'] = $usageReference[1];
+
+                                }
+
+                                if ($usageReference[2] !== ''){
+                                    $now_usage['figure'] = $usageReference[2];
+                                }
+
+                                if ($usageReference[3] === 'true'){
+                                    $now_usage['pro_parte'] = true;
+                                    $now_usage['pro_parte_type'] = 'pro parte';
+                                };
+
+                                array_push($perUsages, $now_usage);
+
+                            } else {
+                                $this->throwError($row, 'usage_references提供之文獻ID查無文獻');
+                            };
+
+                        }
+
+                    }
+
+                } 
+
+
+                // 確認indications有沒有在清單中
+                $indications = $this->sheet->getCellByColumnAndRow($headers['indications'], $row)->getCalculatedValue();
+                
+                if (isset($indications)){
+                    $indications = explode("|", $indications);
+                    $validIndications = json_decode(file_get_contents(resource_path('json/indications.json')), true);
+
+                    $validIndications = collect($validIndications)->pluck('abbreviation')->all();
+                    $checkedIndications = array_values(array_intersect($indications, $validIndications));
+                    $absent = array_values(array_diff($indications, $validIndications));
+
+                    if (count($absent) > 0){
+                        $this->throwError($row, '不合法的標註: ' . implode(",",$absent));
+                    }
+
+                } else {
+                    $checkedIndications = [];
+                }
+
+
+                $additionalFields = [];
+
+                foreach (['description','diagnosis','distribution','etymology','habitat','substrata','measurements','coloration','other_examined_material'] as $add){
+                    $val = $this->sheet->getCellByColumnAndRow($headers[$add], $row)->getCalculatedValue();
+
+                    if (isset($val)){
+                        if ($add == 'other_examined_material'){
+                            $add = 'otherExaminedMaterial';
+                        }
+
+                        $now_dict = array();
+                        $now_dict['field_value'] = $val;
+                        $now_dict['field_name'] = $add;
+                        
+                        array_push($additionalFields, $now_dict);
+                    }
+                }
+
+                $customFields = [];
+
+                foreach (['custom_field1','custom_field2','custom_field3','custom_field4','custom_field5'] as $cus){
+                    $val = $this->sheet->getCellByColumnAndRow($headers[$cus], $row)->getCalculatedValue();
+
+                    if (isset($val)){
+
+                        $vals = explode(':', $val);
+
+                        if (count($vals)==2){
+
+                            $now_dict = array();
+                            $now_dict['field_name_en'] = $vals[0];
+                            $now_dict['field_value'] = $vals[1];
+                            
+                            array_push($customFields, $now_dict);
+                        } else {
+                            $this->throwError($row, '不正確的' . $cus .'格式');
+                        }
+                    }
+                }
+
 
                 if ($row === 2 && ($isIndent === true || $status === 'not-accepted') && $group === 0) {
                     $this->throwError($row, '第一筆不能是無效名或縮排');
@@ -160,20 +284,28 @@ class UsageImportService
                 }
 
                 $commonName  = [];
-                if (isset($commonNamesString)){
 
-                    $isMatch = preg_match('/(.*)\((.*),(.*)\)/', $commonNamesString, $matches);
+                if (isset($commonNamesStrings)){
 
-                    $name = $matches[1];
-                    foreach (array_keys(CommonNameArray::get()) as $cc_key) {
-                        $name = str_replace($cc_key,CommonNameArray::get()[$cc_key],$name);
-                    };
+                    $commonNamesStrings = explode('|', $commonNamesStrings);
 
-                    $commonName = $isMatch ? [[
-                        'area' => $matches[3],
-                        'name' => trim(str_replace("\x00", "", $name)),
-                        'language' => $this->languageMapping[$matches[2]],
-                    ]] : [];
+                    foreach ($commonNamesStrings as $commonNamesString){
+
+                        $isMatch = preg_match('/(.*)\((.*),(.*)\)/', $commonNamesString, $matches);
+
+                        $name = $matches[1];
+                        foreach (array_keys(CommonNameArray::get()) as $cc_key) {
+                            $name = str_replace($cc_key,CommonNameArray::get()[$cc_key],$name);
+                        };
+
+                        if ($isMatch){
+                            array_push($commonName, [
+                                'area' => $matches[3],
+                                'name' => trim(str_replace("\x00", "", $name)),
+                                'language' => $this->languageMapping[$matches[2]],
+                            ]);
+                        }
+                    }
                 }
 
                 $isInTaiwan = !isset($isInTaiwan) || $isInTaiwan === '' ? null : (int)$isInTaiwan;
@@ -183,9 +315,13 @@ class UsageImportService
                     'is_marine' => !isset($isMarine) || $isMarine === '' ? null : ($isMarine ? 1 : 0),
                     'is_brackish' => !isset($isBrackish) || $isBrackish === '' ? null : ($isBrackish ? 1 : 0),
                     'common_names' => !isset($commonName) ? null : ($commonName),
+                    'note' => !isset($note) ? null : $note,
                     'is_in_taiwan' => $isInTaiwan,
                     'is_freshwater' => !isset($isFreshwater) || $isFreshwater === '' ? null : ($isFreshwater ? 1 : 0),
                     'is_terrestrial' => !isset($isTerrestrial) || $isTerrestrial === '' ? null : ($isTerrestrial ? 1 : 0),
+                    'additional_fields' => $additionalFields,
+                    'custom_fields' => $customFields,
+                    'indications' => $checkedIndications,
                 ];
 
 
@@ -197,7 +333,7 @@ class UsageImportService
                     $properties['alien_status_note'] = $alienStatusNote;
                 }
 
-                $this->saveUsages($row, $taxonName, $parentTaxonName ?? null, $properties, $group, $order);
+                $this->saveUsages($row, $taxonName, $parentTaxonName ?? null, $properties, $group, $order, $perUsages);
                 $count++;
             }
             DB::commit();
@@ -205,6 +341,8 @@ class UsageImportService
             DB::rollBack();
             $this->throwError($row, $e->getMessage());
         }
+
+
         return $count;
     }
 
@@ -212,17 +350,29 @@ class UsageImportService
     {
         $sheet = $this->sheet;
 
-        for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
-            $kingdom = $sheet->getCell('A' . $row)->getCalculatedValue();
-            $rank = $sheet->getCell('B' . $row)->getCalculatedValue();
-            $name = $sheet->getCell('C' . $row)->getCalculatedValue();
-            $authorNamesString = $sheet->getCell('D' . $row)->getCalculatedValue();
-            $usageStatus = $sheet->getCell('F' . $row)->getCalculatedValue();
-            $isIndent = (bool) $this->sheet->getCell('H' . $row)->getCalculatedValue();
-            $commonNames = $sheet->getCell('I' . $row)->getCalculatedValue();
-            $alienType = $sheet->getCell('M' . $row)->getCalculatedValue();
 
-            if (!$kingdom) {
+        $highestColumn = $sheet->getHighestColumn();
+        $highestColumnIndex = Coordinate::columnIndexFromString($highestColumn);
+        
+        
+        $headers = [];
+        for ($col = 1; $col <= $highestColumnIndex; $col++) {
+            $header = $sheet->getCellByColumnAndRow($col, 1)->getValue();
+            $headers[$header] = $col;
+        }
+
+
+        for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
+            $nomenclature = $sheet->getCellByColumnAndRow($headers['nomenclature'], $row)->getCalculatedValue();
+            $rank = $sheet->getCellByColumnAndRow($headers['rank'], $row)->getCalculatedValue();
+            $name = $sheet->getCellByColumnAndRow($headers['name'], $row)->getCalculatedValue();
+            // $authorNamesString = $sheet->getCell('D' . $row)->getCalculatedValue();
+            $usageStatus = $sheet->getCellByColumnAndRow($headers['usage_status'], $row)->getCalculatedValue();
+            // $isIndent = (bool) $this->sheet->getCell('H' . $row)->getCalculatedValue();
+            $commonNames = $sheet->getCellByColumnAndRow($headers['common_name'], $row)->getCalculatedValue();
+            $alienType = $sheet->getCellByColumnAndRow($headers['alien_type'], $row)->getCalculatedValue();
+
+            if (!$nomenclature) {
                 $this->throwError($row, 'nomenclature 未填寫');
             }
 
@@ -261,7 +411,7 @@ class UsageImportService
         throw new \Exception($message);
     }
 
-    private function saveUsages(int $row, $taxonName, ?object $parentTaxonName, $properties, $group, $order)
+    private function saveUsages(int $row, $taxonName, ?object $parentTaxonName, $properties, $group, $order, $perUsages)
     {
 
         $usage = new MyNamespaceUsage();
@@ -293,6 +443,7 @@ class UsageImportService
         $usage->order = $order;
         $usage->group = $group;
         $usage->type_specimens = [];
+        $usage->per_usages = $perUsages;
         $usage->save();
     }
 
