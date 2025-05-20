@@ -2,7 +2,8 @@
     <nav :class="{'has-background-grey': !isNotGrey}" class="header navbar">
         <div v-if="!isNotGrey" class="navbar-start">
             <router-link :to="{name: 'index'}">
-                <h1 class="title" v-text="$t('header.title')"></h1>
+                <h1 class="title" v-if="showStaging()" v-text="$t('header.title')+'[測試站]'"></h1>
+                <h1 class="title" v-else v-text="$t('header.title')"></h1>
             </router-link>
         </div>
         <div class="navbar-end mr-5">
@@ -151,6 +152,13 @@ export default {
         },
     },
     methods: {
+        showStaging(){
+            if (!location.hostname.includes('nametool')){
+                return true
+            } else {
+                return false
+            }
+        },
         onLogout() {
             this.$store.dispatch('auth/logout');
             this.$router.push({ name: 'index' });

@@ -1,5 +1,12 @@
 <template>
     <div class="form">
+        <div class="columns">
+            <div v-if="isNeedHybridFormula && isEdit && !isPublished" class="column text-right">
+                <h1 class="title has-text-grey-light">
+                    {{ $t('common.draft') }}
+                </h1>
+            </div>
+        </div>
         <div class="hidden">
             <taxon-name-label v-if="targetRank && targetNomenclature" ref="preGenerateName" :taxon-name="{
                 properties: {
@@ -111,16 +118,18 @@
                 </div>
             </div>
 
-            <div v-if="isNeedHybridFormula && isEdit && !isPublished" class="column is-2 text-right">
-                <h1 class="title has-text-grey-light">
-                    {{ $t('common.draft') }}
-                </h1>
-            </div>
-            <div v-else-if="isEdit && !isPublished" class="column is-7 text-right">
-                <h1 class="title has-text-grey-light">
-                    {{ $t('common.draft') }}
-                </h1>
-            </div>
+            <!-- <div class="columns"> -->
+                <!-- <div v-if="isNeedHybridFormula && isEdit && !isPublished" class="column text-right">
+                    <h1 class="title has-text-grey-light">
+                        {{ $t('common.draft') }}
+                    </h1>
+                </div> -->
+                <div v-if="!isNeedHybridFormula && isEdit && !isPublished" class="column is-5 text-right">
+                    <h1 class="title has-text-grey-light">
+                        {{ $t('common.draft') }}
+                    </h1>
+                </div>
+            <!-- </div> -->
 
         </div>
         <div v-if="isNeedApprovedList" class="columns">
