@@ -129,19 +129,18 @@ class UsageImportService
                     $usageReferences = explode("|", $usageReferences);
 
                     foreach ($usageReferences as $usageReference){
-                        $usageReference = str_replace(["(", ")"], '',  $usageReference);
-                        $usageReference = explode(",", $usageReference);
+                        // 用str_getcsv 可以用逗號分隔 並忽略雙引號內的逗號
+                        $usageReference = str_getcsv($usageReference);
+
                         if (count($usageReference)==4){
                             // 要確定reference_id有沒有存在在資料庫中
                             if (Reference::find($usageReference[0])->get()){
 
-                                // ([reference_id],[show_page],[figure],[pro_parte])
                                 $now_usage = array();
                                 $now_usage['reference_id'] = $usageReference[0];
 
                                 if ($usageReference[1] !== ''){
                                     $now_usage['show_page'] = $usageReference[1];
-
                                 }
 
                                 if ($usageReference[2] !== ''){
@@ -211,13 +210,16 @@ class UsageImportService
 
                     if (isset($val)){
 
-                        $vals = explode(':', $val);
+                        $parts = explode(':', $val, 2);
+                        $firstPart = $parts[0];
+                        $secondPart = $parts[1] ?? '';
 
-                        if (count($vals)==2){
+
+                        if (isset($firstPart) && isset($secondPart)){
 
                             $now_dict = array();
-                            $now_dict['field_name_en'] = $vals[0];
-                            $now_dict['field_value'] = $vals[1];
+                            $now_dict['field_name_en'] = $firstPart ;
+                            $now_dict['field_value'] = $secondPart;
                             
                             array_push($customFields, $now_dict);
                         } else {
