@@ -244,7 +244,7 @@ class MyNamespaceUsageController extends Controller
                     };
 
                     $new_name_c = Array(
-                        "area" =>  $name_c['area'],
+                        "area" =>  $name_c['area'] ?? '',
                         "name" =>  trim(str_replace("\x00", "", $name)),
                         "language" =>  $name_c['language']
                     );
@@ -393,7 +393,7 @@ class MyNamespaceUsageController extends Controller
                         };
     
                         $new_name_c = Array(
-                            "area" =>  $name_c['area'],
+                            "area" =>  $name_c['area'] ?? '',
                             "name" =>  trim(str_replace("\x00", "", $name)),
                             "language" =>  $name_c['language']
                         );

@@ -600,7 +600,7 @@ export default {
 
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'usages.xlsx';
+            a.download = this.model.title + '.xlsx';
             a.click();
             window.URL.revokeObjectURL(url);
 

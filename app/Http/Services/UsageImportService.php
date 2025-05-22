@@ -302,7 +302,7 @@ class UsageImportService
 
                         if ($isMatch){
                             array_push($commonName, [
-                                'area' => $matches[3],
+                                'area' => $matches[3] ?? '',
                                 'name' => trim(str_replace("\x00", "", $name)),
                                 'language' => $this->languageMapping[$matches[2]],
                             ]);
@@ -310,7 +310,7 @@ class UsageImportService
                     }
                 }
 
-                $isInTaiwan = !isset($isInTaiwan) || $isInTaiwan === '' ? null : (int)$isInTaiwan;
+                // $isInTaiwan = !isset($isInTaiwan) || $isInTaiwan === '' ? null : (int)$isInTaiwan;
 
                 $properties = [
                     'is_fossil' => !isset($isFossil) || $isFossil === '' ? null : ($isFossil ? 1 : 0),
@@ -318,7 +318,7 @@ class UsageImportService
                     'is_brackish' => !isset($isBrackish) || $isBrackish === '' ? null : ($isBrackish ? 1 : 0),
                     'common_names' => !isset($commonName) ? null : ($commonName),
                     'note' => !isset($note) ? null : $note,
-                    'is_in_taiwan' => $isInTaiwan,
+                    'is_in_taiwan' => !isset($isInTaiwan) || $isInTaiwan === '' ? null : (int)$isInTaiwan,
                     'is_freshwater' => !isset($isFreshwater) || $isFreshwater === '' ? null : ($isFreshwater ? 1 : 0),
                     'is_terrestrial' => !isset($isTerrestrial) || $isTerrestrial === '' ? null : ($isTerrestrial ? 1 : 0),
                     'additional_fields' => $additionalFields,
@@ -330,7 +330,7 @@ class UsageImportService
                 if ($isInTaiwan == 1) {
                     $properties['is_endemic'] = !isset($isEndemic) || $isEndemic === '' ? null : ($isEndemic ? 1 : 0);
                     $properties['distribution_in_tw'] = $distributionTw;
-                    $properties['is_new_record'] = !isset($isNewRecord) || $isNewRecord === '' ? null : ($isNewRecord ? true : false);
+                    $properties['is_new_record'] = !isset($isNewRecord) || $isNewRecord === '' ? null : ($isNewRecord ? 1 : 0);
                     $properties['alien_type'] = $alienType;
                     $properties['alien_status_note'] = $alienStatusNote;
                 }

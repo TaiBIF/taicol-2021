@@ -35,7 +35,9 @@
                                 <label class="label">
                                     <input id="isNewRecord" v-model="isNewRecord"
                                            class="checkbox"
-                                           type="checkbox"/>
+                                           type="checkbox"
+                                           :true-value="1"
+                                           :false-value="0"/>
                                     <span v-text="$t('usage.newRecord')"/>
                                     <tooltip>
                                         <i class="fas fa-info-circle"></i>
