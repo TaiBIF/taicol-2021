@@ -106,17 +106,18 @@ export default {
                 } else if (message) {
                 
                     openNotify(message, 'is-danger');
-                    this.closeModal();
+                    // this.closeModal();
 
                 } else {
                     openNotify('無對應學名使用，請重新設置篩選條件', 'is-danger');
-                    this.closeModal();
+                    // this.closeModal();
                 }
                 this.isLoading = false;
 
+            }).catch(({ errors }) => {
+                console.log(errors);
+                this.isLoading = false;
             });
-
-
     },
     computed: {
         ...mapGetters({
@@ -179,7 +180,6 @@ export default {
                     this.$router.push({ name: 'namespace-usage-list', params: { id: data } });
                 } else {
                     openNotify('發生錯誤，請通知管理員', 'is-danger');
-
                 }
 
                 this.isUsageLoading = false;

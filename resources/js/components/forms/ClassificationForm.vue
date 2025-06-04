@@ -60,6 +60,17 @@
             </div>
         </div>
 
+        <div class="columns" v-if="returnTargetMethod(targetMethod)==3">
+            <div class="column is-3">
+                <p class="label">{{ $t('classification.filterBioGroup') }}</p>
+            </div>
+            <div class="column is-4">
+                <div class="field">
+                    <bio-group-select v-model="targetBioGroup" :disabled="isReferenceAdded"/>
+                </div>
+            </div>
+        </div>
+
         <div v-if="returnTargetMethod(targetMethod)" class="columns">
             <div class="column is-3">
                 <label class="label" v-text="$t('classification.onlyInTaiwan')"></label>
@@ -146,6 +157,7 @@ import CountySelect from '../selects/CountySelect.vue';
 import MunicipalitySelect from '../selects/MunicipalitySelect.vue';
 import ReferenceSelect from '../selects/ReferenceSelect.vue';
 import HigherTaxaSelect from '../selects/HigherTaxaSelect.vue';
+import BioGroupSelect from '../selects/BioGroupSelect.vue';
 import Tooltip from '../Tooltip.vue';
 import Loading from '../Loading.vue';
 
@@ -160,6 +172,7 @@ export default {
             targetMethod: null,
             targetCounty: null,
             targetMunicipality: null,
+            targetBioGroup: null,
             higherTaxa: [],
             excludeCultured: 'yes',
             onlyInTaiwan: 'yes',
@@ -180,6 +193,7 @@ export default {
                 taxonIds: this.taxonIds,
                 county: this.targetCounty?.name,
                 municipality: this.targetMunicipality?.name,
+                bioGroup: this.targetBioGroup?.name,
 
             }
         },
@@ -206,6 +220,7 @@ export default {
             this.errors = {},
             this.targetMethod = null,
             this.targetCounty = null,
+            this.targetBioGroup = null,
             this.higherTaxa = [],
             this.excludeCultured = 'yes',
             this.onlyInTaiwan = 'yes'
@@ -220,7 +235,7 @@ export default {
         },
         onAddRelatedReferences(){
 
-            if ((this.targetMethod.id == 1 && this.higherTaxa.length > 0 )|| (this.targetMethod.id == 3 && this.targetCounty != null )){
+            if ((this.targetMethod.id == 1 && this.higherTaxa.length > 0 )|| (this.targetMethod.id == 3 && this.targetCounty != null && this.targetBioGroup != null )){
                 this.isLoading = true;
                 this.axios.get('/selected-references', {
                     params: {
@@ -229,6 +244,7 @@ export default {
                         excludeCultured: this.excludeCultured,
                         county: this.targetCounty?.name,
                         municipality: this.targetMunicipality?.name,
+                        bioGroup: this.targetBioGroup?.name,
                         method: this.targetMethod.id
                     },
                 })
@@ -256,7 +272,7 @@ export default {
                     }
                 });
             } else {
-                openNotify('請設置篩選條件', 'is-danger');
+                openNotify('請完整設置篩選條件', 'is-danger');
                 this.isLoading = false;
             }
 
@@ -275,6 +291,7 @@ export default {
         GeneralInput,
         ReferenceSelect,
         HigherTaxaSelect,
+        BioGroupSelect,
         Tooltip,
         Loading
     },

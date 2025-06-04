@@ -832,6 +832,7 @@ class ReferenceUsageController extends Controller
         $county = $request->get('county');
         $municipality = $request->get('municipality');
         $higherTaxa = $request->get('higherTaxa');
+        $bioGroup = $request->get('bioGroup');
 
         if (isset($higherTaxa))
             $higherTaxa = implode(",", $higherTaxa); 
@@ -845,7 +846,7 @@ class ReferenceUsageController extends Controller
         // method == 3 > Region 串接 TBIA API
 
         else if ( $method == 3)
-            $url = "https://dev.tbiadata.tw/get_taxon_by_region?only_in_taiwan=" . $onlyInTaiwan . '&exclude_cultured=' . $excludeCultured . '&county=' . urlencode($county) . '&municipality=' . urlencode($municipality) ;
+            $url = "https://dev.tbiadata.tw/get_taxon_by_region?only_in_taiwan=" . $onlyInTaiwan . '&exclude_cultured=' . $excludeCultured . '&county=' . urlencode($county) . '&municipality=' . urlencode($municipality) . '&bioGroup=' . urlencode($bioGroup) ;
 
         $curl = curl_init();
         curl_setopt($curl, CURLOPT_URL, $url);
