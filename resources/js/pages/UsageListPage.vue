@@ -25,33 +25,38 @@
                             'has-text-white': isShowTaxonName,
                             'has-background-grey-lighter': !isShowTaxonName
                         }"
-                    class="button is-small"
+                    class="button namespace-button"
                     v-on:click="onToggleTaxonNameField"
                 >
                     {{ $t('namespace.insertNameCard') }}
                 </button>
-                <button v-if="configs.type === 'namespace'" class="button is-small"
+                <button v-if="configs.type === 'namespace'" class="button namespace-button"
                         v-on:click="onOpenPropertiesModal">
                     {{ $t('namespace.setAllProperties') }}
                 </button>
                 <button v-if="configs.type === 'namespace'"
-                        class="button is-small"
+                        class="button namespace-button"
                         v-on:click="onImportUsages">
                     {{ $t('namespace.importUsages') }}
                 </button>
                 <button v-if="configs.type === 'namespace'"
-                        class="button is-small"
+                        class="button namespace-button"
                         v-on:click="onExportUsages">
                     {{ $t('namespace.exportUsages') }}
                 </button>
-                <button class="button is-small"
+                <button class="button namespace-button"
                         v-on:click="onToggleSimpleForm">
                     {{ isListSimple ? $t('namespace.listDetail') : $t('namespace.listSimple') }}
                 </button>
                 <button v-if="configs.type === 'namespace'"
-                        class="button is-small"
+                        class="button namespace-button"
                         v-on:click="onDownloadDoc">
                     {{ $t('namespace.downloadDoc') }}
+                </button>
+                <button v-if="configs.type === 'namespace'"
+                        class="button namespace-button"
+                        v-on:click="onClearNamespace">
+                    {{ $t('namespace.clearNamespace') }}
                 </button>
             </div>
         </div>
@@ -116,7 +121,8 @@
                                 <span class="handle"></span>
                                 <div class="usage-content" v-on:dblclick="() => goUsage(usage)">
                                     <status-dot :status="usage.status"/>
-                                    <template v-if="usage.nameRemark && !isListSimple && !usage.isTitle">
+                                    <!-- <template v-if="usage.nameRemark && !isListSimple && !usage.isTitle"> -->
+                                    <template v-if="!isListSimple && !usage.isTitle">
                                         <p v-if="usage.customNameRemark"
                                         v-html="usage.customNameRemark"/>
                                         <usage-preview
@@ -690,6 +696,14 @@ export default {
             const container = document.getElementById('usage-content-container');
             downloadUsageHtmlToDoc(container, this.model.title);
         },
+        onClearNamespace(){
+            this.$store.commit('openModal', {
+                component: () => import('../components/modals/ClearUsageModal.vue'),
+                props: {
+                    id: parseInt(this.$route.params.id)
+                }
+            });
+        },
         onSubmit: _.debounce(function () {
             const { id } = this.$route.params;
             this.isLoading = true;
@@ -889,5 +903,9 @@ export default {
             display: inline;
         }
     }
+}
+
+.namespace-button {
+    font-size: 0.9rem;
 }
 </style>

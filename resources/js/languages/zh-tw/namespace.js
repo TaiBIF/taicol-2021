@@ -14,6 +14,8 @@ export default {
     },
 
     downloadDoc: '下載 Word 檔',
+    clearNamespace: '清空名錄',
+    clearNamespaceInfo: '清空名錄後將無法復原，請確認是否仍要清空？',
     importUsages: '匯入分類群',
     exportUsages: '匯出分類群',
     add: '加入',

@@ -3,7 +3,7 @@
         <div class="columns">
             <div class="column is-12">
                 <i class="fas fa-info-circle"></i>
-                說明:本功能用於文戲發表前，讓使用者快速整理、建立自己的分類觀，包含彙整資料庫中已有之相關分類群、相關文獻的學名使用，也可透過外部API以地區篩選分類群等，使用者可選擇納入或不納入非存在於臺灣的分類群，也可選擇要納入哪些文獻分類觀等，本工具會依照納入的文獻優先性決定學名有效、無效等，產出名錄後匯入到「我的名錄」供使用者後續編輯。
+                {{ $t(`classification.info`) }}
             </div>
         </div>
         <div class="columns">
@@ -30,7 +30,7 @@
                     <template v-slot:body>
                         <div class="fit-content">
                             <template  class="w-[100px]">
-                                最高可選擇階層到科
+                                {{ $t(`classification.familyInfo`) }}
                             </template>
                         </div>
                     </template>
@@ -93,7 +93,7 @@
                         <template v-slot:body>
                             <div class="w-[200px]">
                                 <template>
-                                    僅能納入具有學名使用的文獻
+                                {{ $t(`classification.referenceInfo`) }}
                                 </template>
                             </div>
                         </template>

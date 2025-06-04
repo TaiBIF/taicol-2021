@@ -549,11 +549,9 @@ class MyNamespaceUsageController extends Controller
         try {
             $namespace = new MyNamespace();
             $namespace->title = $request->get('title');
-            $namespace->type = 1; // 預設為純名錄
+            $namespace->type = 0; // 預設為分類研究
 
             $request->user()->namespaces()->save($namespace);
-
-
 
             // 存 edit log
             $importLog = new ImportChecklistLog();
@@ -697,4 +695,13 @@ class MyNamespaceUsageController extends Controller
         TmpNamespaceUsage::where('tmp_checklist_id', $tmpChecklistId)->delete();
     }
 
+    public function clear(Request $request, $namespaceId)
+    {
+        // 清除底下的usage
+        MyNamespaceUsage::where('namespace_id', $namespaceId)
+                        ->delete();
+
+        return response([
+        ]);
+    }
 }

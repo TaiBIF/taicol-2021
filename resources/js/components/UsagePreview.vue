@@ -41,7 +41,6 @@
         <template v-if="commonNames.length">
             <span class="ml-2">{{ commonNames.map(item => item.name).join(', ')  }}</span>
         </template>
-
     </p>
 </template>
 <script>

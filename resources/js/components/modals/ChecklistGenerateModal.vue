@@ -30,6 +30,7 @@
                                 </span>
                                 <usage-preview
                                     ref="nameRemark"
+                                    :indications="getIndications(usage.properties.indications)"
                                     :is-simple="true"
                                     :per-usages="usage.perUsages"
                                     :status="usage.status"
@@ -65,6 +66,7 @@ import Loading from '../Loading.vue';
 import { mapGetters } from 'vuex';
 import UsagePreview from '../UsagePreview.vue';
 import { openNotify } from '../../utils';
+import indications from '../selects/map/indications';
 
 export default {
     props: {
@@ -95,18 +97,21 @@ export default {
                     method: this.form.targetMethod.id
                 },
             })
-            .then(({ data: { data } }) => {
+            .then(({ data: { data, message } }) => {
 
                 if (data !== null){
 
                     this.tmpChecklistId = data;
                     this.loadUsages(data);
+                } else if (message) {
+                
+                    openNotify(message, 'is-danger');
+                    this.closeModal();
+
                 } else {
                     openNotify('無對應學名使用，請重新設置篩選條件', 'is-danger');
                     this.closeModal();
                 }
-
-
                 this.isLoading = false;
 
             });
@@ -124,6 +129,11 @@ export default {
 
     },
     methods: {
+        getIndications(indicationArray) {
+            return indicationArray?.map(
+                (abbreviation) => indications.find((i) => i.abbreviation === abbreviation),
+            ).filter(Boolean);
+        },
         checkIfIndent(status) {
             if (status !== 'accepted') {
                 return true
@@ -163,17 +173,18 @@ export default {
                 municipality: this.form.targetMunicipality?.name
             })
             .then(({ data: { data } }) => {
-                if (data !== null){
 
+               if (data != null)  {
                     this.closeModal();
                     this.$router.push({ name: 'namespace-usage-list', params: { id: data } });
                 } else {
                     openNotify('發生錯誤，請通知管理員', 'is-danger');
+
                 }
 
                 this.isUsageLoading = false;
 
-            });
+            })
 
 
     },

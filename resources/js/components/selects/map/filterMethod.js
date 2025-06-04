@@ -3,7 +3,7 @@ export default [
         id: 1,
         name: 'Higher Taxa',
         display: {
-            'en-us': 'Higher Taxa',
+            'en-us': 'Filter by Higher Taxa',
             'zh-tw': '選擇較高分類群',
         }
     },
@@ -11,7 +11,7 @@ export default [
         id: 2,
         name: 'References',
         display: {
-            'en-us': 'References',
+            'en-us': 'Filter by Reference',
             'zh-tw': '選擇納入文獻',
         },
     },
@@ -19,7 +19,7 @@ export default [
         id: 3,
         name: 'Region',
         display: {
-            'en-us': 'Region',
+            'en-us': 'Filter by Region',
             'zh-tw': '選擇地區',
         },
     },

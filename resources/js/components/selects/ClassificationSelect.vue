@@ -9,10 +9,13 @@
               v-on:input="onUpdateValue"
     >
         <template v-slot:selected-option="{ option }">
-            {{ option.display['zh-tw'] }}
+            
+            {{ $i18n.locale() === 'zh-tw' ?
+                option.display['zh-tw'] : option.display['en-us']  }}
         </template>
         <template v-slot:option="{ option }">
-            {{ option.display['zh-tw'] }}
+            {{ $i18n.locale() === 'zh-tw' ?
+                option.display['zh-tw'] : option.display['en-us']  }}
         </template>
     </t-select>
 </template>

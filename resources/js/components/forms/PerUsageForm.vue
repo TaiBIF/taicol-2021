@@ -26,30 +26,8 @@
                         </div>
                     </div>
                 </div>
-                <div class="columns">
-                    <div class="column">
-                        <div class="field">
-                            <label class="label">{{ $t('usage.proParteNote') }}</label>
-                            <pro-parte-select v-model="perUsage.proParteType"/>
-                            <div class="mt-[1rem]">
-                                <label class="label" :class="{ 'is-marked': requiresInput }">{{ $t('usage.proParteTextNote') }}</label>
-                                <general-input 
-                                    v-model="perUsage.proParteText"
-                                    type="text"
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
             <div class="column">
-                <div class="columns">
-                    <div class="field">
-                        <label class="label">{{ $t('taxonName.nameInReference') }}</label>
-                        <general-input v-model="perUsage.nameInReference"
-                                    :errors="errors[`perUsages${index}.customNameRemark`]"/>
-                    </div>
-                </div>
                 <div class="columns">
                     <div class="field">
                         <label class="label">{{ $t('reference.showPage') }}</label>
@@ -59,9 +37,29 @@
                 </div>
                 <div class="columns">
                     <div class="field">
-                        <label class="label">{{ $t('reference.figure') }}</label>
+                        <label class="label label-margin">{{ $t('reference.figure') }}</label>
                         <general-input v-model="perUsage.figure"
                                         :errors="errors[`perUsages${index}Figure`]"/>
+                    </div>
+                </div>
+                <div class="columns">
+                    <div class="field">
+                        <label class="label label-margin">{{ $t('taxonName.nameInReference') }}</label>
+                        <general-input v-model="perUsage.nameInReference"
+                                    :errors="errors[`perUsages${index}.customNameRemark`]"/>
+                    </div>
+                </div>
+                <div class="columns">
+                    <div class="field">
+                        <label class="label label-margin">{{ $t('usage.proParteNote') }}</label>
+                        <pro-parte-select v-model="perUsage.proParteType"/>
+                        <div>
+                            <label class="label label-margin" :class="{ 'is-marked': requiresInput }">{{ $t('usage.proParteTextNote') }}</label>
+                            <general-input 
+                                v-model="perUsage.proParteText"
+                                type="text"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -119,3 +117,8 @@ export default {
     components: { SimpleReferenceView, ReferenceSelect, GeneralInput, ProParteSelect },
 };
 </script>
+<style lang="scss">
+.label-margin {
+    margin-top: 0.5rem;
+}
+</style>

@@ -14,6 +14,8 @@ export default {
     },
 
     downloadDoc: 'Download Word',
+    clearNamespace: 'Clear',
+    clearNamespaceInfo: 'Once the namespace is cleared, it cannot be restored. Are you sure you want to proceed?',
     importUsages: 'Import Usages',
     exportUsages: 'Export Usages',
     add: 'Add',

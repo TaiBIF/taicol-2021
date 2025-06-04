@@ -4,6 +4,11 @@
             <div class="py-3 flex items-center">
                     <p class="ml-3 font-bold text-3xl inline">{{ $t('reference.create') }}</p>
             </div>
+            <button :class="{'is-loading': isLoading}"
+                    class="button ml-3 button-margin"
+                    v-on:click="() => onFetchDOIReference(true)"
+                    v-text="$t('reference.doiImport')"/>
+
             <not-found-view v-if="formStatus === $c.PAGE_IS_NOTFOUND"/>
             <reference-form v-else-if="formStatus === $c.PAGE_IS_SUCCESS"
                             ref="form"
@@ -14,12 +19,6 @@
             <loading v-else-if="formStatus === $c.PAGE_IS_LOADING"/>
         </div>
         <div class="form-footer flex">
-            <div class="flex gap-2 grow">
-                <button :class="{'is-loading': isLoading}"
-                        class="button"
-                        v-on:click="() => onFetchDOIReference(true)"
-                        v-text="$t('reference.doiImport')"/>
-            </div>
             <div class="flex gap-2 justify-end">
                 <button class="button m-0"
                             v-on:click="goBack()"
@@ -166,5 +165,10 @@ export default {
 .content-h-limit {
     height: calc(100vh - #{$navbar-height} - 7rem);
     max-height: calc(100vh - #{$navbar-height} - 7rem);
+}
+
+.button-margin {
+   margin-top: .25rem;
+   margin-bottom: 1rem;
 }
 </style>

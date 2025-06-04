@@ -14,7 +14,8 @@
                     <template v-for="(usage, index) in usages">
                         <div :class="{'is-title': usage.isTitle}" class="usage-row">
                             <div :class="{'is-indent': usage.isIndent}" class="usage-content">
-                                <template v-if="usage.nameRemark && !isSimple && !usage.isTitle">
+                                <!-- <template v-if="usage.nameRemark && !isSimple && !usage.isTitle"> -->
+                                <template v-if="!isSimple && !usage.isTitle">
                                     <span v-if="usage.customNameRemark"
                                           v-html="usage.customNameRemark"/>
                                     <usage-preview

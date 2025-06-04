@@ -92,6 +92,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('namespaces/{namespaceId}/usages', 'MyNamespaceUsageController@index');
     Route::post('namespaces/{namespaceId}/usages', 'MyNamespaceUsageController@store');
+
+    Route::post('namespaces/{namespaceId}/clear', 'MyNamespaceUsageController@clear');
+
+
     Route::get('namespaces/{namespaceId}/usages/{usageId}', 'MyNamespaceUsageController@show');
     Route::put('namespaces/{namespaceId}/usages/{usageId}', 'MyNamespaceUsageController@update');
     Route::put('namespaces/{namespaceId}/usages-properties', 'MyNamespaceUsageController@updateUsageProperties');
