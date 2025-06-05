@@ -30,7 +30,7 @@
                     <template v-slot:body>
                         <div class="fit-content">
                             <template  class="w-[100px]">
-                                {{ $t(`classification.familyInfo`) }}
+                                {{ $t(`classification.rankInfo`) }}
                             </template>
                         </div>
                     </template>

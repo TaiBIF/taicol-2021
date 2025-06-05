@@ -18,8 +18,8 @@
             />
             <loading v-else-if="formStatus === $c.PAGE_IS_LOADING"/>
         </div>
-        <div class="form-footer flex">
-            <div class="flex gap-2 justify-end">
+        <div class="form-footer flex justify-end">
+            <div class="flex gap-2">
                 <button class="button m-0"
                             v-on:click="goBack()"
                             v-text="$t('common.goBack')"/>
