@@ -2,7 +2,9 @@
     <div class="container flex flex-col h-full py-6 mb-4">
         <div class="box h-full content-h-limit overflow-y-auto">
             <div class="py-3 flex items-center">
-                    <p class="ml-3 font-bold text-3xl inline">{{ $t('reference.create') }}</p>
+                    <p v-if="!presetData" class="ml-3 font-bold text-3xl inline">{{ $t('reference.create') }}</p>
+                    <p v-else class="ml-3 font-bold text-3xl inline" v-text="$t('reference.edit')"/>
+
             </div>
             <button :class="{'is-loading': isLoading}"
                     class="button ml-3 button-margin"

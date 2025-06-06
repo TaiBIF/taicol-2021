@@ -7,8 +7,10 @@
                 </h1>
             </div>
         </div>
-        <div class="hidden">
-            <taxon-name-label v-if="targetRank && targetNomenclature" ref="preGenerateName" :taxon-name="{
+
+        <div class="flex items-center">
+            <p class="ml-3 subtitle inline has-text-grey-light">
+            <taxon-name-full-label v-if="targetRank && targetNomenclature" ref="preGenerateName" :taxon-name="{
                 properties: {
                     latinName,
                     latinGenus,
@@ -20,10 +22,10 @@
                 nomenclature: targetNomenclature,
                 authors: targetAuthors,
                 exAuthors: targetExAuthors,
-                species,
-                speciesLayers,
+                        species,
+                        speciesLayers,
                 originalTaxonName: targetOriginalTaxonName,
-            }"/>
+            }"/></p>
         </div>
 
         <div class="columns">
@@ -512,6 +514,7 @@ import sexs from '../selects/map/sexs';
 import { authorNameStringFactory, factory } from '../../utils/preview/person';
 import ReferenceContainer from '../ReferenceContainer.vue';
 import TaxonNameLabel from '../views/TaxonNameLabel.vue';
+import TaxonNameFullLabel from '../views/TaxonNameFullLabel';
 import Tooltip from '../Tooltip.vue';
 import GenomeCompositionSelect from '../selects/genomeCompositionSelect.vue';
 
@@ -885,6 +888,7 @@ export default {
     components: {
         GenomeCompositionSelect,
         TaxonNameLabel,
+        TaxonNameFullLabel,
         ReferenceContainer,
         SimpleReferenceView,
         ReferenceSelect,

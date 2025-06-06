@@ -42,6 +42,15 @@ const routes = [
         },
     },
     {
+        name: 'help',
+        path: 'help',
+        component: () => import(/* webpackChunkName: "help" */'./pages/HelpPage.vue'),
+        meta: {
+            backgroundColor: 'grey',
+            allowAnonymous: true,
+        },
+    },
+    {
         name: 'index',
         path: '',
         component: Index,

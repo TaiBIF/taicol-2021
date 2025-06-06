@@ -43,7 +43,8 @@
                                     v-text="$t('header.collectionMenu.buildClassification')"/>
                     </div>
                 </a>
-
+                <router-link :to="{name: 'help'} " class="navbar-item"
+                             v-text="$t('header.help')"/>
                 <a v-if="user.roleId === 1"
                    :class="{active: showAdminSubMenu}"
                    class="navbar-item"

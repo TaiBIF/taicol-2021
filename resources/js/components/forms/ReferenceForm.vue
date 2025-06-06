@@ -33,6 +33,10 @@
                 <div class="field">
                     <label class="label is-marked" v-text="$t('reference.type')"/>
                     <reference-type-select v-model="reference.type" :errors="errors['type']"/>
+                    <div class="preview-box mt-[1rem] has-text-grey-light">
+                        <p class="font-bold" v-if="previewData.title != ':Error:' && previewData.title != 'undefined'">{{ previewData.title }}</p>
+                        <p v-if="previewData.subtitle != ':Error:' && previewData.subtitle != 'undefined'">{{ previewData.subtitle }}</p>
+                    </div>
                 </div>
             </div>
             <div class="column is-3" v-if="reference.type === ReferenceTypes.TYPE_CHECKLIST">
@@ -383,7 +387,7 @@ export default {
                     bookTitleAbbreviation: (
                         this.reference.properties.bookTitleAbbreviation
                         || this.targetBook?.titleAbbreviation
-                        || this.targetBook.title
+                        || this.targetBook?.title
                     ),
                 },
                 isPublish: this.isPublish || true,
@@ -434,6 +438,7 @@ export default {
                 properties: {
                     bookTitle: '',
                     bookTitleAbbreviation: this.presetData?.properties?.bookTitleAbbreviation,
+                    volume: ''
                 },
             },
         };

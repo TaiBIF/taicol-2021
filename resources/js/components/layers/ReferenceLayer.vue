@@ -4,9 +4,13 @@
             <button class="button is-text is-inline" v-on:click="close">
                 <i class="fas fa-times"></i>
             </button>
-            <p class="title is-inline" v-text="$t('reference.create')"/>
+            <p class="title is-inline" v-text="$t('reference.create')"/>            
+            <br>
+                <button class="button button-margin"
+                        v-on:click="() => onFetchDOIReference()"
+                        v-text="$t('reference.doiImport')"/>
         </div>
-        <div class="layer-content box">
+        <div class="layer-content box box-margin">
             <reference-form ref="form"
                             :errors="errors"
                             :on-after-submit="onAfterFormSubmit"/>
@@ -31,9 +35,9 @@
                     v-on:click="onSubmit(true)"
                     v-text="$t('common.save')">
             </button>
-            <button class="button float-right"
+            <!-- <button class="button float-right"
                     v-on:click="() => onFetchDOIReference()"
-                    v-text="$t('reference.doiImport')"/>
+                    v-text="$t('reference.doiImport')"/> -->
         </div>
     </div>
 </template>
@@ -117,5 +121,14 @@ export default {
         width: 100%;
         padding: 1.5rem;
     }
+
+    .button-margin {
+        margin: 0.5rem;
+    }
+
+    .box-margin {
+        margin-top: 0.5rem;
+    }
+
 }
 </style>

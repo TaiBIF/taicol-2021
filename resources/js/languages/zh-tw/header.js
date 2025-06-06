@@ -17,6 +17,7 @@ export default {
         taxonNameImport: '學名匯入',
         usageCheck: '學名使用檢查',
     },
+    help: '支援',
     collectionMenu: {
         myCollection: '我的收藏',
         myNamespaces: '我的名錄',

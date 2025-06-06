@@ -17,6 +17,7 @@ export default {
         taxonNameImport: 'Taxon Name Import',
         usageCheck: 'Usage Check',
     },
+    help: 'Help',
     collectionMenu: {
         myCollection: 'My Collection',
         myNamespaces: 'My Checklist',
