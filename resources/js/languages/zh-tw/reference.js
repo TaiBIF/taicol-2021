@@ -75,6 +75,7 @@ export default {
     // in taxon name edit page
     figure: '圖號',
     showPage: '學名出現頁碼',
+    description: '文獻引用備註',
 
     // DOI import
     fillInByDoi: '填入',

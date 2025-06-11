@@ -49,7 +49,7 @@ export default (references, names = comboLast) => {
             }
         }
 
-        return [
+        let result = [
             [
                 title,
                 page,
@@ -57,5 +57,22 @@ export default (references, names = comboLast) => {
             ref.nameInReference ? `'${ref.nameInReference}'` : '',
             ref.proParte ? proParte : '',
         ].filter(Boolean).join(', ');
+
+        if (ref.description) {
+            result += ' (' + ref.description + ')';  // 用空格接在最後
+        }
+
+        return result;
+
+
+        // return [
+        //     [
+        //         title,
+        //         page,
+        //     ].filter(Boolean).join(': '),
+        //     ref.nameInReference ? `'${ref.nameInReference}'` : '',
+        //     ref.proParte ? proParte : '',
+        // ].filter(Boolean).join(', ');
+
     }).filter(Boolean).join('; ');
 };

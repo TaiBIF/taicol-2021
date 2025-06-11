@@ -75,6 +75,7 @@ export default {
     // in taxon name edit page
     figure: 'Figure/Plate',
     showPage: 'Name Showing Page',
+    description: 'Description',
 
     // DOI import
     fillInByDoi: 'Import',

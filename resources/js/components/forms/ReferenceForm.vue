@@ -438,7 +438,12 @@ export default {
                 properties: {
                     bookTitle: '',
                     bookTitleAbbreviation: this.presetData?.properties?.bookTitleAbbreviation,
-                    volume: ''
+                    articleTitle: '',
+                    volume: '',
+                    issue: '',
+                    pagesRange: '',
+                    doi: '',
+                    url: '',
                 },
             },
         };

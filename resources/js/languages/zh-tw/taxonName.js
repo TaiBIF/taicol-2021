@@ -80,5 +80,6 @@ export default {
     name: '學名',
     viewTaxonName: '檢視學名',
     commonNameSaved: '建立俗名成功',
+    commonNameInfo: '本功能是用於尚未有文獻列出俗名時，以加入背景資料庫的方式讓使用者建議俗名，因此透過本方式建立俗名的優先性會較低，且不會顯示來源。因此，如俗名有文獻來源，請優先將該俗名建立於該文獻的學名使用之中，以確保俗名的優先性與來源資訊紀錄。<b>注意：</b>加入後的俗名無法自行刪除或修改，如發現輸入錯誤請聯絡管理員<a href="mailto:catalogueoflife.taiwan@gmail.com">catalogueoflife.taiwan@gmail.com</a>。'
 
 };

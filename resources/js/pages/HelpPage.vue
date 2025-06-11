@@ -8,9 +8,7 @@
                     <template>
                         <iframe
                             src="https://hackmd.io/@taicol/S10zLU5nyg"
-                            width="100%"
-                            height="600"
-                            frameborder="0">
+                            style="width: 100%; height: calc(100vh - 4rem); border: none;">
                         </iframe>
                     </template>
                 </div>

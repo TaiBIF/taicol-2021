@@ -24,11 +24,12 @@
                                 <simple-reference-view v-bind="perUsage.target"/>
                             </div>
                         </div>
+                        
                     </div>
                 </div>
             </div>
             <div class="column">
-                <div class="columns">
+                <!-- <div class="columns">
                     <div class="field">
                         <label class="label">{{ $t('reference.showPage') }}</label>
                         <general-input v-model="perUsage.showPage"
@@ -41,7 +42,7 @@
                         <general-input v-model="perUsage.figure"
                                         :errors="errors[`perUsages${index}Figure`]"/>
                     </div>
-                </div>
+                </div> -->
                 <div class="columns">
                     <div class="field">
                         <label class="label label-margin">{{ $t('taxonName.nameInReference') }}</label>
@@ -62,6 +63,35 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+        <div class="columns is-small column-margin-bottom">
+             <div class="column is-4">
+                <div class="columns column-margin-left">
+                    <div class="field">
+                        <label class="label label-margin">{{ $t('reference.showPage') }}</label>
+                        <general-input v-model="perUsage.showPage"
+                                        :errors="errors[`perUsages${index}ShowPage`]"/>
+                    </div>
+                </div>
+            </div>
+            <div class="column is-4">
+                <div class="columns">
+                    <div class="field">
+                        <label class="label label-margin">{{ $t('reference.figure') }}</label>
+                        <general-input v-model="perUsage.figure"
+                                        :errors="errors[`perUsages${index}Figure`]"/>
+                    </div>
+                </div> 
+            </div>
+            <div class="column is-4">
+                <div class="columns">
+                    <div class="field">
+                        <label class="label label-margin">{{ $t('reference.description') }}</label>
+                        <general-input v-model="perUsage.description"
+                                        :errors="errors[`perUsages${index}Description`]"/>
+                    </div>
+                </div> 
             </div>
         </div>
     </div>
@@ -120,5 +150,11 @@ export default {
 <style lang="scss">
 .label-margin {
     margin-top: 0.5rem;
+}
+.column-margin-left {
+    margin-left: 0.75rem;
+}
+.column-margin-bottom {
+    margin-bottom: 0.75rem !important;
 }
 </style>

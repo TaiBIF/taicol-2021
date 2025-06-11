@@ -5,7 +5,6 @@
                 <div class="py-3 flex items-center">
                     <p v-if="!presetData" class="ml-3 font-bold text-3xl inline">{{ $t('taxonName.create') }}</p>
                     <p v-else class="ml-3 font-bold text-3xl inline">{{ $t('taxonName.edit') }}</p>
-
                 </div>
                 <taxon-name-form ref="form"
                                  :on-after-submit="onAfterFormSubmit"

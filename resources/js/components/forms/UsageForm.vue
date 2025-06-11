@@ -346,6 +346,7 @@ export default {
                     isFromPublishedRef: r.isFromPublishedRef,
                     proParteType: r.proParteType,
                     proParteText: r.proParteText,
+                    description: r.description,
                 })),
                 typeSpecimens: cloneDeep(this.typeSpecimens).map((t) => ({
                     ...t,
@@ -449,6 +450,7 @@ export default {
                     proParte: false,
                     proParteType: '',
                     proParteText: '',
+                    description: '',
                     isFromPublishedRef: true,
                 });
                 this.perUsagesIsSimpleViews.push(true);
@@ -478,6 +480,7 @@ export default {
                             proParte: element.proParte,
                             proParteType: element.proParteType,
                             proParteText: element.proParteText,
+                            description: element.description,
                             isFromPublishedRef: element.isFromPublishedRef,
                         });
                         this.perUsagesIsSimpleViews.push(true);
@@ -524,6 +527,7 @@ export default {
                 proParte: false,
                 proParteText: '',
                 proParteType: '',
+                description: '',
                 isFromPublishedRef: false,
             });
             this.perUsagesIsSimpleViews.push(false);

@@ -1004,8 +1004,8 @@ class ReferenceUsageController extends Controller
                 // 彙整usage 並顯示簡易異名表 -> 串接TaiCOL API
                 
                 // API URL
-                // $usage_url = "https://api-staging.taicol.tw/generate_checklist";
-                $usage_url = "http://127.0.0.1:8005/generate_checklist";
+                $usage_url = "https://api-staging.taicol.tw/generate_checklist";
+                // $usage_url = "http://127.0.0.1:8005/generate_checklist";
 
                 // 初始化 cURL
                 $ch = curl_init($usage_url);

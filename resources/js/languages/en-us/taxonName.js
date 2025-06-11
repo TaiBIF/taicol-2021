@@ -92,5 +92,5 @@ export default {
     name: 'Name',
     viewTaxonName: 'View Taxon Name',
     commonNameSaved: 'Common name created',
-
+    commonNameInfo: 'This function is intended for cases where no published literature has yet recorded a common name. It allows users to suggest common names by adding them to a background database. As a result, common names created through this method will have lower priority and will not display a source reference. Therefore, if a common name is documented in a publication, it should be added under the scientific name usage of that reference to ensure both its priority and proper source attribution. <b>Note:</b> Once submitted, common names cannot be edited or deleted by users. If you identify an error, please contact the administrator at <a href="mailto:catalogueoflife.taiwan@gmail.com">catalogueoflife.taiwan@gmail.com</a>.'
 };

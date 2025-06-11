@@ -9,7 +9,7 @@ export default {
     insertSuggestedWriting: '複製建議寫法至此',
     appendReference: '增加文獻',
     proParteNote: '部分引用/排除',
-    proParteTextNote: '請填入底線內容',
+    proParteTextNote: '部分引用/排除自填文字',
     additionalData: '屬性資訊',
     isInTaiwan: '存在於臺灣？',
     isEndemic: '臺灣特有',

@@ -73,7 +73,16 @@ export default (references, names = comboAbbr) => {
             }
         }
 
-        return [
+        // return [
+        //     [
+        //         title,
+        //         ref.target?.publishYear,
+        //     ].filter(Boolean).join('. '),
+        //     ref.nameInReference ? `'${ref.nameInReference}'` : '',
+        //     ref.proParte ? proParte : '',
+        // ].filter(Boolean).join(', ');
+
+        let result = [
             [
                 title,
                 ref.target?.publishYear,
@@ -81,7 +90,12 @@ export default (references, names = comboAbbr) => {
             ref.nameInReference ? `'${ref.nameInReference}'` : '',
             ref.proParte ? proParte : '',
         ].filter(Boolean).join(', ');
-    })
-        .filter(Boolean)
-        .join('; ');
+
+        if (ref.description) {
+            result += ' (' + ref.description + ')';  // 用空格接在最後
+        }
+
+        return result;
+
+    }).filter(Boolean).join('; ');
 };
