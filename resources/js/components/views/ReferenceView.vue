@@ -373,13 +373,14 @@ export default {
 
 .cover {
     height: 120px;
-    box-shadow: $shadow;
+    // box-shadow: $shadow;
 
     img {
-        object-fit: cover;
+        // object-fit: cover;
+        height: 100%;
+        object-fit: scale-down;
         position: absolute;
         width: 100%;
-        height: 100%;
     }
 }
 

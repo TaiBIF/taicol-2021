@@ -413,7 +413,7 @@ export default {
                         || this.targetBook?.titleAbbreviation
                         || this.targetBook?.title),
                 },
-                image: this.reference.cover ?  getBase64(this.reference.cover) : null,
+                // image: this.reference.cover ?  getBase64(this.reference.cover) : null,
             };
 
             return {
@@ -506,12 +506,24 @@ export default {
                 this.reference.properties.bookTitleAbbreviation = '';
             }
         },
-        submit: debounce(function (isPublish) {
+        submit: debounce(async function (isPublish) {
+
+            // 等待 base64 編碼
+            const image = this.reference.cover
+                ? await getBase64(this.reference.cover)
+                : null;
+
+            const data = {
+                ...this.formData,
+                isPublish,
+                image,
+            };
 
             this.axios({
                 method: this.$route.name === 'reference-edit' ? 'PUT' : 'POST',
                 url: this.$route.name === 'reference-edit' ? `/references/${this.reference.id}` : '/references',
-                data: { ...this.formData, 'isPublish': isPublish },
+                data
+                // data: { ...this.formData, 'isPublish': isPublish },
             }).then(({ data }) => {
                 this.onAfterSubmit(data);
                 openNotify(this.$t('common.saveSuccess'));
