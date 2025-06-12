@@ -241,7 +241,7 @@
 
 
 
-            <div class="column is-3" v-show="!isUsageFormSimple">
+            <div class="column is-3 parent" v-show="!isUsageFormSimple">
                 <div class="field">
                     <label class="label">{{ $t('usage.usageSuggestion') }}</label>
                     <div>
@@ -257,7 +257,6 @@
                     </div>
                 </div>
                 <br/>
-                <br/>
                 <div class="field">
                     <label class="label">
                         {{ $t('usage.writingInReference') }}
@@ -267,7 +266,7 @@
                             <i class="fas fa-arrow-down"></i>&nbsp;{{ $t('usage.insertSuggestedWriting') }}
                         </button>
                     </label>
-                    <div class="control">
+                    <div class="control mt-1">
                         <textarea v-model="customNameRemark" class="textarea"></textarea>
                     </div>
                 </div>
@@ -660,4 +659,20 @@ export default {
 }
 
 
+
+.parent {
+  height: 100%; /* 父層可用百分比或固定值 */
+//   width: 300px;
+//   border: 1px solid #ccc;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.parent textarea {
+  resize: vertical;
+  max-height: 100%; 
+  height: 100%; 
+  box-sizing: border-box;
+}
 </style>

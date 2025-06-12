@@ -4,7 +4,7 @@
             <breadcrumb></breadcrumb>
         </div>
         <div :class="{'flex-row': showMyFavorite}" class="flex">
-            <div v-if="showMyFavorite" class="w-2/5">
+            <div v-if="showMyFavorite" class="w-30">
                 <div class="panel flex items-center mt-12">
                     <my-favorite-panel/>
                 </div>
@@ -89,5 +89,10 @@ export default defineComponent({
 <style lang="scss" scoped>
 .panel {
     height: calc(100vh - #{$navbar-height} - #{$breadcrumb-height} - 4rem);
+}
+
+
+.w-30 {
+    width: 30%
 }
 </style>

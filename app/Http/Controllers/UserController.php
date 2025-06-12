@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Mail\Email;
+use Illuminate\Support\Facades\Mail;
 
 class UserController extends Controller
 {
@@ -123,6 +125,11 @@ class UserController extends Controller
             $user->save();
 
             DB::commit();
+
+            # 寄信給管理員通知需要開通
+            $adminEmails = User::where('role_id',1)->where('status',1)->pluck('email')->toArray();
+            Mail::bcc($adminEmails)->send(new Email('有新的註冊帳號', '[TaiCOL] 註冊帳號通知', '管理員'));
+
         } catch (Exception $e) {
             DB::rollBack();
             return response([
@@ -142,12 +149,22 @@ class UserController extends Controller
 
         $user = User::find($id);
 
+        $originalStatus =  $user->status;
+
         if (!$user) {
-            throw ValidationException::withMessages();
+            throw ValidationException::withMessages([]);
         }
 
         $user->status = (int) $request->get('status');
         $user->save();
+
+        # 原本不是開通 後來變成開通 寄信通知
+
+        if ($originalStatus != 1 && $user->status == 1){
+            Mail::to($user->email)->send(new Email('您在物種學名管理工具註冊的帳號已經開通，歡迎使用～<br>
+                                                    Your user account in TaiCOL - Name Tool has been activated. Welcome.<br>
+                                                    https://nametool.taicol.tw/', 'TaiCOL物種學名管理工具 - 註冊帳號開通通知',$user->name));
+         }
 
         return response([]);
     }
@@ -180,8 +197,10 @@ class UserController extends Controller
 
         $user = User::find($id);
 
+        $originalStatus =  $user->status;
+
         if (!$user) {
-            throw ValidationException::withMessages();
+            throw ValidationException::withMessages([]);
         }
 
         $password = $request->get('password');
@@ -195,6 +214,14 @@ class UserController extends Controller
         }
 
         $user->save();
+
+        # 原本不是開通 後來變成開通 寄信通知
+
+        if ($originalStatus != 1 && $user->status == 1){
+            Mail::to($user->email)->send(new Email('您在物種學名管理工具註冊的帳號已經開通，歡迎使用～<br>
+                                                    Your user account in TaiCOL - Name Tool has been activated. Welcome.<br>
+                                                    https://nametool.taicol.tw/','TaiCOL物種學名管理工具 - 註冊帳號開通通知', $user->name));
+         }
 
         return response(['user' => $user]);
     }
