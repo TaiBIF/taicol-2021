@@ -17,7 +17,8 @@
                     latinGenus,
                     latinS1,
                     isHybrid,
-                    authorsName: (!targetAuthors || !targetExAuthors || !targetOriginalTaxonName) ? authorsName : undefined
+                    authorsName: (!targetAuthors || !targetExAuthors || !targetOriginalTaxonName) ? authorsName : undefined,
+                    initialYear
                 },
                 rank: targetRank,
                 hybridParents,

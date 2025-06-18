@@ -811,7 +811,7 @@ class ReferenceUsageController extends Controller
         $keyword = $request->get('keyword');
 
         // 預設包含栽培豢養 & 不僅限台灣物種
-        $url = "https:/web-staging.taicol.tw/get_autocomplete_taxon_by_solr?from=nametool&with_cultured=on&keyword=" . urlencode($keyword);
+        $url = "https:/taicol.tw/get_autocomplete_taxon_by_solr?from=nametool&with_cultured=on&keyword=" . urlencode($keyword);
 
         $curl = curl_init();
         curl_setopt($curl, CURLOPT_URL, $url);
@@ -840,13 +840,13 @@ class ReferenceUsageController extends Controller
         // method == 1 -> higherTaxa 串接 TaiCOL API
 
         if ( $method == 1)
-            $url = "https://api-staging.taicol.tw/get_taxon_by_higher?only_in_taiwan=" . $onlyInTaiwan . '&exclude_cultured=' . $excludeCultured . '&higher_taxa=' . $higherTaxa ;
+            $url = "https://taicol.tw/get_taxon_by_higher?only_in_taiwan=" . $onlyInTaiwan . '&exclude_cultured=' . $excludeCultured . '&higher_taxa=' . $higherTaxa ;
             // $url = "http://127.0.0.1:8005/get_taxon_by_higher?only_in_taiwan=" . $onlyInTaiwan . '&exclude_cultured=' . $excludeCultured . '&higher_taxa=' . $higherTaxa ;
 
         // method == 3 > Region 串接 TBIA API
 
         else if ( $method == 3)
-            $url = "https://dev.tbiadata.tw/get_taxon_by_region?only_in_taiwan=" . $onlyInTaiwan . '&exclude_cultured=' . $excludeCultured . '&county=' . urlencode($county) . '&municipality=' . urlencode($municipality) . '&bioGroup=' . urlencode($bioGroup) ;
+            $url = "https://tbiadata.tw/get_taxon_by_region?only_in_taiwan=" . $onlyInTaiwan . '&exclude_cultured=' . $excludeCultured . '&county=' . urlencode($county) . '&municipality=' . urlencode($municipality) . '&bioGroup=' . urlencode($bioGroup) ;
 
         $curl = curl_init();
         curl_setopt($curl, CURLOPT_URL, $url);
@@ -856,7 +856,7 @@ class ReferenceUsageController extends Controller
         $jsonResult = json_decode($result, true);
 
 
-        if (count($jsonResult) > 0){
+        if (is_array($jsonResult) && count($jsonResult) > 0) {
 
             // 這邊要取得對應的usage 並回傳reference object 供使用者在前端選擇要哪些
 
@@ -1004,7 +1004,7 @@ class ReferenceUsageController extends Controller
                 // 彙整usage 並顯示簡易異名表 -> 串接TaiCOL API
                 
                 // API URL
-                $usage_url = "https://api-staging.taicol.tw/generate_checklist";
+                $usage_url = "https://taicol.tw/generate_checklist";
                 // $usage_url = "http://127.0.0.1:8005/generate_checklist";
 
                 // 初始化 cURL

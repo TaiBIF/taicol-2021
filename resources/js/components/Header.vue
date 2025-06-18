@@ -125,6 +125,7 @@
                         <a class="item" v-on:click="changeLang('en-us')" v-text="'English'"/>
                     </div>
                 </a>
+                <router-link :to="{name: 'help'} " class="navbar-item" v-text="$t('header.help')"/>
                 <router-link :to="{name: 'login'}" class="navbar-item" v-text="$t('header.menu.login')"/>
             </template>
         </div>
