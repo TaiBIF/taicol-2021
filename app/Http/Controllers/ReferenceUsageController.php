@@ -840,7 +840,7 @@ class ReferenceUsageController extends Controller
         // method == 1 -> higherTaxa 串接 TaiCOL API
 
         if ( $method == 1)
-            $url = "https://taicol.tw/get_taxon_by_higher?only_in_taiwan=" . $onlyInTaiwan . '&exclude_cultured=' . $excludeCultured . '&higher_taxa=' . $higherTaxa ;
+            $url = "https://api.taicol.tw/get_taxon_by_higher?only_in_taiwan=" . $onlyInTaiwan . '&exclude_cultured=' . $excludeCultured . '&higher_taxa=' . $higherTaxa ;
             // $url = "http://127.0.0.1:8005/get_taxon_by_higher?only_in_taiwan=" . $onlyInTaiwan . '&exclude_cultured=' . $excludeCultured . '&higher_taxa=' . $higherTaxa ;
 
         // method == 3 > Region 串接 TBIA API
@@ -855,8 +855,7 @@ class ReferenceUsageController extends Controller
         $result = curl_exec($curl);
         $jsonResult = json_decode($result, true);
 
-
-        if (is_array($jsonResult) && count($jsonResult) > 0) {
+        if (count($jsonResult) > 0) {
 
             // 這邊要取得對應的usage 並回傳reference object 供使用者在前端選擇要哪些
 
@@ -1003,9 +1002,15 @@ class ReferenceUsageController extends Controller
  
                 // 彙整usage 並顯示簡易異名表 -> 串接TaiCOL API
                 
-                // API URL
-                $usage_url = "https://taicol.tw/generate_checklist";
-                // $usage_url = "http://127.0.0.1:8005/generate_checklist";
+                // API URL -> 要判斷在哪裡 不然會出錯
+
+                if (str_contains(env('APP_URL'),'staging')) {
+                    $usage_url = "https://api-staging.taicol.tw/generate_checklist";
+                } else if (str_contains(env('APP_URL'),'nametool')){
+                    $usage_url = "https://api.taicol.tw/generate_checklist";
+                } else {
+                    $usage_url = "http://127.0.0.1:8005/generate_checklist";
+                }
 
                 // 初始化 cURL
                 $ch = curl_init($usage_url);
