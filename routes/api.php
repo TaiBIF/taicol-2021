@@ -49,7 +49,7 @@ Route::get('taxon-names/{id}/per_usages', 'TaxonNameController@per_usages');
 Route::get('taxon-names/{id}/type-specimens', 'TaxonNameController@typeSpecimens');
 Route::get('/doi', 'ReferenceController@fetchDoi');
 Route::get('/higher-taxa', 'ReferenceUsageController@higherTaxa');
-Route::get('/selected-usages', 'ReferenceUsageController@usages');
+Route::post('/selected-usages', 'ReferenceUsageController@usages');
 Route::get('/tmp-usages', 'ReferenceUsageController@tmpUsages');
 Route::get('/selected-references', 'ReferenceUsageController@references');
 

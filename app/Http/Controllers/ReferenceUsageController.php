@@ -796,7 +796,7 @@ class ReferenceUsageController extends Controller
             ]);
         } else {
 
-            Log::info(   $jsonResult );
+            Log::info($jsonResult);
 
             return response()->json([
                 'message' => 'fail'
@@ -896,17 +896,15 @@ class ReferenceUsageController extends Controller
 
         $tmp_checklist_id = null;
 
-        $method = $request->get('method');
-        $onlyInTaiwan = $request->get('onlyInTaiwan');
-        $excludeCultured = $request->get('excludeCultured');
-        $taxonIds = $request->get('taxonIds');
-
+        $method = $request->post('method');
+        $onlyInTaiwan = $request->post('only_in_taiwan');
+        $excludeCultured = $request->post('exclude_cultured');
+        $taxonIds = $request->post('taxon_ids');
 
         // 如果是使用較高分類群納入 不應該加這個參數才對 不然會只有回傳高階層的那個taxon
-        // $higherTaxa = $request->get('higherTaxa'); 
 
         // 取得要納入的文獻list
-        $references = $request->get('references',[]);
+        $references = $request->post('references',[]);
 
         if (count($references)> 0){
 
@@ -987,16 +985,12 @@ class ReferenceUsageController extends Controller
 
             $usages = $usageQuery->get();
 
-
             if (count($usages) > 1000){
-
 
                 return response()->json([
                     'data' => $tmp_checklist_id,
                     'message' => '篩選分類群超過1000筆學名使用的限制，請縮小分類群的範圍，如欲建立更多分類群，請分批建立。'
                 ]);
-
-
 
             } else if (count($usages)>0){
  

@@ -87,15 +87,13 @@ export default {
     },
     mounted() {
         
-        this.axios.get('/selected-usages', {
-                params: {
-                    references: this.form.referenceIds,
-                    onlyInTaiwan: this.form.onlyInTaiwan,
-                    excludeCultured: this.form.excludeCultured,
-                    higherTaxa: this.form.higherTaxa.map((f) => (f.taxonId)),
-                    taxonIds: this.form.taxonIds,
-                    method: this.form.targetMethod.id
-                },
+        this.axios.post('/selected-usages', {
+                references: this.form.referenceIds,
+                onlyInTaiwan: this.form.onlyInTaiwan,
+                excludeCultured: this.form.excludeCultured,
+                higherTaxa: this.form.higherTaxa.map((f) => (f.taxonId)),
+                taxonIds: this.form.taxonIds,
+                method: this.form.targetMethod.id
             })
             .then(({ data: { data, message } }) => {
 
