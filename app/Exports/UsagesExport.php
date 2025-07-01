@@ -7,6 +7,7 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use App\MyNamespaceUsage;
 use App\TaxonName;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class UsagesExport implements FromArray, WithHeadings
 {
@@ -47,7 +48,7 @@ class UsagesExport implements FromArray, WithHeadings
     public function array(): array
     {
 
-        $usages = MyNamespaceUsage::where('namespace_id', $this->namespaceId)->get()->map(function ($usage) {
+        $usages = MyNamespaceUsage::where('namespace_id', $this->namespaceId)->orderBy('group')->orderBy('order')->get()->map(function ($usage) {
 
             $taxonName = TaxonName::find($usage->taxon_name_id);
             $parentTaxonName = TaxonName::find($usage->parent_taxon_name_id);
@@ -94,10 +95,19 @@ class UsagesExport implements FromArray, WithHeadings
                 }
             }
 
-            if (isset($usage->name_remark)) {
+            // if (isset($usage->name_remark)) {
+            if ($usage->name_remark !== null && $usage->name_remark !== '') {
                 $usage_references_text = html_entity_decode(strip_tags($usage->name_remark));
-            }
+            } else {
 
+                $usage_references_text = DB::table('api_names')
+                ->selectRaw("CONCAT(formatted_name, IF(name_author IS NOT NULL AND name_author != '', CONCAT(' ', name_author), '')) AS full_name")
+                ->where('taxon_name_id', $usage->taxon_name_id)
+                ->value('full_name');  // 只回傳這個欄位的值
+
+                $usage_references_text = html_entity_decode(strip_tags($usage_references_text));
+            }
+            
             return [
                 $taxonName->nomenclature->name,
                 $taxonName->rank->key,

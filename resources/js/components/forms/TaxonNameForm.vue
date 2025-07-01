@@ -10,7 +10,7 @@
 
         <div class="flex items-center">
             <p class="ml-3 subtitle inline has-text-grey-light">
-            <taxon-name-full-label v-if="targetRank && targetNomenclature" ref="preGenerateName" 
+            <taxon-name-full-label v-if="targetRank && targetNomenclature"
             :taxon-name="{
                 properties: {
                     latinName,
@@ -30,6 +30,24 @@
                 originalTaxonName: targetOriginalTaxonName,
                 publishYear: publishYear,
             }"/></p>
+        <div class="hidden">
+            <taxon-name-label v-if="targetRank && targetNomenclature" ref="preGenerateName" :taxon-name="{
+                properties: {
+                    latinName,
+                    latinGenus,
+                    latinS1,
+                    isHybrid,
+                },
+                rank: targetRank,
+                hybridParents,
+                nomenclature: targetNomenclature,
+                authors: targetAuthors,
+                exAuthors: targetExAuthors,
+                species,
+                speciesLayers,
+                originalTaxonName: targetOriginalTaxonName,
+            }"/>
+        </div>
         </div>
 
         <div class="columns">
