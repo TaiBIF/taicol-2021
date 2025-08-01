@@ -129,7 +129,7 @@ class TaxonNameService
         }
 
         // 種(含)以下(模式標本)
-        if ($rank->order > $rankSpecies->order) {
+        if ($rank->order >= $rankSpecies->order) {
             $typeSpecimens = $this->formatTypeSpecimens($data['type_specimens'] ?? []);
         } else { // 種以上(模式學名)
             $properties['type_name'] = $data['type_name'] ?? '';
