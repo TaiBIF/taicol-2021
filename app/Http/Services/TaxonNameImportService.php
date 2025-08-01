@@ -236,7 +236,9 @@ class TaxonNameImportService
                     ] : [],
                 );
 
-        $service->getAndUpdateObjectGroups();
+        if ($nomenclature != 4) {
+            $service->getAndUpdateObjectGroups();
+        }
 
         return  $taxonName;
     }

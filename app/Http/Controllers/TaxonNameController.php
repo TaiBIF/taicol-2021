@@ -990,7 +990,11 @@ class TaxonNameController extends Controller
         );
 
         $taxonNameLogService->saveUpdateLog($taxonName, $authorIds, $exAuthorIds);
-        $service->getAndUpdateObjectGroups();
+
+        if ($nomenclatureId != 4) {
+            $service->getAndUpdateObjectGroups();
+        }
+
 
         return response([
             'id' => $taxonName->id,
@@ -1075,7 +1079,9 @@ class TaxonNameController extends Controller
         $logService = new LogService();
         $logService->writeCreateLog(LogType::TAXON_NAME, $taxonName->id);
 
-        $service->getAndUpdateObjectGroups();
+        if ($nomenclatureId != 4) {
+            $service->getAndUpdateObjectGroups();
+        }
 
         return response(TaxonNameCollection::collection([$taxonName])[0]);
     }
