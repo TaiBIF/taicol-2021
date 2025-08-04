@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\User;
+use App\MyNamespace;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -245,4 +246,27 @@ class UserController extends Controller
             'last_page' => $users->lastPage(),
         ]);
     }
+
+
+    public function namespaces(Request $request)
+    {
+
+        $email = $request->get('email');
+        $user = User::where('email', $email)->first();
+
+        if (!$user) {
+            return response([
+                'namespaces' => [],
+            ]);        
+        }
+
+        $namespaces = MyNamespace::where('user_id', $user->id)
+            ->pluck('id');
+
+        return response([
+            'namespaces' => $namespaces,
+        ]);
+    }
+
+
 }

@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/login', 'UserController@login');
 Route::post('/users', 'UserController@store');
+Route::get('/user/namespace', 'UserController@namespaces');
 
 Route::get('/search', 'SearchController@index');
 Route::get('/search-references', 'SearchController@reference');
