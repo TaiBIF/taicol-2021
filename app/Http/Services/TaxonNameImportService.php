@@ -45,15 +45,30 @@ class TaxonNameImportService
         $count = 0;
 
         try {
+
+
+            $min_taxon_name_id = 0;
+
             for ($row = 2; $row <= $this->sheet->getHighestRow(); $row++) {
+
 
                 $taxonName = $this->saveTaxonName($row);
 
                 $logService = new LogService();
                 $logService->writeImportLog(LogType::TAXON_NAME, $taxonName->id);
                 $count++;
+                if ($row == 2){
+                    $min_taxon_name_id = $taxonName->id;
+                }
             }
+
             DB::commit();
+
+            // 要commit之後才呼叫API
+
+            $nameUpdateAPI = env('TAICOL_API_ROOT') . '/update/name?min_taxon_name_id=' . $min_taxon_name_id;
+            $resp = file_get_contents($nameUpdateAPI);
+
         } catch (\Exception $e) {
             DB::rollBack();
             $this->throwError($row, $e->getMessage());
@@ -239,7 +254,6 @@ class TaxonNameImportService
         if ($nomenclature != 4) {
             $service->getAndUpdateObjectGroups();
         }
-
         return  $taxonName;
     }
 

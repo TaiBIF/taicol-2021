@@ -995,6 +995,13 @@ class TaxonNameController extends Controller
             $service->getAndUpdateObjectGroups();
         }
 
+        if ($rankId == 47) {
+            $nameUpdateAPI = env('TAICOL_API_ROOT') . '/update/name?hybrid_name_id=' . $id;
+        } else {
+            $nameUpdateAPI = env('TAICOL_API_ROOT') . '/update/name?name_id=' . $id;
+        }
+
+        $resp = file_get_contents($nameUpdateAPI);
 
         return response([
             'id' => $taxonName->id,
@@ -1082,6 +1089,13 @@ class TaxonNameController extends Controller
         if ($nomenclatureId != 4) {
             $service->getAndUpdateObjectGroups();
         }
+
+        if ($rankId == 47) {
+            $nameUpdateAPI = env('TAICOL_API_ROOT') . '/update/name?hybrid_name_id=' . $taxonName->id;
+        } else {
+            $nameUpdateAPI = env('TAICOL_API_ROOT') . '/update/name?name_id=' . $taxonName->id;
+        }
+        $resp = file_get_contents($nameUpdateAPI);
 
         return response(TaxonNameCollection::collection([$taxonName])[0]);
     }

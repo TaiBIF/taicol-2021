@@ -156,6 +156,12 @@ class PersonController extends Controller
         $logService = new LogService();
         $logService->writeUpdateLog(LogType::PERSON, $person);
 
+        $nameUpdateAPI = env('TAICOL_API_ROOT') . '/update/name?person_id=' . $id;
+        $resp = file_get_contents($nameUpdateAPI);
+
+        $referenceUpdateAPI = env('TAICOL_API_ROOT') . '/update/reference?person_id=' . $id;
+        $resp = file_get_contents($referenceUpdateAPI);
+
         return response()->json([
             'id' => $person->id
         ]);

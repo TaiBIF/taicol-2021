@@ -76,7 +76,7 @@ export default {
     referenceInformation: '文獻中屬性資料',
     goCompareReference: '前往異名表比較',
 
-    nameId: '學名編碼',
+    nameId: '學名編號',
     name: '學名',
     viewTaxonName: '檢視學名',
     commonNameSaved: '建立俗名成功',

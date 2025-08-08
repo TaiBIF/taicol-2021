@@ -455,7 +455,6 @@ class TaxonNameService
             );
         } else if ($taxonName->rank_id > 34 && $taxonName->rank_id < 47 && count($taxonName->properties['species_layers']) == 3 ){
 
-
             // 和自己同名
 
             array_push($autonymNameIds, ...TaxonName::where('nomenclature_id', '=' , $taxonName->nomenclature_id)
@@ -527,19 +526,7 @@ class TaxonNameService
         }
 
 
-
-
-
-
-        // $updatingNameIds = array_merge($updatingNameIds, $autonymNameIds);
-        // $updatingNameIds = array_unique($updatingNameIds);
-
-
         // 處理object_group
-
-        // foreach ($updatingNameIds as $updatingNameId){
-
-            // $nowUpdatingName = TaxonName::find($updatingNameId);
 
         $results = DB::select("
                 WITH RECURSIVE related_ids AS (
@@ -644,10 +631,6 @@ class TaxonNameService
 
         }
 
-
-        // $diff = array_merge(array_diff($objectNameIds, $originalObjectNameIds), array_diff($originalObjectNameIds, $objectNameIds)); 
-
-        
 
     }
     

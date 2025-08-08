@@ -49,13 +49,26 @@ class ReferenceImportService
         DB::beginTransaction();
 
         try {
+
+            $min_reference_id = 0;
+
             $count = 0;
             for ($row = 2; $row <= $this->sheet->getHighestRow(); $row++) {
-                $this->saveReference($row);
+                $reference = $this->saveReference($row);
                 $count++;
+                if ($row == 2){
+                    $min_reference_id = $reference->id;
+                }
             }
 
             DB::commit();
+
+            // 要commit之後才呼叫API
+
+            $referenceUpdateAPI = env('TAICOL_API_ROOT') . '/update/reference?min_reference_id=' . $min_reference_id;
+            $resp = file_get_contents($referenceUpdateAPI);
+
+
         } catch (\Exception $e) {
             DB::rollBack();
             $this->throwError($row, $e->getMessage() . $e->getTraceAsString());
@@ -287,6 +300,8 @@ class ReferenceImportService
 
         $logService = new LogService();
         $logService->writeImportLog(LogType::REFERENCE, $reference->id);
+        
+        return  $reference;
     }
 
     public function getErrorRows()

@@ -181,6 +181,10 @@ class ReferenceController extends Controller
 
             $referenceLogService->saveUpdateLog($reference, $authors);
             DB::commit();
+
+            $referenceUpdateAPI = env('TAICOL_API_ROOT') . '/update/reference?reference_id=' . $id;
+            $resp = file_get_contents($referenceUpdateAPI);
+
         } catch (Exception $e) {
             DB::rollback();
             Log::error("[reference update]: {$e->getMessage()}");
@@ -255,6 +259,10 @@ class ReferenceController extends Controller
             $logService = new LogService();
             $logService->writeCreateLog(LogType::REFERENCE, $newReference->id);
             DB::commit();
+
+            $referenceUpdateAPI = env('TAICOL_API_ROOT') . '/update/reference?reference_id=' . $newReference->id;
+            $resp = file_get_contents($referenceUpdateAPI);
+
         } catch (Exception $e) {
             DB::rollback();
             Log::error("[reference store]: {$e->getMessage()}");
