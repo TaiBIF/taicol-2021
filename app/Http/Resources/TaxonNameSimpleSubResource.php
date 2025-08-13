@@ -19,6 +19,8 @@ class TaxonNameSimpleSubResource extends JsonResource
         $speciesLayer = isset($this->properties['species_layers']) ? $this->properties['species_layers'] : [];
 
         $species = $this->properties['species_id'] ? TaxonName::find($this->properties['species_id']) : null;
+        $genusTaxonName = isset($this->properties['genus_taxon_name_id']) ? TaxonName::find($this->properties['genus_taxon_name_id']) : null;
+
         return [
             'id' => $this->id,
             'nomenclature' => $this->nomenclature,
@@ -30,6 +32,7 @@ class TaxonNameSimpleSubResource extends JsonResource
             'properties' => $this->properties,
             'publish_year' => $this->publish_year,
             'original_taxon_name' => $this->originalTaxonName ? new TaxonNameResource($this->originalTaxonName) : null,
+            'genus_taxon_name' => $genusTaxonName ? new TaxonNameSimpleSubResource($genusTaxonName) : null ,
             'hybrid_parents' => $this->hybridParents->map(function ($p) {
                 return TaxonNameCollection::collection([$p])[0];
             }),

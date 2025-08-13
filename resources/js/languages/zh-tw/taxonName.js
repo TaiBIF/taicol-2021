@@ -13,6 +13,7 @@ export default {
     nomenclature: '適用命名規約',
     nowNomenclature: '命名規約',
     kingdom: '界',
+    genus: '屬',
     name: '名',
     exAuthor: '前述者/提出此名者',
     exAuthorYear: '前述/提出此名年代',

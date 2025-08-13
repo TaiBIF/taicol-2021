@@ -13,6 +13,7 @@ export default {
     nomenclature: 'Code of Nomenclature',
     nowNomenclature: 'Nomenclature',
     kingdom: 'Kingdom',
+    genus: 'Genus',
     name: 'Name',
     exAuthor: 'Initial Author(s)',
     exAuthorYear: 'Initial Year',

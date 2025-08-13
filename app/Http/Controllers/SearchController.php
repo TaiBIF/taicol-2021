@@ -69,7 +69,7 @@ class SearchController extends Controller
 
         if ($type == 'taxon-names') {
 
-            $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
+            $replace_words = [' subgen. ', ' sect. ', ' subsect. ', ' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
             $keyword = preg_replace('/[+\-><\(\)~*\"\'@]/', '', $keyword);
             $keyword_wo_rank = str_replace($replace_words, ' ', $keyword);
 
@@ -350,7 +350,7 @@ class SearchController extends Controller
                     case $type === 'text' || $type === 'taxon-name':
                         $query->where(function ($query) use ($word) {
 
-                            $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
+                            $replace_words = [' subgen. ', ' sect. ', ' subsect. ', ' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
                             $word = preg_replace('/[+\-><\(\)~*\"\'@]/', '', $word);
                             $word_wo_rank = str_replace($replace_words, ' ', $word);
 

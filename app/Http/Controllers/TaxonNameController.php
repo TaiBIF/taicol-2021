@@ -58,7 +58,7 @@ class TaxonNameController extends Controller
             $keyword = trim(strtolower($request->get('keyword', '')));
             $keyword = preg_replace('/[+\-><\(\)~*\"\'@]/', '', $keyword);
 
-            $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
+            $replace_words = [' subgen. ', ' sect. ', ' subsect. ', ' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
             $keyword_wo_rank = str_replace($replace_words, ' ', $keyword);
 
             $queryA = TaxonName::selectRaw("'taxon_name' as n, id, name as title, search_name as search_title")
@@ -69,6 +69,10 @@ class TaxonNameController extends Controller
                         ->whereRaw("MATCH(search_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword_wo_rank*"])
                         ->orWhereRaw("MATCH(`name`) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"]);
                     });
+            
+            if ($request->get('only_plant_genus') == true){
+                $queryA->where('rank_id', 30)->where('nomenclature_id', 2);
+            }
 
             $queryB = Person::selectRaw("'person' as n, id, concat(last_name,', ',first_name,' ',middle_name) as title, concat(last_name,', ',first_name,' ',middle_name) as search_title")
                 ->whereRaw("MATCH(last_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"])
@@ -956,6 +960,7 @@ class TaxonNameController extends Controller
             'name' => $name,
             'formatted_authors' => $request->get('formatted_authors'),
             'original_taxon_name_id' => $request->get('original_taxon_name_id'),
+            'genus_taxon_name_id' => $request->get('genus_taxon_name_id'),
             'type_specimens' => $request->get('type_specimens'),
             'publish_year' => $request->get('publish_year'),
             'note' => $request->get('note'),
@@ -1050,6 +1055,7 @@ class TaxonNameController extends Controller
             'name' => $name,
             'formatted_authors' => $request->get('formatted_authors'),
             'original_taxon_name_id' => $request->get('original_taxon_name_id'),
+            'genus_taxon_name_id' => $request->get('genus_taxon_name_id'),
             'type_specimens' => $request->get('type_specimens'),
             'publish_year' => $request->get('publish_year'),
             'note' => $request->get('note'),

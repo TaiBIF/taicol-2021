@@ -59,17 +59,35 @@ export default {
             // 屬(包含)以上
             const latinName = t.rank.order < this.speciesRank.order ? t.properties.latinName : '';
 
-            let prevName = speciesName || latinName || [
-                t.properties.latinGenus,
-                t.properties.latinS1,
-            ]
-                .filter(Boolean)
-                .join(' ');
+            // subgen. / sect. / subsect.
+            // [_latinGenus_] [rank.abbreviation] [_latinS1_]  
+            let prevName;
+
+            if ([31, 32, 33].includes(t.rank.id)){
+                if (t.genusTaxonName){
+                prevName =  [
+                                    `_${t.genusTaxonName.name}_`,
+                                    t.rank.abbreviation,
+                                    `_${latinName}_`
+                                ]
+                                    .filter(Boolean)
+                                    .join(' ');
+                } else {
+                    prevName = `_${latinName}_`;
+                }
+            } else {
+                prevName = speciesName || latinName || [
+                    t.properties.latinGenus,
+                    t.properties.latinS1,
+                ]
+                    .filter(Boolean)
+                    .join(' ');
+            }
 
             // 雜交屬
             if (t.rank.order === this.genusRank.order && t.properties.isHybrid) {
                 prevName = `× _${t.properties.latinName}_`;
-            } else if (t.rank.order >= this.genusRank.order) { // 屬(包含)以下的學名斜體 (屬以上不斜題)
+            } else if (t.rank.order >= this.genusRank.order && ![31, 32, 33].includes(t.rank.id)) { // 屬(包含)以下的學名斜體 (屬以上不斜題)
                 prevName = prevName ? `_${prevName}_` : '';
             }
 

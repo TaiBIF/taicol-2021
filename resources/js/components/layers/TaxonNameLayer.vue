@@ -15,20 +15,24 @@
         </div>
         <div class="layer-footer">
             <button class="button"
+                    :class="{ 'is-loading': isLoading }"
                     v-on:click="close"
                     v-text="$t('common.close')">
             </button>
             <button class="button"
+                    :class="{ 'is-loading': isLoading }"
                     v-if="!isReferenceUsageEdit && !isPublished" 
                     v-on:click="onSubmit(false)"
                     v-text="$t('common.saveAsDraft')">
             </button>
             <button class="button"
+                    :class="{ 'is-loading': isLoading }"
                     v-if="!isPublished"
                     v-on:click="onSubmit(true)"
                     v-text="$t('common.publish')">
             </button>
             <button class="button"
+                    :class="{ 'is-loading': isLoading }"
                     v-if="isPublished"
                     v-on:click="onSubmit(true)"
                     v-text="$t('common.save')">
@@ -62,6 +66,7 @@ export default {
     data() {
         return {
             errors: {},
+            isLoading: false
         };
     },
     computed: {
@@ -81,10 +86,12 @@ export default {
             this.$emit('close');
         },
         onAfterFormSubmit(data) {
+            this.isLoading = false;
             this.onAfterSubmit(data);
             this.close();
         },
         onSubmit(isPublish) {
+            this.isLoading = true;
             this.$refs.form.submit(isPublish);
         },
     },

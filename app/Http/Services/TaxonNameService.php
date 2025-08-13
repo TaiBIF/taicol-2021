@@ -118,6 +118,12 @@ class TaxonNameService
 
         $properties = [];
 
+        // 屬名
+
+        if (isset($data['genus_taxon_name_id'])){
+            $properties['genus_taxon_name_id'] = $data['genus_taxon_name_id'];
+        }
+
         // 替代名 / 拼法相異學名
         if ($nomenclature->group !== 'virus') {
             if (isset($data['replacement_name'])){
@@ -170,7 +176,7 @@ class TaxonNameService
             $properties['host'] = $data['host'];
         }
 
-        $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
+        $replace_words = [' subgen. ', ' sect. ', ' subsect. ', ' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
 
         if ($rank->id==34 && $isHybrid == true && $nomenclature->group !== 'virus'){
 
@@ -305,7 +311,7 @@ class TaxonNameService
                 $search_name = "{$h1?->name} {$h2?->name}";
             }
 
-            $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × ','× '];
+            $replace_words = [' subgen. ', ' sect. ', ' subsect. ', ' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × ','× '];
             $search_name = str_replace($replace_words, ' ', $search_name);
             
             $search_name = str_replace(["(", ")",'-',"'",'"'], '',  $search_name);

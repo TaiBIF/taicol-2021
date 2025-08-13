@@ -48,6 +48,7 @@ class TaxonNameSelectCollection extends JsonResource
 
         //     $currentTaxonNameId = $currentTaxonName ? $currentTaxonName->parent_taxon_name_id : null;
         // }
+        $genusTaxonName = isset($this->properties['genus_taxon_name_id']) ? TaxonName::find($this->properties['genus_taxon_name_id']) : null;
 
         return [
             'id' => $this->id,
@@ -55,6 +56,7 @@ class TaxonNameSelectCollection extends JsonResource
             'nomenclature' => $this->nomenclature,
             'reference' => ReferenceCollection::collection([$this->reference])->first(),
             'original_taxon_name' => $this->originalTaxonName ? TaxonNameCollection::collection([$this->originalTaxonName])[0] : null,
+            'genus_taxon_name' => $genusTaxonName ? new TaxonNameSimpleSubResource($genusTaxonName) : null ,
             'rank' => $this->rank,
             'authors' => PersonCollection::collection($this->authors),
             'ex_authors' => PersonCollection::collection($this->exauthors),

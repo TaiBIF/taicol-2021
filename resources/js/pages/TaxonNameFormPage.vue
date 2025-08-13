@@ -67,7 +67,9 @@ export default {
         },
         onSubmit(isPublish) {
             this.isLoading = true;
-            this.$refs.form.submit(isPublish);
+            this.$refs.form.submit(isPublish).finally(() => {
+            this.isLoading = false; // 無論成功或失敗都會回復
+        });
         },
         onAfterFormSubmit(data) {
 

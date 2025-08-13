@@ -39,6 +39,11 @@ class TaxonNameRequest extends FormRequest
                     }
                 },
             ],
+            'genus_taxon_name_id' => [
+                Rule::requiredIf(
+                    in_array($rank->id, [31, 32, 33]) && $nomenclature->group === 'plant'
+                ),
+            ],
             'replacement_name' => [
                 'nullable',
                 'exists:taxon_names,id',

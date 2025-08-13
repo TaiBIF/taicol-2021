@@ -127,7 +127,7 @@ class ImportTaxonName extends Command
                 }
 
                 $species = TaxonName::where('name', "$latinGenus $latinS1")->first();
-                $replace_words = [' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × ','× '];
+                $replace_words = [' subgen. ', ' sect. ', ' subsect. ', ' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × ','× '];
 
                 $search_name = str_replace($replace_words, ' ', $name);
                 $search_name = str_replace(["(", ")",'-',"'",'"'], '',  $search_name);

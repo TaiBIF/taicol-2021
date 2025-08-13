@@ -29,6 +29,7 @@
                         speciesLayers,
                 originalTaxonName: targetOriginalTaxonName,
                 publishYear: publishYear,
+                genusTaxonName: targetGenus,
             }"/></p>
         <div class="hidden">
             <taxon-name-label v-if="targetRank && targetNomenclature" ref="preGenerateName" :taxon-name="{
@@ -46,6 +47,7 @@
                 species,
                 speciesLayers,
                 originalTaxonName: targetOriginalTaxonName,
+                genusTaxonName: targetGenus,
             }"/>
         </div>
         </div>
@@ -113,6 +115,21 @@
                                  :options="kingdomOptions"
                     />
                                  <!-- :disabled="isEdit" -->
+                </div>
+            </div>
+            <div class="column is-3" v-if="isNeedGenus">
+                <div class="field">
+                    <label class="label is-marked">
+                        {{ $t('taxonName.genus') }}
+                    </label>
+                    <!-- <taxon-name-select v-model="targetGenus"
+                        :errors="errors['genusTaxonNameId']"/> -->
+
+                    <genus-select ref="genusSelect"
+                                 v-model="targetGenus"
+                                 :disabled="isGeunsEditable"
+                                 :errors="errors.genusTaxonNameId"
+                    />
                 </div>
             </div>
 
@@ -526,6 +543,7 @@ import PersonSelect from '../selects/PersonSelect.vue';
 import NomenclatureSelect from '../selects/NomenclatureSelect.vue';
 import GeneralInput from '../GeneralInput.vue';
 import KingdomSelect from '../selects/KingdomSelect.vue';
+import GenusSelect from '../selects/GenusSelect.vue';
 import RankSelect from '../selects/RankSelect.vue';
 import TaxonNameSelect from '../selects/TaxonNameSelect.vue';
 import ReferenceSelect from '../selects/ReferenceSelect.vue';
@@ -574,6 +592,7 @@ export default {
                 .find((n) => n.id === presetData?.nomenclature.id)?.kingdoms ?? [],
             targetOriginalTaxonName: presetData?.originalTaxonName,
             targetKingdom: presetData?.kingdomTaxonName ?? null,
+            targetGenus: presetData?.genusTaxonName ?? null,
 
             latinName: presetData?.properties?.latinName || '',
             latinGenus: presetData?.properties?.latinGenus || '',
@@ -620,6 +639,9 @@ export default {
         }),
         isEdit() {
             return !!this.id;
+        },
+        isGeunsEditable() {
+            return !!this.presetData?.genusTaxonName;
         },
         isNeedHybridFormulaCheck() {
             if (this.targetNomenclature?.group === 'bacteria' || this.targetNomenclature?.group === 'virus') {
@@ -685,6 +707,9 @@ export default {
         },
         isUnderKingdom() {
             return this.targetRank?.order > this.kingdomRank.order;
+        },
+        isNeedGenus() {
+            return [31, 32, 33].includes(this.targetRank?.id) && this.targetNomenclature.id==2;
         },
         isOverSpeciesLayer() {
             if (this.targetNomenclature?.group === 'bacteria' && this.speciesLayers.length === 1) {
@@ -770,6 +795,7 @@ export default {
                 nomenclatureId: this.targetNomenclature?.id || null,
                 rankId: this.targetRank?.id || null,
                 kingdomTaxonNameId: this.targetKingdom?.id || null,
+                genusTaxonNameId: this.targetGenus?.id || null,
                 authors: this.targetAuthors.map((a) => a.id),
                 exAuthors: this.targetExAuthors.map((a) => a.id),
                 isApprovedList: this.isApprovedList || false,
@@ -880,19 +906,27 @@ export default {
         onRemoveTypeSpecimens(index){
             this.typeSpecimens.splice(index, 1);
         },
-        submit: debounce(function (isPublish) {
+        submit(isPublish) {
+            if (this.isSubmitting) return; // 已經送出就不再送
+
+            this.isSubmitting = true;
+
             const isEdit = !!this.presetData?.id;
-            this.axios({
+
+            return this.axios({
                 method: isEdit ? 'PUT' : 'POST',
                 url: isEdit ? `/taxon-names/${this.presetData.id}` : '/taxon-names',
                 data: { ...this.formData, 'isPublish': isPublish },
-            }).then(({ data }) => {
+            })
+            .then(({ data }) => {
                 this.onAfterSubmit(data);
                 openNotify(this.$t('common.saveSuccess'));
-            }).catch(({ status, message, errors }) => {
-                if (status === 409 &&  message === 'TaxonName exist') {
+                return data; // 回傳給父元件
+            })
+            .catch(({ status, message, errors }) => {
+                if (status === 409 && message === 'TaxonName exist') {
                     openNotify('學名已存在', 'is-danger');
-                } else if (status === 409 &&  message === 'TaxonName draft exist') {
+                } else if (status === 409 && message === 'TaxonName draft exist') {
                     this.$store.commit('openModal', {
                         component: () => import('../modals/ConfirmDraftModal.vue'),
                         props: {
@@ -904,8 +938,39 @@ export default {
                 } else {
                     this.errors = errors;
                 }
+                throw { status, message, errors }; // 讓父元件可以捕捉
+            })
+            .finally(() => {
+                this.isSubmitting = false; // 無論成功或失敗都解鎖
             });
-        }),
+        }
+
+        // submit: debounce(function (isPublish) {
+        //     const isEdit = !!this.presetData?.id;
+        //     this.axios({
+        //         method: isEdit ? 'PUT' : 'POST',
+        //         url: isEdit ? `/taxon-names/${this.presetData.id}` : '/taxon-names',
+        //         data: { ...this.formData, 'isPublish': isPublish },
+        //     }).then(({ data }) => {
+        //         this.onAfterSubmit(data);
+        //         openNotify(this.$t('common.saveSuccess'));
+        //     }).catch(({ status, message, errors }) => {
+        //         if (status === 409 &&  message === 'TaxonName exist') {
+        //             openNotify('學名已存在', 'is-danger');
+        //         } else if (status === 409 &&  message === 'TaxonName draft exist') {
+        //             this.$store.commit('openModal', {
+        //                 component: () => import('../modals/ConfirmDraftModal.vue'),
+        //                 props: {
+        //                     onLeave: () => {
+        //                         this.$store.commit('closeModal');
+        //                     },
+        //                 },
+        //             });
+        //         } else {
+        //             this.errors = errors;
+        //         }
+        //     });
+        // }),
     },
     components: {
         GenomeCompositionSelect,
@@ -921,7 +986,8 @@ export default {
         PersonSelect,
         TypeSpecimen,
         Tooltip,
-        KingdomSelect
+        KingdomSelect,
+        GenusSelect,
     },
 };
 </script>
