@@ -54,6 +54,9 @@ Route::post('/selected-usages', 'ReferenceUsageController@usages');
 Route::get('/tmp-usages', 'ReferenceUsageController@tmpUsages');
 Route::get('/selected-references', 'ReferenceUsageController@references');
 
+// biota
+Route::get('/biota', 'MyNamespaceUsageController@biota');
+
 // 檢查usage
 Route::get('/get-unchecked-usage', 'ReferenceUsageController@getUncheckedUsage');
 Route::get('/update-usage-check', 'ReferenceUsageController@updateUsageCheck');

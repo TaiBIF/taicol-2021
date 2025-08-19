@@ -16,6 +16,7 @@ use App\Reference;
 use App\TaxonName;
 use App\TmpNamespaceUsage;
 use App\ImportChecklistLog;
+use App\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -703,5 +704,130 @@ class MyNamespaceUsageController extends Controller
 
         return response([
         ]);
+    }
+
+    public function biota(Request $request)
+    {
+        // 給生物誌的API
+
+        $data = Array();
+        $namespaceId = $request->get('namespace_id');
+
+        $namespace = MyNamespace::find($namespaceId);
+        $data['title'] = $namespace->title;
+        $user = User::find($namespace->user_id);
+        $data['author'] = $user->name;
+        $data['updated_at'] = $namespace->updated_at;
+
+        $referencesString = ImportChecklistLog::where('namespace_id', $namespaceId)
+            ->value('included_references') ?? '';
+
+
+        $citations = [];
+        if ($referencesString) {
+            $references = array_filter(array_map('trim', explode(',', $referencesString)));
+            
+            if (!empty($references)) {
+                $citations = DB::table('api_citations')
+                    ->whereIn('reference_id', $references)
+                    ->select(
+                        'reference_id',
+                        DB::raw("CONCAT(author, ' ', content) as citation")
+                    )
+                    ->get()
+                    ->toArray();
+            }
+        }
+
+        $data['literatures'] = $citations;
+
+        // $group = [];
+
+        // $usages = MyNamespaceUsage::where('namespace_id', $namespaceId);
+
+        // 1. 取得所有相關的 namespace usages
+        $allUsages = DB::table('my_namespace_usages')
+            ->where('namespace_id', $namespaceId)
+            ->get();
+
+        // 2. 分離 accepted 和 synonyms
+        $acceptedUsages = $allUsages->where('status', 'accepted');
+        $synonymUsages = $allUsages->where('status', '!=', 'accepted');
+
+        // 3. 處理每個 accepted usage
+        $groups = [];
+        
+        foreach ($acceptedUsages as $usage) {
+            $properties = json_decode($usage->properties, true) ?? [];
+            
+            // 處理 additional_fields 中的 distribution 和 description
+            $additionalFields = $properties['additional_fields'] ?? [];
+            $distribution = null;
+            $description = null;
+            
+            foreach ($additionalFields as $field) {
+                if (isset($field['field_name'])) {
+                    if ($field['field_name'] === 'distribution') {
+                        $distribution = $field['field_value'] ?? null;
+                    } elseif ($field['field_name'] === 'description') {
+                        $description = $field['field_value'] ?? null;
+                    }
+                }
+            }
+            
+            // 處理 common_names 中的 name
+            $commonNames = [];
+            if (isset($properties['common_names']) && is_array($properties['common_names'])) {
+                $commonNames = array_column($properties['common_names'], 'name');
+                $commonNames = array_filter($commonNames); // 過濾空值
+            }
+            
+            // 取得 note
+            $note = $properties['note'] ?? null;
+            
+            // 4. 從 taxon_names 表取得 rank_id
+            $taxonName = DB::table('taxon_names')
+                ->where('id', $usage->taxon_name_id)
+                ->select('rank_id')
+                ->first();
+            
+            // 5. 從 api_names 表取得 formatted_name 和 name_author
+            $apiName = DB::table('api_names')
+                ->where('taxon_name_id', $usage->taxon_name_id)
+                ->select('formatted_name', 'name_author')
+                ->first();
+            
+            // 6. 找出相同 group 的 synonyms
+            $synonyms = [];
+            
+            $groupSynonyms = $synonymUsages->where('group', $usage->group ?? null);
+            
+            foreach ($groupSynonyms as $synonym) {
+                $synonyms[] = [
+                    'name_id' => $synonym->taxon_name_id,
+                    'usage_references_text' => $synonym->name_remark
+                ];
+            }
+            
+            // 7. 組合最終結果
+            $groups[] = [
+                'name_id' => $usage->taxon_name_id,
+                'rank_id' => $taxonName->rank_id ?? null,
+                'name' => $apiName->formatted_name ?? null,
+                'name_authors' => $apiName->name_author ?? null,
+                'usage_references_text' => $usage->name_remark,
+                'common_names' => $commonNames,
+                'distribution' => $distribution,
+                'description' => $description,
+                'note' => $note,
+                'synonyms' => $synonyms
+            ];
+        }
+
+        $data['group'] = $groups;
+
+
+
+        return response($data);
     }
 }
