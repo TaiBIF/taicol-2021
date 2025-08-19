@@ -828,6 +828,11 @@ class MyNamespaceUsageController extends Controller
 
 
 
-        return response($data);
+        return response()->json($data, 200, [], 
+            JSON_UNESCAPED_UNICODE | 
+            JSON_UNESCAPED_SLASHES | 
+            JSON_PRETTY_PRINT
+        );
+
     }
 }
