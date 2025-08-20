@@ -56,6 +56,7 @@ Route::get('/selected-references', 'ReferenceUsageController@references');
 
 // biota
 Route::get('/biota', 'MyNamespaceUsageController@biota');
+Route::get('/usage/preview', 'MyNamespaceUsageController@usage_preview');
 
 // 檢查usage
 Route::get('/get-unchecked-usage', 'ReferenceUsageController@getUncheckedUsage');

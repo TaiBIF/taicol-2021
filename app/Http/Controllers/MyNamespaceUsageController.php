@@ -24,6 +24,7 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use App\Http\Utils\CommonNameArray;
 use App\Exports\UsagesExport;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Http\Services\UsagePreviewService;
 
 
 class MyNamespaceUsageController extends Controller
@@ -748,6 +749,7 @@ class MyNamespaceUsageController extends Controller
         // 1. 取得所有相關的 namespace usages
         $allUsages = DB::table('my_namespace_usages')
             ->where('namespace_id', $namespaceId)
+            ->orderBy('group')->orderBy('order')
             ->get();
 
         // 2. 分離 accepted 和 synonyms
@@ -834,5 +836,59 @@ class MyNamespaceUsageController extends Controller
             JSON_PRETTY_PRINT
         );
 
+    }
+
+
+    public function usage_preview(Request $request)
+    {
+        $namespaceId = $request->get('namespace_id');
+        $usageId = $request->get('usage_id');
+
+        $usage = MyNamespaceUsage::with([
+            'parent',
+            'taxonName.nomenclature',
+            'taxonName.rank',
+            'taxonName.authors',
+            'taxonName.exAuthors',
+            'taxonName.reference.authors',
+            'taxonName.originalTaxonName',
+            'taxonName.originalTaxonName.authors',
+            'taxonName.originalTaxonName.exAuthors',
+            'namespace'
+        ])
+            ->where('namespace_id', $namespaceId)
+            ->where('id', $usageId)
+            ->first();
+
+        $typeName = ($usage->properties['type_name'] ?? '') ? TaxonNameCollection::collection([
+            TaxonName::with([
+                'authors',
+                'exAuthors',
+                'reference',
+                'nomenclature',
+                'originalTaxonName.authors',
+                'originalTaxonName.exauthors'
+            ])->find((int) $usage->properties['type_name'])
+        ])[0] : null;
+
+        $service = new UsagePreviewService();
+        
+        $result = $service->process(
+            $usage->taxonName, $usage->properties['indications'], collect($usage->per_usages)->map(function ($r) {
+                $r['target'] = isset($r['reference_id']) ? Reference::with('authors')->find($r['reference_id']) : null;
+                return $r;
+            }), collect($usage->type_specimens)->map(function ($t) {
+                    $t['collectors'] = PersonCollection::collection(Person::whereIn('id', $t['collector_ids'] ?? [])->get());
+                    return $t;
+                }) ?? [], 
+            $usage->status, false,  $typeName
+
+        );
+
+        return response()->json($result, 200, [], 
+            JSON_UNESCAPED_UNICODE | 
+            JSON_UNESCAPED_SLASHES | 
+            JSON_PRETTY_PRINT
+        );
     }
 }
