@@ -33,9 +33,34 @@ trait ArrayConversionTrait
                     try {
                         return $data->toArray(new \Illuminate\Http\Request());
                     } catch (\Exception $e2) {
-                        // 如果還是失敗，轉換為普通 array
+                        // 如果還是失敗，嘗試使用 resolve() 方法
+                        try {
+                            if (method_exists($data, 'resolve')) {
+                                $resolved = $data->resolve(new \Illuminate\Http\Request());
+                                return is_array($resolved) ? $resolved : (array) $resolved;
+                            }
+                        } catch (\Exception $e3) {
+                            // 最後 fallback
+                        }
                         return (array) $data;
                     }
+                }
+            }
+
+            // 特殊處理 TaxonNameCollection 或類似的自定義 Collection
+            $className = get_class($data);
+            if (strpos($className, 'Collection') !== false && method_exists($data, 'toArray')) {
+                try {
+                    return $data->toArray(request());
+                } catch (\ArgumentCountError $e) {
+                    // 如果需要 request 參數但失敗了
+                    try {
+                        return $data->toArray(new \Illuminate\Http\Request());
+                    } catch (\Exception $e2) {
+                        return (array) $data;
+                    }
+                } catch (\Exception $e) {
+                    return (array) $data;
                 }
             }
 

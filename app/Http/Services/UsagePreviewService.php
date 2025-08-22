@@ -8,6 +8,8 @@ use App\Http\Services\UsagePreview\TaxonNameService;
 use App\Http\Services\UsagePreview\TypeSpecimenService;
 use App\Http\Services\UsagePreview\UndeterminedService;
 use App\Http\Services\UsagePreview\MisappliedService;
+use App\Http\Services\UsagePreview\TaxonNameLabelWithUndeterminedIndicationService;
+use Illuminate\Support\Facades\Log;
 
 class UsagePreviewService
 {
@@ -24,7 +26,7 @@ class UsagePreviewService
         $this->referenceService = new ReferenceService($this->personNameService);
         $this->taxonNameService = new TaxonNameService($this->personNameService);
         $this->typeSpecimenService = new TypeSpecimenService($this->personNameService);
-        $this->undeterminedService = new UndeterminedService($this->taxonNameService, $this->referenceService);
+        $this->undeterminedService = new UndeterminedService($this->taxonNameService, $this->referenceService, new \App\Http\Services\UsagePreview\TaxonNameLabelWithUndeterminedIndicationService());
         $this->misappliedService = new MisappliedService($this->taxonNameService, $this->referenceService, $this->personNameService);
     }
 
@@ -37,9 +39,10 @@ class UsagePreviewService
      * @param mixed $typeSpecimens Collection
      * @param string $status
      * @param bool $isSimple
+     * @param mixed $typeName 來自 usage 的 type_name (可選)
      * @return array
      */
-    public function process($taxonName, $indications, $perUsages, $typeSpecimens, $status, $isSimple = false)
+    public function process($taxonName, $indications, $perUsages, $typeSpecimens, $status, $isSimple = false, $typeName = null)
     {
         // 轉換 TaxonNameResource 為 array
         $taxonNameArray = $this->convertTaxonNameResourceToArray($taxonName);
@@ -47,10 +50,13 @@ class UsagePreviewService
         // 轉換 Collections 為 arrays
         $perUsagesArray = $this->convertPerUsagesToArray($perUsages);
         $typeSpecimensArray = $this->convertTypeSpecimensToArray($typeSpecimens);
+        
+        // 轉換 typeName
+        $typeNameArray = $typeName ? $this->convertTaxonNameResourceToArray($typeName) : null;
 
         return [
             'per_usages' => $this->processPerUsages($taxonNameArray, $indications, $perUsagesArray, $status, $isSimple),
-            'type_specimens' => $this->processTypeSpecimens($taxonNameArray, $typeSpecimensArray, $isSimple)
+            'type_specimens' => $this->processTypeSpecimens($taxonNameArray, $typeSpecimensArray, $typeNameArray, $isSimple)
         ];
     }
 
@@ -72,7 +78,7 @@ class UsagePreviewService
     /**
      * 處理 type_specimens 部分
      */
-    protected function processTypeSpecimens($taxonName, $typeSpecimens, $isSimple)
+    protected function processTypeSpecimens($taxonName, $typeSpecimens, $typeName, $isSimple)
     {
         if ($isSimple) {
             return '';
@@ -88,9 +94,10 @@ class UsagePreviewService
                 $result .= $this->typeSpecimenService->combo($typeSpecimens) . '.';
             }
             
-            if (isset($taxonName['type_name']) && $taxonName['type_name']) {
-                $result .= ' Type: ' . $this->taxonNameService->renderTaxonNameLabel($taxonName['type_name']) . 
-                          ' ' . $this->taxonNameService->renderAuthorName($taxonName['type_name']);
+            // 使用傳入的 typeName 而不是 taxonName 的 type_name
+            if ($typeName) {
+                $result .= ' Type: ' . $this->taxonNameService->renderTaxonNameLabel($typeName) . 
+                          ' ' . $this->taxonNameService->renderAuthorName($typeName);
             }
         }
 

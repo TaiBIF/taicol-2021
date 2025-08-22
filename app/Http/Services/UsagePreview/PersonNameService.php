@@ -1,12 +1,114 @@
 <?php
 
 namespace App\Http\Services\UsagePreview;
+use Illuminate\Support\Facades\Log;
 
 use App\Http\Services\UsagePreview\Traits\ArrayConversionTrait;
 
 class PersonNameService
 {
     use ArrayConversionTrait;
+
+    /**
+     * 將名字轉換為縮寫（根據 Python 邏輯）
+     */
+    public function toFirstnameAbbr(?string $name): string
+    {
+        if (empty($name)) {
+            return "";
+        }
+        
+        // 分割但保留分隔符（空格和連字符）
+        $parts = preg_split('/(\s|-)/', trim($name), -1, PREG_SPLIT_DELIM_CAPTURE);
+        
+        $result = "";
+        foreach ($parts as $part) {
+            if (!empty($part) && !ctype_space($part)) {
+                if ($part === '-') {
+                    $result .= '-';
+                } else {
+                    $result .= $part[0] . '.';  // 移除 strtoupper()
+                }
+            } elseif (ctype_space($part)) {
+                $result .= '-';  // 將空格替換成連字符
+            }
+        }
+        
+        return $result;
+    }
+
+    /**
+     * 將中間名轉換為縮寫（根據 Python 邏輯）
+     */
+    public function toMiddlenameAbbr(?string $name): string
+    {
+        if (empty($name)) {
+            return "";
+        }
+        
+        // 按空格分割名字並取首字母
+        $parts = explode(' ', trim($name));
+        $abbr = "";
+        
+        foreach ($parts as $part) {
+            if (!empty($part)) {
+                $abbr .= $part[0] . '.';  // 移除 strtoupper()
+            }
+        }
+        
+        return $abbr;
+    }
+
+    /**
+     * 將中間名轉換為帶空格的縮寫（專用於 type specimens）
+     */
+    public function toMiddlenameAbbrWithSpaces(?string $name): string
+    {
+        if (empty($name)) {
+            return "";
+        }
+        
+        // 按空格分割名字並取首字母
+        $parts = explode(' ', trim($name));
+        $abbr = "";
+        
+        foreach ($parts as $part) {
+            if (!empty($part)) {
+                $abbr .= $part[0] . '. ';  // 注意這裡加了空格
+            }
+        }
+        
+        return rtrim($abbr);  // 移除最後的空格
+    }
+
+    /**
+     * 生成 abbreviation_name（根據 Python 邏輯）
+     */
+    private function generateAbbreviationName($person): string
+    {
+        $firstName = $person['first_name'] ?? '';
+        $middleName = $person['middle_name'] ?? '';
+        $lastName = $person['last_name'] ?? '';
+
+        // 使用新的縮寫邏輯
+        $firstNameAbbr = $this->toFirstnameAbbr($firstName);
+        $middleNameAbbr = $this->toMiddlenameAbbr($middleName);
+
+        // 組合縮寫：FirstName MiddleName LastName 的格式
+        $abbreviationParts = [];
+        if ($firstNameAbbr) {
+            $abbreviationParts[] = $firstNameAbbr;
+        }
+        if ($middleNameAbbr) {
+            $abbreviationParts[] = $middleNameAbbr;
+        }
+        if (!empty($lastName)) {
+            $abbreviationParts[] = $lastName;
+        }
+        
+        return implode(' ', $abbreviationParts);
+    }
+
     /**
      * 全名
      */
@@ -30,15 +132,9 @@ class PersonNameService
         $middleName = $person['middle_name'] ?? '';
         $lastName = $person['last_name'] ?? '';
 
-        // 處理 firstName 縮寫
-        $firstNameAbbr = '';
-        if (preg_match('/(\w{1}).*[\s|-](\w{1}).*/', $firstName)) {
-            $firstNameAbbr = preg_replace('/(\w{1}).*[\s|-](\w{1}).*/', '$1.-$2.', $firstName);
-        } else {
-            $firstNameAbbr = preg_replace('/(\w{1}).*/', '$1.', $firstName);
-        }
-
-        $middleNameAbbr = $middleName ? preg_replace('/(\w{1}).*/', '$1.', $middleName) : '';
+        // 使用新的縮寫邏輯
+        $firstNameAbbr = $this->toFirstnameAbbr($firstName);
+        $middleNameAbbr = $this->toMiddlenameAbbr($middleName);
 
         if ($isOpposite) {
             $fullFirstName = trim($firstNameAbbr . ' ' . $middleNameAbbr);
@@ -124,7 +220,8 @@ class PersonNameService
         $personsArray = $this->ensureArray($persons);
         
         $names = array_map(function($person) {
-            return $person['abbreviation_name'] ?? '';
+            // 如果已有 abbreviation_name 就使用，否則生成
+            return $person['abbreviation_name'] ?? $this->generateAbbreviationName($person);
         }, $personsArray);
 
         $names = array_filter($names);
@@ -149,7 +246,8 @@ class PersonNameService
         $personsArray = $this->ensureArray($persons);
         
         $names = array_map(function($person) {
-            return $person['abbreviation_name'] ?? '';
+            // 如果已有 abbreviation_name 就使用，否則生成
+            return $person['abbreviation_name'] ?? $this->generateAbbreviationName($person);
         }, $personsArray);
 
         $names = array_filter($names);
@@ -312,51 +410,24 @@ class PersonNameService
         // 檢查多種可能的同屬情況
         $conditions = [
             // 條件 1: taxonName->species->properties->latinGenus === originName->properties->latinGenus
-            !empty($taxonName['species']['properties']['latin_genus']) &&
+            !empty($taxonName['properties']['latin_genus']) &&
             !empty($originName['properties']['latin_genus']) &&
-            $taxonName['species']['properties']['latin_genus'] === $originName['properties']['latin_genus'],
+            $taxonName['properties']['latin_genus'] === $originName['properties']['latin_genus'],
 
             // 條件 2: taxonName->species && originName->species && 兩者的 latinGenus 相同
-            !empty($taxonName['species']['properties']['latin_genus']) &&
-            !empty($originName['species']['properties']['latin_genus']) &&
-            $taxonName['species']['properties']['latin_genus'] === $originName['species']['properties']['latin_genus'],
+            !empty($taxonName['properties']['latin_genus']) &&
+            !empty($originName['properties']['latin_genus']) &&
+            $taxonName['properties']['latin_genus'] === $originName['properties']['latin_genus'],
 
             // 條件 3: taxonName->properties->latinGenus === originName->species->properties->latinGenus
             !empty($taxonName['properties']['latin_genus']) &&
-            !empty($originName['species']['properties']['latin_genus']) &&
-            $taxonName['properties']['latin_genus'] === $originName['species']['properties']['latin_genus']
+            !empty($originName['properties']['latin_genus']) &&
+            $taxonName['properties']['latin_genus'] === $originName['properties']['latin_genus']
         ];
 
         return in_array(true, $conditions);
     }
 
-    /**
-     * 確保輸入是 array 格式
-     */
-    protected function ensureArray($data)
-    {
-        if (empty($data)) {
-            return [];
-        }
-
-        // 如果已經是 array，直接返回
-        if (is_array($data)) {
-            return $data;
-        }
-
-        // 如果是 object 且有 toArray 方法（Collection、JsonResource 等）
-        if (is_object($data) && method_exists($data, 'toArray')) {
-            return $data->toArray();
-        }
-
-        // 如果是 object 但沒有 toArray 方法，嘗試轉換
-        if (is_object($data)) {
-            return (array) $data;
-        }
-
-        // 其他情況，嘗試轉換
-        return (array) $data;
-    }
     public function authorNameStringFactory($type, $authors, $exAuthors, $originalTaxonName, $taxonName, $publishYear = '')
     {
         switch ($type) {

@@ -25,6 +25,7 @@ use App\Http\Utils\CommonNameArray;
 use App\Exports\UsagesExport;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Http\Services\UsagePreviewService;
+use App\Http\Resources\TaxonNameSimpleSubResource;
 
 
 class MyNamespaceUsageController extends Controller
@@ -711,6 +712,14 @@ class MyNamespaceUsageController extends Controller
     {
         // 給生物誌的API
 
+        if ($request->get('token')!=env('BIOTA_TOKEN')){
+            return response([
+                'message' => 'Incorrect token'
+            ])->setStatusCode(403);
+
+        }
+
+
         $data = Array();
         $namespaceId = $request->get('namespace_id');
 
@@ -742,12 +751,19 @@ class MyNamespaceUsageController extends Controller
 
         $data['literatures'] = $citations;
 
-        // $group = [];
-
-        // $usages = MyNamespaceUsage::where('namespace_id', $namespaceId);
-
-        // 1. 取得所有相關的 namespace usages
-        $allUsages = DB::table('my_namespace_usages')
+        // 1. 取得所有相關的 namespace usages (需要更多關聯數據)
+        $allUsages = MyNamespaceUsage::with([
+            'parent',
+            'taxonName.nomenclature',
+            'taxonName.rank',
+            'taxonName.authors',
+            'taxonName.exAuthors',
+            'taxonName.reference.authors',
+            'taxonName.originalTaxonName',
+            'taxonName.originalTaxonName.authors',
+            'taxonName.originalTaxonName.exAuthors',
+            'namespace'
+        ])
             ->where('namespace_id', $namespaceId)
             ->orderBy('group')->orderBy('order')
             ->get();
@@ -756,11 +772,14 @@ class MyNamespaceUsageController extends Controller
         $acceptedUsages = $allUsages->where('status', 'accepted');
         $synonymUsages = $allUsages->where('status', '!=', 'accepted');
 
+        // 初始化 UsagePreviewService
+        $service = new UsagePreviewService();
+
         // 3. 處理每個 accepted usage
         $groups = [];
         
         foreach ($acceptedUsages as $usage) {
-            $properties = json_decode($usage->properties, true) ?? [];
+            $properties =$usage->properties ?? [];
             
             // 處理 additional_fields 中的 distribution 和 description
             $additionalFields = $properties['additional_fields'] ?? [];
@@ -787,37 +806,110 @@ class MyNamespaceUsageController extends Controller
             // 取得 note
             $note = $properties['note'] ?? null;
             
-            // 4. 從 taxon_names 表取得 rank_id
-            $taxonName = DB::table('taxon_names')
-                ->where('id', $usage->taxon_name_id)
-                ->select('rank_id')
-                ->first();
+            // 處理 type_name
+            $typeName = ($properties['type_name'] ?? '') ? TaxonNameSimpleSubResource::collection([
+                TaxonName::with([
+                    'authors',
+                    'exAuthors',
+                    'reference',
+                    'nomenclature',
+                    'originalTaxonName.authors',
+                    'originalTaxonName.exauthors'
+                ])->find((int) $properties['type_name'])
+            ])[0] : null;
+
+            // 使用 UsagePreviewService 處理 usage_references_text
+            $usageReferencesResult = $service->process(
+                TaxonNameSimpleSubResource::collection([$usage->taxonName])[0],
+                $properties['indications'] ?? null, 
+                collect($usage->per_usages)->map(function ($r) {
+                    $r['target'] = isset($r['reference_id']) ? Reference::with('authors')->find($r['reference_id']) : null;
+                    return $r;
+                }), 
+                collect($usage->type_specimens)->map(function ($t) {
+                        $t['collectors'] = PersonCollection::collection(Person::whereIn('id', $t['collector_ids'] ?? [])->get());
+                        return $t;
+                    }) ?? [], 
+                $usage->status, 
+                false,  
+                $typeName
+            );
+
+            // 合併 per_usages 和 type_specimens 欄位
+            $usageReferencesText = '';
+            $perUsages = $usageReferencesResult['per_usages'] ?? '';
+            $typeSpecimens = $usageReferencesResult['type_specimens'] ?? '';
             
-            // 5. 從 api_names 表取得 formatted_name 和 name_author
-            $apiName = DB::table('api_names')
-                ->where('taxon_name_id', $usage->taxon_name_id)
-                ->select('formatted_name', 'name_author')
-                ->first();
+            if (!empty($perUsages) && !empty($typeSpecimens)) {
+                $usageReferencesText = $perUsages . ' ' . $typeSpecimens;
+            } elseif (!empty($perUsages)) {
+                $usageReferencesText = $perUsages;
+            } elseif (!empty($typeSpecimens)) {
+                $usageReferencesText = $typeSpecimens;
+            }
             
-            // 6. 找出相同 group 的 synonyms
+            // 6. 找出相同 group 的 synonyms 並處理
             $synonyms = [];
             
             $groupSynonyms = $synonymUsages->where('group', $usage->group ?? null);
             
             foreach ($groupSynonyms as $synonym) {
+                // 為 synonym 也使用 UsagePreviewService
+                $synonymProperties = $synonym->properties ?? [];
+                
+                $synonymTypeName = ($synonymProperties['type_name'] ?? '') ? TaxonNameSimpleSubResource::collection([
+                    TaxonName::with([
+                        'authors',
+                        'exAuthors',
+                        'reference',
+                        'nomenclature',
+                        'originalTaxonName.authors',
+                        'originalTaxonName.exauthors'
+                    ])->find((int) $synonymProperties['type_name'])
+                ])[0] : null;
+
+                $synonymReferencesResult = $service->process(
+                    TaxonNameSimpleSubResource::collection([$synonym->taxonName])[0],
+                    $synonymProperties['indications'] ?? null, 
+                    collect($synonym->per_usages)->map(function ($r) {
+                        $r['target'] = isset($r['reference_id']) ? Reference::with('authors')->find($r['reference_id']) : null;
+                        return $r;
+                    }), 
+                    collect($synonym->type_specimens)->map(function ($t) {
+                            $t['collectors'] = PersonCollection::collection(Person::whereIn('id', $t['collector_ids'] ?? [])->get());
+                            return $t;
+                        }) ?? [], 
+                    $synonym->status, 
+                    false,  
+                    $synonymTypeName
+                );
+
+                // 合併 per_usages 和 type_specimens 欄位
+                $synonymReferencesText = '';
+                $synonymPerUsages = $synonymReferencesResult['per_usages'] ?? '';
+                $synonymTypeSpecimens = $synonymReferencesResult['type_specimens'] ?? '';
+                
+                if (!empty($synonymPerUsages) && !empty($synonymTypeSpecimens)) {
+                    $synonymReferencesText = $synonymPerUsages . ' ' . $synonymTypeSpecimens;
+                } elseif (!empty($synonymPerUsages)) {
+                    $synonymReferencesText = $synonymPerUsages;
+                } elseif (!empty($synonymTypeSpecimens)) {
+                    $synonymReferencesText = $synonymTypeSpecimens;
+                }
+                
                 $synonyms[] = [
                     'name_id' => $synonym->taxon_name_id,
-                    'usage_references_text' => $synonym->name_remark
+                    'usage_references_text' => $synonymReferencesText
                 ];
             }
             
             // 7. 組合最終結果
             $groups[] = [
                 'name_id' => $usage->taxon_name_id,
-                'rank_id' => $taxonName->rank_id ?? null,
-                'name' => $apiName->formatted_name ?? null,
-                'name_authors' => $apiName->name_author ?? null,
-                'usage_references_text' => $usage->name_remark,
+                'rank_id' => $usage->taxonName->rank_id ?? null,
+                'name' => $usage->taxonName->formatted_name ?? null,
+                'name_authors' => $usage->taxonName->name_author ?? null,
+                'usage_references_text' => $usageReferencesText,
                 'common_names' => $commonNames,
                 'distribution' => $distribution,
                 'description' => $description,
@@ -828,8 +920,6 @@ class MyNamespaceUsageController extends Controller
 
         $data['group'] = $groups;
 
-
-
         return response()->json($data, 200, [], 
             JSON_UNESCAPED_UNICODE | 
             JSON_UNESCAPED_SLASHES | 
@@ -839,56 +929,61 @@ class MyNamespaceUsageController extends Controller
     }
 
 
-    public function usage_preview(Request $request)
-    {
-        $namespaceId = $request->get('namespace_id');
-        $usageId = $request->get('usage_id');
+    // public function usage_preview(Request $request)
+    // {
+    //     $namespaceId = $request->get('namespace_id');
+    //     $usageId = $request->get('usage_id');
 
-        $usage = MyNamespaceUsage::with([
-            'parent',
-            'taxonName.nomenclature',
-            'taxonName.rank',
-            'taxonName.authors',
-            'taxonName.exAuthors',
-            'taxonName.reference.authors',
-            'taxonName.originalTaxonName',
-            'taxonName.originalTaxonName.authors',
-            'taxonName.originalTaxonName.exAuthors',
-            'namespace'
-        ])
-            ->where('namespace_id', $namespaceId)
-            ->where('id', $usageId)
-            ->first();
+    //     $usage = MyNamespaceUsage::with([
+    //         'parent',
+    //         'taxonName.nomenclature',
+    //         'taxonName.rank',
+    //         'taxonName.authors',
+    //         'taxonName.exAuthors',
+    //         'taxonName.reference.authors',
+    //         'taxonName.originalTaxonName',
+    //         'taxonName.originalTaxonName.authors',
+    //         'taxonName.originalTaxonName.exAuthors',
+    //         'namespace'
+    //     ])
+    //         ->where('namespace_id', $namespaceId)
+    //         ->where('id', $usageId)
+    //         ->first();
 
-        $typeName = ($usage->properties['type_name'] ?? '') ? TaxonNameCollection::collection([
-            TaxonName::with([
-                'authors',
-                'exAuthors',
-                'reference',
-                'nomenclature',
-                'originalTaxonName.authors',
-                'originalTaxonName.exauthors'
-            ])->find((int) $usage->properties['type_name'])
-        ])[0] : null;
 
-        $service = new UsagePreviewService();
+    //     $typeName = ($usage->properties['type_name'] ?? '') ? TaxonNameSimpleSubResource::collection([
+    //         TaxonName::with([
+    //             'authors',
+    //             'exAuthors',
+    //             'reference',
+    //             'nomenclature',
+    //             'originalTaxonName.authors',
+    //             'originalTaxonName.exauthors'
+    //         ])->find((int) $usage->properties['type_name'])
+    //     ])[0] : null;
+
+    //     $service = new UsagePreviewService();
         
-        $result = $service->process(
-            $usage->taxonName, $usage->properties['indications'], collect($usage->per_usages)->map(function ($r) {
-                $r['target'] = isset($r['reference_id']) ? Reference::with('authors')->find($r['reference_id']) : null;
-                return $r;
-            }), collect($usage->type_specimens)->map(function ($t) {
-                    $t['collectors'] = PersonCollection::collection(Person::whereIn('id', $t['collector_ids'] ?? [])->get());
-                    return $t;
-                }) ?? [], 
-            $usage->status, false,  $typeName
+    //     $result = $service->process(
+    //         TaxonNameSimpleSubResource::collection([$usage->taxonName])[0],
+    //         $usage->properties['indications'], 
+    //         collect($usage->per_usages)->map(function ($r) {
+    //             $r['target'] = isset($r['reference_id']) ? Reference::with('authors')->find($r['reference_id']) : null;
+    //             return $r;
+    //         }), 
+    //         collect($usage->type_specimens)->map(function ($t) {
+    //                 $t['collectors'] = PersonCollection::collection(Person::whereIn('id', $t['collector_ids'] ?? [])->get());
+    //                 return $t;
+    //             }) ?? [], 
+    //         $usage->status, 
+    //         false,  
+    //         $typeName
+    //     );
 
-        );
-
-        return response()->json($result, 200, [], 
-            JSON_UNESCAPED_UNICODE | 
-            JSON_UNESCAPED_SLASHES | 
-            JSON_PRETTY_PRINT
-        );
-    }
+    //     return response()->json($result, 200, [], 
+    //         JSON_UNESCAPED_UNICODE | 
+    //         JSON_UNESCAPED_SLASHES | 
+    //         JSON_PRETTY_PRINT
+    //     );
+    // }
 }

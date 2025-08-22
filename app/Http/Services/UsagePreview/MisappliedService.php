@@ -20,7 +20,7 @@ class MisappliedService
      */
     public function render($taxonName, $indications, $perUsages, $isSimple)
     {
-        if (empty($indications)) {
+        if (count($indications)==0) {
             return '[ERROR]:請選擇標註';
         }
 
@@ -237,7 +237,7 @@ class MisappliedService
      */
     protected function getReferencePreview($perUsages, $nomenclatureGroup)
     {
-        if (empty($perUsages)) {
+        if (count($perUsages)==0) {
             return '';
         }
 

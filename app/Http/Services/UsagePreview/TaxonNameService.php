@@ -2,8 +2,12 @@
 
 namespace App\Http\Services\UsagePreview;
 
+use App\Http\Services\UsagePreview\Traits\ArrayConversionTrait;
+
 class TaxonNameService
 {
+    use ArrayConversionTrait;
+    
     protected $personNameService;
 
     public function __construct(PersonNameService $personNameService)
@@ -21,7 +25,7 @@ class TaxonNameService
         }
 
         // 處理 hybrid-formula
-        if (($taxonName['rank']['key'] ?? '') === 'hybrid-formula' && !empty($taxonName['hybrid_parents'])) {
+        if (($taxonName['rank']['key'] ?? '') === 'hybrid-formula' && isset($taxonName['hybrid_parents'])) {
             $result = $this->renderTaxonNameLabel($taxonName['hybrid_parents'][0]);
             $result .= $this->renderAuthorName($taxonName['hybrid_parents'][0]);
             $result .= ' × ';
@@ -52,12 +56,12 @@ class TaxonNameService
         $rankOrder = $taxonName['rank']['order'] ?? 0;
         $rankId = $taxonName['rank']['id'] ?? 0;
 
-        // 種以下才可能有 speciesName
+        // // 種以下才可能有 speciesName
         $speciesName = '';
-        if ($rankOrder >= $speciesRankOrder && !empty($taxonName['species'])) {
+        if ($rankOrder >= $speciesRankOrder && !empty( $taxonName['properties']['latin_genus']) && !empty($taxonName['properties']['latin_s1'])) {
             $speciesName = implode(' ', array_filter([
-                $taxonName['species']['properties']['latin_genus'] ?? '',
-                $taxonName['species']['properties']['latin_s1'] ?? ''
+                $taxonName['properties']['latin_genus'] ?? '',
+                $taxonName['properties']['latin_s1'] ?? ''
             ]));
         }
 
@@ -68,7 +72,7 @@ class TaxonNameService
         
         // subgen. / sect. / subsect.
         if (in_array($rankId, [31, 32, 33])) {
-            if (!empty($taxonName['genus_taxon_name'])) {
+            if (isset($taxonName['genus_taxon_name'])) {
                 $prevName = implode(' ', array_filter([
                     '<i>' . ($taxonName['genus_taxon_name']['name'] ?? '') . '</i>',
                     $taxonName['rank']['abbreviation'] ?? '',
@@ -101,7 +105,7 @@ class TaxonNameService
 
         // 處理 sub layers
         $layers = '';
-        if (!empty($taxonName['species_layers'])) {
+        if (isset($taxonName['species_layers'])) {
             $layerParts = [];
             foreach ($taxonName['species_layers'] as $index => $layer) {
                 if ($index === 0 && $nomenclatureGroup === 'animal' && ($layer['rank']['abbreviation'] ?? '') === 'subsp.') {
@@ -124,19 +128,28 @@ class TaxonNameService
      */
     public function renderAuthorName($taxonName, $class = '')
     {
-        $authors = $taxonName['authors'] ?? [];
-        $exAuthors = $taxonName['ex_authors'] ?? [];
+        // 確保 Collection 轉換為 Array（重要！）
+        $authors = $this->ensureArray($taxonName['authors'] ?? []);
+        $exAuthors = $this->ensureArray($taxonName['ex_authors'] ?? []);
         $type = $taxonName['nomenclature']['group'] ?? '';
         $publishYear = $taxonName['publish_year'] ?? '';
         $originalTaxonName = $taxonName['original_taxon_name'] ?? null;
+        $initialYear = $taxonName['properties']['initial_year'] ?? '';
 
-        // 如果沒有作者信息但有 authorsName
-        if (empty($authors) && empty($exAuthors) && !$originalTaxonName && empty($taxonName['properties']['initial_year'] ?? '')) {
-            if (!empty($taxonName['properties']['authors_name'])) {
-                return $taxonName['properties']['authors_name'];
+        // 完全對應 Vue.js AuthorName.vue 的邏輯
+        // if (this.authors.length == 0 && this.exAuthors.length == 0 && !this.originalTaxonName && !this.taxonName?.properties.initialYear)
+        if (count($authors)==0 && 
+            count($exAuthors)==0 && 
+            !$originalTaxonName && 
+            empty($initialYear)) {
+            
+            $authorsName = $taxonName['properties']['authors_name'] ?? '';
+            if (!empty($authorsName)) {
+                return $authorsName;
             }
         }
 
+        // 正常處理邏輯：根據 nomenclature group 調用對應的處理方法
         return $this->personNameService->authorNameStringFactory(
             $type,
             $authors,

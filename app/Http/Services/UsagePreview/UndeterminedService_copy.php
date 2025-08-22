@@ -1,22 +1,16 @@
 <?php
 
 namespace App\Http\Services\UsagePreview;
-use Illuminate\Support\Facades\Log;
 
 class UndeterminedService
 {
     protected $taxonNameService;
     protected $referenceService;
-    protected $taxonNameWithUndeterminedIndicationService;
 
-    public function __construct(
-        TaxonNameService $taxonNameService, 
-        ReferenceService $referenceService,
-        TaxonNameLabelWithUndeterminedIndicationService $taxonNameWithUndeterminedIndicationService
-    ) {
+    public function __construct(TaxonNameService $taxonNameService, ReferenceService $referenceService)
+    {
         $this->taxonNameService = $taxonNameService;
         $this->referenceService = $referenceService;
-        $this->taxonNameWithUndeterminedIndicationService = $taxonNameWithUndeterminedIndicationService;
     }
 
     /**
@@ -61,7 +55,7 @@ class UndeterminedService
      */
     protected function between($taxonName, $indication, $perUsages, $isSimple)
     {
-        $taxonNameDOM = $this->taxonNameWithUndeterminedIndicationService->render($taxonName, $indication);
+        $taxonNameDOM = $this->renderTaxonNameWithUndeterminedIndication($taxonName, $indication);
         $authorNameDOM = $this->taxonNameService->renderAuthorName($taxonName);
         
         $parts = [$taxonNameDOM, $authorNameDOM];
@@ -115,6 +109,20 @@ class UndeterminedService
         }
 
         return implode(' ', array_filter($parts));
+    }
+
+    /**
+     * 渲染帶有未確定指示的分類名稱標籤
+     */
+    protected function renderTaxonNameWithUndeterminedIndication($taxonName, $indication)
+    {
+        // 這是一個簡化版本，實際的實現可能需要更複雜的邏輯
+        // 根據原始代碼，這應該會插入 indication 到適當的位置
+        $baseName = $this->taxonNameService->renderTaxonNameLabel($taxonName);
+        
+        // 對於 aff. 和 cf.，通常插入在種名之前
+        // 這裡做簡化處理，直接在前面添加
+        return $baseName . ' ' . $indication;
     }
 
     /**

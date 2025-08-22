@@ -25,7 +25,7 @@ class ReferenceService
      */
     public function comboPlant($references, $namesMode = 'combo_abbr')
     {
-        if (empty($references)) {
+        if (count($references)==0) {
             return '';
         }
 
@@ -45,16 +45,25 @@ class ReferenceService
             $page = implode(', ', array_filter([
                 $showPage,
                 $ref['figure'] ?? ''
-            ]));
+            ], function($value) {
+                return !empty($value);
+            }));
 
             // [volume]([issue]): [page_name]
             $volumeParts = array_filter([
                 $ref['target']['properties']['volume'] ?? '',
                 !empty($ref['target']['properties']['issue']) ? '(' . $ref['target']['properties']['issue'] . ')' : ''
-            ]);
+            ], function($value) {
+                return !empty($value);
+            });
+            
             $volume = implode('', $volumeParts);
-            if ($page) {
-                $volume = $volume ? $volume . ': ' . $page : $page;
+            
+            // 修正：只有當 volume 和 page 都不為空時才組合
+            if (!empty($volume) && !empty($page)) {
+                $volume = $volume . ': ' . $page;
+            } elseif (!empty($page)) {
+                $volume = $page;
             }
 
             $title = '';
@@ -67,14 +76,20 @@ class ReferenceService
                     $ref['target']['properties']['book_title_abbreviation'] ?? '',
                     !empty($ref['target']['properties']['edition']) ? $ref['target']['properties']['edition'] . ' ed.' : '',
                     $volume
-                ]);
+                ], function($value) {
+                    return !empty($value);
+                });
                 $title = implode(', ', $titleParts);
             } else {
                 $authorBookTitle = implode(', ', array_filter([
                     $this->getAuthorsByMode($authors, $namesMode),
                     $ref['target']['properties']['book_title_abbreviation'] ?? ''
-                ]));
-                $title = implode(' ', array_filter([$authorBookTitle, $volume]));
+                ], function($value) {
+                    return !empty($value);
+                }));
+                $title = implode(' ', array_filter([$authorBookTitle, $volume], function($value) {
+                    return !empty($value);
+                }));
             }
 
             $proParte = '';
@@ -90,10 +105,14 @@ class ReferenceService
             }
 
             $resultParts = array_filter([
-                implode('. ', array_filter([$title, $ref['target']['publish_year'] ?? ''])),
+                implode('. ', array_filter([$title, $ref['target']['publish_year'] ?? ''], function($value) {
+                    return !empty($value);
+                })),
                 !empty($ref['name_in_reference']) ? "'" . $ref['name_in_reference'] . "'" : '',
                 $proParte ? $proParte : ''
-            ]);
+            ], function($value) {
+                return !empty($value);
+            });
 
             $result = implode(', ', $resultParts);
 
@@ -104,7 +123,9 @@ class ReferenceService
             $results[] = $result;
         }
 
-        return implode('; ', array_filter($results));
+        return implode('; ', array_filter($results, function($value) {
+            return !empty($value);
+        }));
     }
 
     /**
@@ -112,7 +133,7 @@ class ReferenceService
      */
     public function comboAnimal($references, $namesMode = 'combo_last')
     {
-        if (empty($references)) {
+        if (count($references)==0) {
             return '';
         }
 
@@ -128,7 +149,9 @@ class ReferenceService
             $title = implode(', ', array_filter([
                 $this->getAuthorsByMode($authors, $namesMode),
                 $publishYear
-            ]));
+            ], function($value) {
+                return !empty($value);
+            }));
 
             $showPage = '';
             if (!empty($ref['target']['properties']['article_number']) && !empty($ref['show_page'])) {
@@ -140,7 +163,9 @@ class ReferenceService
             $page = implode(', ', array_filter([
                 $showPage,
                 $ref['figure'] ?? ''
-            ]));
+            ], function($value) {
+                return !empty($value);
+            }));
 
             $proParte = '';
             if ($ref['pro_parte'] ?? false) {
@@ -154,12 +179,23 @@ class ReferenceService
                 }
             }
 
-            $mainPart = $page ? $title . ': ' . $page : $title;
+            // 修正：只有當 title 和 page 都不為空時才用冒號連接
+            $mainPart = '';
+            if (!empty($title) && !empty($page)) {
+                $mainPart = $title . ': ' . $page;
+            } elseif (!empty($title)) {
+                $mainPart = $title;
+            } elseif (!empty($page)) {
+                $mainPart = $page;
+            }
+
             $resultParts = array_filter([
                 $mainPart,
                 !empty($ref['name_in_reference']) ? "'" . $ref['name_in_reference'] . "'" : '',
                 $proParte ? $proParte : ''
-            ]);
+            ], function($value) {
+                return !empty($value);
+            });
 
             $result = implode(', ', $resultParts);
 
@@ -170,7 +206,9 @@ class ReferenceService
             $results[] = $result;
         }
 
-        return implode('; ', array_filter($results));
+        return implode('; ', array_filter($results, function($value) {
+            return !empty($value);
+        }));
     }
 
     /**
@@ -178,7 +216,7 @@ class ReferenceService
      */
     protected function getAuthorsByMode($authors, $mode)
     {
-        if (empty($authors)) {
+        if (count($authors)==0) {
             return '';
         }
 
@@ -260,7 +298,9 @@ class ReferenceService
                 $lastNames,
                 $reference['publish_year'] ?? '',
                 $subTitleResult
-            ]));
+            ], function($value) {
+                return !empty($value);
+            }));
         }
 
         switch ($reference['type'] ?? '') {
@@ -293,7 +333,9 @@ class ReferenceService
             $reference['properties']['book_title'] ?? '',
             !empty($reference['properties']['edition']) ? $reference['properties']['edition'] . ' ed.' : '',
             $volume
-        ]));
+        ], function($value) {
+            return !empty($value);
+        }));
     }
 
     /**
@@ -316,20 +358,23 @@ class ReferenceService
         $issue = !empty($reference['properties']['issue']) ? '(' . $reference['properties']['issue'] . ')' : '';
         
         $lastPart = '';
-        $volumeIssue = $volume . $issue;
+        $volumeIssue = trim($volume . $issue);
         $pageOrArticle = !empty($reference['properties']['article_number']) ? 
             $reference['properties']['article_number'] : 
             ($reference['properties']['pages_range'] ?? '');
             
-        if ($volumeIssue && $pageOrArticle) {
+        // 修正：只有當兩個部分都不為空時才用冒號連接
+        if (!empty($volumeIssue) && !empty($pageOrArticle)) {
             $lastPart = $volumeIssue . ': ' . $pageOrArticle;
-        } elseif ($volumeIssue) {
+        } elseif (!empty($volumeIssue)) {
             $lastPart = $volumeIssue;
-        } elseif ($pageOrArticle) {
+        } elseif (!empty($pageOrArticle)) {
             $lastPart = $pageOrArticle;
         }
 
-        return implode(' ', array_filter([$t, $lastPart]));
+        return implode(' ', array_filter([$t, $lastPart], function($value) {
+            return !empty($value);
+        }));
     }
 
     /**
@@ -348,7 +393,9 @@ class ReferenceService
             $reference['properties']['book_title_abbreviation'] ?? '',
             !empty($reference['properties']['edition']) ? $reference['properties']['edition'] . ' ed.' : '',
             $volume
-        ]));
+        ], function($value) {
+            return !empty($value);
+        }));
     }
 
     /**
@@ -359,6 +406,8 @@ class ReferenceService
         $bookSubtitle = $this->renderBookSubtitle($reference);
         $pagesRange = $reference['properties']['pages_range'] ?? '';
         
-        return implode(': ', array_filter([$bookSubtitle, $pagesRange]));
+        return implode(': ', array_filter([$bookSubtitle, $pagesRange], function($value) {
+            return !empty($value);
+        }));
     }
 }

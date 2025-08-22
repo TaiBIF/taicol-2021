@@ -48,7 +48,6 @@ class UsagePreviewResource extends JsonResource
             'species' => $this->convertTaxonName($data['species'] ?? null),
             'species_layers' => $this->convertSpeciesLayers($data['species_layers'] ?? []),
             'hybrid_parents' => $this->convertHybridParents($data['hybrid_parents'] ?? []),
-            'type_name' => $this->convertTaxonName($data['type_name'] ?? null),
             'properties' => [
                 'latin_name' => $data['properties']['latin_name'] ?? '',
                 'latin_genus' => $data['properties']['latin_genus'] ?? '',

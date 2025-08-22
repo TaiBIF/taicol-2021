@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Services\UsagePreview;
+use Illuminate\Support\Facades\Log;
 
 class TaxonNameLabelWithUndeterminedIndicationService
 {
@@ -41,24 +42,26 @@ class TaxonNameLabelWithUndeterminedIndicationService
 
         // 種以下才可能有 speciesName
         $speciesName = '';
-        if (!empty($t['species'])) {
+        if ($rankOrder >= self::SPECIES_RANK_ORDER && !empty($t['properties']['latin_genus']) && !empty($t['properties']['latin_s1'])) {
+
             $speciesNameParts = [];
             
-            if (!empty($t['species']['properties']['latin_genus'])) {
-                $speciesNameParts[] = '<i>' . $t['species']['properties']['latin_genus'] . '</i>';
+            if (!empty($t['properties']['latin_genus'])) {
+                $speciesNameParts[] = '<i>' . $t['properties']['latin_genus'] . '</i>';
             }
 
+
             // 檢查是否需要在這裡插入指示
-            $shouldInsertIndicationHere = empty($t['species']['species_layers']) &&
-                !empty($t['species']['properties']['latin_genus']) &&
-                !empty($t['species']['properties']['latin_s1']);
+            $shouldInsertIndicationHere = count($t['species_layers']) == 0 &&
+                !empty($t['properties']['latin_genus']) &&
+                !empty($t['properties']['latin_s1']);
 
             if ($shouldInsertIndicationHere) {
                 $speciesNameParts[] = $indication;
             }
 
-            if (!empty($t['species']['properties']['latin_s1'])) {
-                $speciesNameParts[] = '<i>' . $t['species']['properties']['latin_s1'] . '</i>';
+            if (!empty($t['properties']['latin_s1'])) {
+                $speciesNameParts[] = '<i>' . $t['properties']['latin_s1'] . '</i>';
             }
 
             $speciesName = implode(' ', $speciesNameParts);
@@ -90,7 +93,7 @@ class TaxonNameLabelWithUndeterminedIndicationService
                 $prevNameParts[] = '<i>' . $t['properties']['latin_genus'] . '</i>';
             }
 
-            if (empty($t['species_layers'])) {
+            if (count($t['species_layers'])==0) {
                 $prevNameParts[] = $indication;
             }
 
@@ -111,7 +114,7 @@ class TaxonNameLabelWithUndeterminedIndicationService
 
         // 處理 sub layers
         $layers = '';
-        if (!empty($t['species_layers']) && is_array($t['species_layers'])) {
+        if (count($t['species_layers']) > 0 && is_array($t['species_layers'])) {
             $layerParts = [];
             $totalLayers = count($t['species_layers']);
             
