@@ -150,7 +150,7 @@ class UsagesExport implements FromArray, WithHeadings
             // 取出 per_usages 和 type_specimens
             $usage_references_text = $usageReferencesResult['per_usages'] ?? '';
             $type_specimens = $usageReferencesResult['type_specimens'] ?? '';
-            
+
             // 移除 HTML 標籤
             $usage_references_text = html_entity_decode(strip_tags($usage_references_text));
             $type_specimens = html_entity_decode(strip_tags($type_specimens));
@@ -159,7 +159,7 @@ class UsagesExport implements FromArray, WithHeadings
                 $taxonName->nomenclature->name,
                 $taxonName->rank->key,
                 $taxonName->name,
-                $taxonName->formatted_authors,
+                DB::table('api_names')->where('taxon_name_id', $usage->taxon_name_id)->value('name_author') ?? '',
                 $parentTaxonName->name ?? '',
                 $usage->status,
                 $usage->is_title ? '1' : '0',
