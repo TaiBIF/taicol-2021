@@ -6,6 +6,12 @@ use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use App\MyNamespaceUsage;
 use App\TaxonName;
+use App\Reference;
+use App\Person;
+use App\Http\Services\UsagePreviewService;
+use App\Http\Resources\TaxonNameSimpleSubResource;
+use App\Http\Resources\PersonCollection;
+
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
@@ -42,16 +48,33 @@ class UsagesExport implements FromArray, WithHeadings
                 'is_fossil','is_terrestrial','is_freshwater','is_brackish','is_marine','alien_status_note','is_new_record',
                 'description','diagnosis','distribution','etymology','habitat','substrata','measurements','coloration',
                 'other_examined_material','custom_field1','custom_field2','custom_field3','custom_field4','custom_field5','note',
-                'usage_references_text'];
+                'usage_references_text','type_specimens'];
     }
 
     public function array(): array
     {
+        // 初始化 UsagePreviewService
+        $service = new UsagePreviewService();
 
-        $usages = MyNamespaceUsage::where('namespace_id', $this->namespaceId)->orderBy('group')->orderBy('order')->get()->map(function ($usage) {
+        $usages = MyNamespaceUsage::with([
+            'parent',
+            'taxonName.nomenclature',
+            'taxonName.rank',
+            'taxonName.authors',
+            'taxonName.exAuthors',
+            'taxonName.reference.authors',
+            'taxonName.originalTaxonName',
+            'taxonName.originalTaxonName.authors',
+            'taxonName.originalTaxonName.exAuthors',
+            'namespace'
+        ])
+            ->where('namespace_id', $this->namespaceId)
+            ->orderBy('group')->orderBy('order')
+            ->get()
+            ->map(function ($usage) use ($service) {
 
-            $taxonName = TaxonName::find($usage->taxon_name_id);
-            $parentTaxonName = TaxonName::find($usage->parent_taxon_name_id);
+            $taxonName = $usage->taxonName;
+            $parentTaxonName = $usage->parent ? $usage->parent->taxonName : null;
             
             $perUsages = empty($usage->per_usages)
                 ? []
@@ -95,19 +118,43 @@ class UsagesExport implements FromArray, WithHeadings
                 }
             }
 
-            // if (isset($usage->name_remark)) {
-            if ($usage->name_remark !== null && $usage->name_remark !== '') {
-                $usage_references_text = html_entity_decode(strip_tags($usage->name_remark));
-            } else {
+            // 處理 type_name
+            $typeName = ($usage->properties['type_name'] ?? '') ? TaxonNameSimpleSubResource::collection([
+                TaxonName::with([
+                    'authors',
+                    'exAuthors',
+                    'reference',
+                    'nomenclature',
+                    'originalTaxonName.authors',
+                    'originalTaxonName.exauthors'
+                ])->find((int) $usage->properties['type_name'])
+            ])[0] : null;
 
-                $usage_references_text = DB::table('api_names')
-                ->selectRaw("CONCAT(formatted_name, IF(name_author IS NOT NULL AND name_author != '', CONCAT(' ', name_author), '')) AS full_name")
-                ->where('taxon_name_id', $usage->taxon_name_id)
-                ->value('full_name');  // 只回傳這個欄位的值
+            // 使用 UsagePreviewService 處理
+            $usageReferencesResult = $service->process(
+                TaxonNameSimpleSubResource::collection([$usage->taxonName])[0],
+                $usage->properties['indications'] ?? null, 
+                collect($usage->per_usages)->map(function ($r) {
+                    $r['target'] = isset($r['reference_id']) ? Reference::with('authors')->find($r['reference_id']) : null;
+                    return $r;
+                }), 
+                collect($usage->type_specimens)->map(function ($t) {
+                        $t['collectors'] = PersonCollection::collection(Person::whereIn('id', $t['collector_ids'] ?? [])->get());
+                        return $t;
+                    }) ?? [], 
+                $usage->status, 
+                false,  
+                $typeName
+            );
 
-                $usage_references_text = html_entity_decode(strip_tags($usage_references_text));
-            }
+            // 取出 per_usages 和 type_specimens
+            $usage_references_text = $usageReferencesResult['per_usages'] ?? '';
+            $type_specimens = $usageReferencesResult['type_specimens'] ?? '';
             
+            // 移除 HTML 標籤
+            $usage_references_text = html_entity_decode(strip_tags($usage_references_text));
+            $type_specimens = html_entity_decode(strip_tags($type_specimens));
+
             return [
                 $taxonName->nomenclature->name,
                 $taxonName->rank->key,
@@ -146,7 +193,8 @@ class UsagesExport implements FromArray, WithHeadings
                 $customFields['custom_field4'] ?? '',
                 $customFields['custom_field5'] ?? '',
                 $usage->properties['note'] ?? '',
-                $usage_references_text ?? '',
+                $usage_references_text,
+                $type_specimens,
             ];
         });
 
