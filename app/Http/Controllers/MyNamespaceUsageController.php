@@ -847,6 +847,12 @@ class MyNamespaceUsageController extends Controller
             } elseif (!empty($typeSpecimens)) {
                 $usageReferencesText = $typeSpecimens;
             }
+
+            // 從 api_names 表取得正確的 name 資訊
+            $apiName = DB::table('api_names')
+                ->where('taxon_name_id', $usage->taxon_name_id)
+                ->first();
+
             
             // 6. 找出相同 group 的 synonyms 並處理
             $synonyms = [];
@@ -907,8 +913,8 @@ class MyNamespaceUsageController extends Controller
             $groups[] = [
                 'name_id' => $usage->taxon_name_id,
                 'rank_id' => $usage->taxonName->rank_id ?? null,
-                'name' => $usage->taxonName->formatted_name ?? null,
-                'name_authors' => $usage->taxonName->name_author ?? null,
+                'name' => $apiName->formatted_name ?? null,
+                'name_authors' => $apiName->name_author ?? null,
                 'usage_references_text' => $usageReferencesText,
                 'common_names' => $commonNames,
                 'distribution' => $distribution,
