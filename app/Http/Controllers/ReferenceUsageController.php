@@ -811,7 +811,7 @@ class ReferenceUsageController extends Controller
         $keyword = $request->get('keyword');
 
         // 預設包含栽培豢養 & 不僅限台灣物種
-        $url = "https:/taicol.tw/get_autocomplete_taxon_by_solr?from=nametool&with_cultured=on&keyword=" . urlencode($keyword);
+        $url = env('TAICOL_ROOT') . "/get_autocomplete_taxon_by_solr?from=nametool&with_cultured=on&keyword=" . urlencode($keyword);
 
         $curl = curl_init();
         curl_setopt($curl, CURLOPT_URL, $url);
@@ -935,15 +935,13 @@ class ReferenceUsageController extends Controller
             $usages = [];
             if ($method==2){
 
+                // 文獻
                 // 先取得對應的所有分類群
 
                 $usageQuery->where('reference_usages.status','accepted');
 
                 if ($onlyInTaiwan=='yes'){
 
-                    // $usageQuery->join('taxon_names', 'taxon_names.id', '=', 'reference_usages.taxon_name_id');
-
-                    // $usageQuery->where('reference_usages.properties->is_in_taiwan', 1);
                     $speciesOrder = Rank::where('key', 'species')->value('order');
 
                     $usageQuery
@@ -959,10 +957,6 @@ class ReferenceUsageController extends Controller
 
                 }
 
-                // $usageQuery->where('properties->is_in_taiwan', 1);
-
-
-
                 if ($excludeCultured=='yes')
                 $usageQuery->where(function ($query) {
                     $query->where(DB::raw('json_unquote(json_extract(reference_usages.properties, "$.\"alien_type\""))'), '!=', 'cultured')
@@ -971,13 +965,23 @@ class ReferenceUsageController extends Controller
             
             } else {
 
-                // 如果是method = 1 or 3的時候
-                // $usageQuery = ReferenceUsage::select('reference_id','group')->whereIn('reference_id', $result);
-                $usageQuery->whereIn('id', function ($query) use ($taxonIds) {
-                    $query->selectRaw('distinct reference_usage_id')
+                // 如果是method = 1 or 3的時候 (地區 & 較高分類群)
+
+                // 取得taxon_id對應的taxon_name_id
+
+                $usageQuery->whereIn('reference_usages.taxon_name_id', function ($query) use ($taxonIds, $excludeCultured) {
+                    $query->select('taxon_name_id')
                         ->from('api_taxon_usages')
-                        ->whereIn('taxon_id', $taxonIds)
-                        ->where('is_deleted', 0);
+                        ->join('api_taxon', 'api_taxon_usages.taxon_id', '=', 'api_taxon.taxon_id')
+                        ->whereIn('api_taxon_usages.taxon_id', $taxonIds)
+                        ->where('api_taxon_usages.is_deleted', 0);
+                    
+                    // 排除栽培豢養
+                    if ($excludeCultured == 'yes') { 
+                        $query->where('api_taxon.is_cultured', 0);
+                    }
+                    
+                    $query->distinct();
                 });
 
         
@@ -998,13 +1002,7 @@ class ReferenceUsageController extends Controller
                 
                 // API URL -> 要判斷在哪裡 不然會出錯
 
-                if (str_contains(env('APP_URL'),'staging')) {
-                    $usage_url = "https://api-staging.taicol.tw/generate_checklist";
-                } else if (str_contains(env('APP_URL'),'nametool')){
-                    $usage_url = "https://api.taicol.tw/generate_checklist";
-                } else {
-                    $usage_url = "http://127.0.0.1:8005/generate_checklist";
-                }
+                $usage_url = env('TAICOL_API_ROOT') . '/generate_checklist';
 
                 // 初始化 cURL
                 $ch = curl_init($usage_url);

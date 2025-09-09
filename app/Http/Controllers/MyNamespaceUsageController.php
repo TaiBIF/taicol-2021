@@ -575,7 +575,6 @@ class MyNamespaceUsageController extends Controller
 
 
                 $filter_method->type = "reference";
-                // $filter_method->value = $request->get('taxon_ids');
 
 
             } else if  ($request->get('method') === 3) {
@@ -612,11 +611,9 @@ class MyNamespaceUsageController extends Controller
                 // 自動帶入上階層 優先採用usage
                 // TODO 這邊是不是只需要自動帶入status是接受的上階層就好
                 $parent = $usage['parent_taxon_name_id'] ?? DB::table('accepted_usages')
-                ->select('parent_taxon_name_id')
-                ->where('taxon_name_id', $currentUsage->taxon_name_id)
-                ->first();
+                    ->where('taxon_name_id', $currentUsage->taxon_name_id)
+                    ->value('parent_taxon_name_id'); // 直接回傳欄位值或 null
 
-                $parent = $parent->parent_taxon_name_id ?? null;
                 
                 $nowName = TaxonName::find($currentUsage->taxon_name_id);
                 $nomenclatureId = $nowName->nomenclature_id;

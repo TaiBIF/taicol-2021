@@ -73,7 +73,33 @@ export default (references, names = comboAbbr) => {
             }
         }
 
-        // return [
+        let resultParts: string[] = [];
+
+        // 避免年份重複：只在 title 沒包含年份時才加
+        const publishYear = ref.target?.publishYear || '';
+        let titleStr = title;
+
+        if (publishYear && !title.includes(publishYear)) {
+            titleStr = [title, publishYear].filter(Boolean).join('. ');
+        }
+
+        resultParts.push(titleStr);
+
+        if (ref.nameInReference) {
+            resultParts.push(`'${ref.nameInReference}'`);
+        }
+
+        if (ref.proParte) {
+            resultParts.push(proParte);
+        }
+
+        let result = resultParts.filter(Boolean).join(', ');
+
+        if (ref.description) {
+            result += ' (' + ref.description + ')';
+        }
+
+        // let result = [
         //     [
         //         title,
         //         ref.target?.publishYear,
@@ -82,18 +108,9 @@ export default (references, names = comboAbbr) => {
         //     ref.proParte ? proParte : '',
         // ].filter(Boolean).join(', ');
 
-        let result = [
-            [
-                title,
-                ref.target?.publishYear,
-            ].filter(Boolean).join('. '),
-            ref.nameInReference ? `'${ref.nameInReference}'` : '',
-            ref.proParte ? proParte : '',
-        ].filter(Boolean).join(', ');
-
-        if (ref.description) {
-            result += ' (' + ref.description + ')';  // 用空格接在最後
-        }
+        // if (ref.description) {
+        //     result += ' (' + ref.description + ')';  // 用空格接在最後
+        // }
 
         return result;
 

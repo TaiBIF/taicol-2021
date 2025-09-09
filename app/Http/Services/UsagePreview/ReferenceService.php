@@ -104,17 +104,32 @@ class ReferenceService
                 }
             }
 
-            $resultParts = array_filter([
-                implode('. ', array_filter([$title, $ref['target']['publish_year'] ?? ''], function($value) {
-                    return !empty($value);
-                })),
-                !empty($ref['name_in_reference']) ? "'" . $ref['name_in_reference'] . "'" : '',
-                $proParte ? $proParte : ''
-            ], function($value) {
-                return !empty($value);
-            });
 
-            $result = implode(', ', $resultParts);
+            $resultParts = [];
+
+            // 避免年份重複：只在 title 沒包含年份時才加
+            $publishYear = $ref['target']['publish_year'] ?? '';
+            $titleStr = $title;
+
+            if (!empty($publishYear) && strpos($title, (string)$publishYear) === false) {
+                $titleStr = implode('. ', array_filter([$title, $publishYear], function($value) {
+                    return !empty($value);
+                }));
+            }
+
+            $resultParts[] = $titleStr;
+
+            if (!empty($ref['name_in_reference'])) {
+                $resultParts[] = "'" . $ref['name_in_reference'] . "'";
+            }
+
+            if (!empty($proParte)) {
+                $resultParts[] = $proParte;
+            }
+
+            $result = implode(', ', array_filter($resultParts, function($value) {
+                return !empty($value);
+            }));
 
             if (!empty($ref['description'])) {
                 $result .= ' (' . $ref['description'] . ')';
