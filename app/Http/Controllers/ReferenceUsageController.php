@@ -950,7 +950,7 @@ class ReferenceUsageController extends Controller
                         ->where(function ($query) use ($speciesOrder) { // 用 use 傳入變數
                             $query->where(function ($subQuery) use ($speciesOrder) {
                                 $subQuery->where('ranks.order', '>=', $speciesOrder)
-                                        ->where('reference_usages.properties->is_in_taiwan', 1);
+                                        ->where('reference_usages.properties->is_in_taiwan', '!=', 0);
                             })->orWhere('ranks.order', '<', $speciesOrder);
                         });
 
@@ -1004,13 +1004,21 @@ class ReferenceUsageController extends Controller
 
                 $usage_url = env('TAICOL_API_ROOT') . '/generate_checklist';
 
+                $postData = [
+                    'only_in_taiwan' => $onlyInTaiwan,
+                    'exclude_cultured' => $excludeCultured,
+                    'usages' => $usages,
+                    'references' => $references
+                ];
+
+
                 // 初始化 cURL
                 $ch = curl_init($usage_url);
                 
                 // 設定 options
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
                 curl_setopt($ch, CURLOPT_POST, true);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($usages));
+                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
                 curl_setopt($ch, CURLOPT_HTTPHEADER, [
                     'Content-Type: application/json'
                 ]);
