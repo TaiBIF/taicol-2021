@@ -132,6 +132,20 @@
                 </div>
                 <div class="bg-gray-100 ">
                     <ul>
+                        <li v-if="references.length > 0" >
+                         <label class="label ref p-1 px-4 my-1 hover:bg-gray-200 cursor-pointer">
+                            <input 
+                            v-model="selectAll" 
+                            @change="toggleSelectAll"
+                            type="checkbox"
+                            />
+                            &nbsp;&nbsp;
+                            <span >
+                            {{ $t('classification.selectAll') }}
+                            </span>
+                        </label>
+
+                        </li>
                         <li v-for="reference in references">
                             <label class="label ref p-1 px-4 my-1 hover:bg-gray-200 cursor-pointer">
                                 <input v-model="referenceIds" checked :value="reference.id" type="checkbox"/>
@@ -183,6 +197,14 @@ export default {
         };
     },
     computed: {
+        selectAll: { // 判斷是否全選
+            get() {
+                return this.references.length > 0 && this.referenceIds.length === this.references.length;
+            },
+            set(value) {
+                // 這個 setter 主要是為了 v-model，實際邏輯在 toggleSelectAll 中處理
+            }
+        },
         formData() {
             return {
                 references: this.referenceIds,
@@ -214,6 +236,15 @@ export default {
         }
     },
     methods: {
+        toggleSelectAll() {
+        if (this.referenceIds.length === this.references.length) {
+            // 如果已經全選，則取消全選
+            this.referenceIds = [];
+        } else {
+            // 否則選中所有項目
+            this.referenceIds = this.references.map(ref => ref.id);
+        }
+        },
         reset(){
             this.references = [],
             this.referenceIds = [],
