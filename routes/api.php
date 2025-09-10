@@ -34,6 +34,7 @@ Route::get('/persons/{id}/type-specimens', 'PersonController@typeSpecimens');
 
 Route::resource('references', 'ReferenceController')->only('index', 'show');
 Route::get('references/{id}/usages', 'ReferenceController@usages');
+Route::get('citations', 'ReferenceController@citations');
 
 Route::get('simple-taxon-names', 'TaxonNameController@simpleIndex');
 Route::get('taxon-names', 'TaxonNameController@index');

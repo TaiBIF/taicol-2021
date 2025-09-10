@@ -433,4 +433,40 @@ class ReferenceController extends Controller
             'total' => $count,
         ]);
     }
+
+
+    public function citations(Request $request)
+    {
+        $keyword = $request->get('keyword', '');
+
+        $query = DB::table('api_citations')
+            ->join('references', 'api_citations.reference_id', '=', 'references.id')
+            ->where('references.is_publish', 1)
+            ->where('references.type', '!=', Reference::TYPE_BACKBONE)
+            ->where('references.type', '!=', Reference::TYPE_SUPER_BACKBONE);
+
+        // 只有當有關鍵字時才加入搜尋條件
+        if (!empty($keyword)) {
+            $query->where(function($subQuery) use ($keyword) {
+                $subQuery->where('api_citations.author', 'LIKE', "%{$keyword}%")
+                    ->orWhere('api_citations.short_author', 'LIKE', "%{$keyword}%")
+                    ->orWhere('api_citations.content', 'LIKE', "%{$keyword}%");
+            });
+        }
+
+        $references = $query->select(
+                'api_citations.reference_id',
+                DB::raw("CONCAT(api_citations.short_author, ' ', api_citations.content) as citation")
+            )
+            ->paginate(20);
+
+        return response()->json([
+            'total' => $references->total(),
+            'data' => $references->items(),
+            'per_page' => $references->perPage(),
+            'current_page' => $references->currentPage(),
+            'last_page' => $references->lastPage(),
+        ]);
+    }
+
 }

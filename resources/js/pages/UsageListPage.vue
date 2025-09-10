@@ -30,6 +30,10 @@
                 >
                     {{ $t('namespace.insertNameCard') }}
                 </button>
+                <button class="button namespace-button"
+                        v-on:click="onToggleSimpleForm">
+                    {{ isListSimple ? $t('namespace.listDetail') : $t('namespace.listSimple') }}
+                </button>                
                 <button v-if="configs.type === 'namespace'" class="button namespace-button"
                         v-on:click="onOpenPropertiesModal">
                     {{ $t('namespace.setAllProperties') }}
@@ -44,10 +48,7 @@
                         v-on:click="onExportUsages">
                     {{ $t('namespace.exportUsages') }}
                 </button>
-                <button class="button namespace-button"
-                        v-on:click="onToggleSimpleForm">
-                    {{ isListSimple ? $t('namespace.listDetail') : $t('namespace.listSimple') }}
-                </button>
+
                 <button v-if="configs.type === 'namespace'"
                         class="button namespace-button"
                         v-on:click="onDownloadDoc">
@@ -58,6 +59,11 @@
                         v-on:click="onClearNamespace">
                     {{ $t('namespace.clearNamespace') }}
                 </button>
+                <button v-if="configs.type === 'namespace'" class="button namespace-button"
+                        v-on:click="onOpenPublishingModal">
+                    {{ $t('namespace.publishingTool') }}
+                </button>
+
             </div>
         </div>
         <div id="usage-container" class="grow flex flex-col z-0">
@@ -674,6 +680,14 @@ export default {
                 component: () => import('../components/modals/UsagePropertyModal.vue'),
                 props: {
                     onUpdate: this.onUpdateAllProperties,
+                },
+            });
+        },
+        onOpenPublishingModal() {
+            this.$store.commit('openModal', {
+                component: () => import('../components/modals/PublishingToolModal.vue'),
+                props: {
+                    namespaceId: this.model.id,
                 },
             });
         },

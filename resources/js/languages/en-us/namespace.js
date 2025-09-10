@@ -21,6 +21,8 @@ export default {
     add: 'Add',
     usageTitle: 'Title',
     exampleDownload: 'Example Download',
+    publishingTool: 'Publishing Tool',
+    publishingToolInfo: 'Submit to Biota Taiwanica via publishing tools for review and publication. (Testing, not yet available)',
 
     listSimple: 'View Simplified Lists',
     listDetail: 'View Details',

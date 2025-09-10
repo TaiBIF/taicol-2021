@@ -21,6 +21,8 @@ export default {
     add: '加入',
     usageTitle: '標題',
     exampleDownload: '範本下載',
+    publishingTool: '出版工具',
+    publishingToolInfo: '將此名錄傳送至中研院臺灣生物誌（Biota Taiwanica）出版計畫平台之出版工具，經審查後出版於臺灣生物誌計畫所屬之出版品。（功能測試中，尚未開放）',
 
     listSimple: '檢視簡易異名表',
     listDetail: '檢視詳細異名表',
