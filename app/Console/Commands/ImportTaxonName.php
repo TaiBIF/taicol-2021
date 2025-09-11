@@ -148,6 +148,7 @@ class ImportTaxonName extends Command
                     'latin_genus' => $latinGenus,
                     'has_reference' => false,
                     'reference_name' => $referenceName,
+                    // 'authors_name' => $authorsString ?? null,
                     'species_id' => $species ? $species->id : null,
                     'species_layers' => $s2Rank ? [
                         [

@@ -2,6 +2,9 @@
     <div class="flex gap-1">
         <span v-if="isInTaiwan === 1"
               class="c-tag">{{ $t('usage.inTaiwan') }}</span>
+        <span v-else="isInTaiwan === 0"
+              class="c-tag">{{ $t('usage.notInTaiwan') }}</span>
+
         <span v-if="isNewRecord === true"
               class="c-tag">{{ $t('usage.newRecord') }}</span>
         <span v-if="isEndemic"

@@ -162,9 +162,16 @@ class TaxonNameService
         $properties['species_id'] = $data['species_id'] ?? null;
         $properties['species_layers'] = $data['species_layers'];
 
+        if ($data['from_import'] == true){
+            if (isset($data['formatted_authors'])){
+                $properties['authors_name'] = $data['formatted_authors'];
+            }
+        }
+
+
         if (isset($data['authors_name']) && $data['authors_name']) {
             $properties['authors_name'] = $data['authors_name'];
-        }
+        } 
 
         if ($nomenclature->group === 'bacteria') {
             $properties['is_approved_list'] = $data['is_approved_list'];

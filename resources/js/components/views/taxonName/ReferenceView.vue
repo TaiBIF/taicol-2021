@@ -44,6 +44,9 @@
                             <span v-if="usage.properties.isInTaiwan === 1" class="bg-gray-50 px-3 ml-2">
                                 {{ $t('usage.inTaiwan') }}
                             </span>
+                            <span v-else="usage.properties.isInTaiwan === 0" class="bg-gray-50 px-3 ml-2">
+                                {{ $t('usage.notInTaiwan') }}
+                            </span>
                             <span v-if="usage.properties.isNewRecord === true || usage.properties.isNewRecord === 1" class="bg-gray-50 px-3 ml-2">
                                 {{ $t('usage.newRecord') }}
                             </span>

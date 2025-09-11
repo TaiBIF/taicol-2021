@@ -240,6 +240,7 @@ class TaxonNameImportService
                     // ICNP
                     'genome_composition' => '',
                     'host' => '',
+                    'from_import' => true,
                 ],
                     $authors->pluck('id')->toArray(),
                     $exAuthors->pluck('id')->toArray(),
@@ -249,6 +250,7 @@ class TaxonNameImportService
                         'name_in_reference' => '',
                         'show_page' => $page,
                     ] : [],
+                    true
                 );
 
         if ($nomenclature != 4) {

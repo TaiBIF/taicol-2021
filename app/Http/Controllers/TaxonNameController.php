@@ -988,6 +988,8 @@ class TaxonNameController extends Controller
 
             'is_publish' => $request->get('is_publish'),
             'kingdom_taxon_name_id' => $request->get('kingdom_taxon_name_id'),
+
+            'from_import' => false,
         ],
             $authorIds,
             $exAuthorIds,
@@ -1082,6 +1084,8 @@ class TaxonNameController extends Controller
             'host' => $request->get('host'),
             'is_publish' => $request->get('is_publish'),
             'kingdom_taxon_name_id' => $request->get('kingdom_taxon_name_id'),
+
+            'from_import' => false,
         ],
             $authorIds,
             $request->get('ex_authors', []),
