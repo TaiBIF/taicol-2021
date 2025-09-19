@@ -5,7 +5,7 @@
         <span v-else-if="isInTaiwan === 0"
               class="c-tag">{{ $t('usage.notInTaiwan') }}</span>
 
-        <span v-if="isNewRecord === true"
+              <span v-if="isNewRecord === true || isNewRecord === 1"
               class="c-tag">{{ $t('usage.newRecord') }}</span>
         <span v-if="isEndemic"
               class="c-tag">{{ $t('usage.endemic') }}</span>
