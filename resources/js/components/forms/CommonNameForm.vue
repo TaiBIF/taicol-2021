@@ -124,6 +124,12 @@ export default {
     //         required: true,
     //     },
     // },
+    props: {
+        onContinueEditing: {
+            type: Function,
+            default: null,
+        },
+    },
     mounted() {
         this.onAddCommonName();
         this.fetchEditLog('commonname', 0);
@@ -184,7 +190,8 @@ export default {
                 this.$store.commit('openModal', {
                     component: () => import('../modals/ConfirmCommonNameModal.vue'),
                     props: {
-                        taxonNameId: this.taxonName?.id
+                        taxonNameId: this.taxonName?.id,
+                        onContinueEditing: this.onContinueEditing
                     },
                 });
 
@@ -197,6 +204,9 @@ export default {
 
             }).catch(({ status, message, errors }) => {
                 this.errors = errors;
+                if (this.onContinueEditing) {
+                    this.onContinueEditing();
+                }
             });
         }),
     },
