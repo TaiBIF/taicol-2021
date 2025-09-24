@@ -729,7 +729,6 @@ class MyNamespaceUsageController extends Controller
         $referencesString = ImportChecklistLog::where('namespace_id', $namespaceId)
             ->value('included_references') ?? '';
 
-
         $citations = [];
         if ($referencesString) {
             $references = array_filter(array_map('trim', explode(',', $referencesString)));
@@ -741,6 +740,7 @@ class MyNamespaceUsageController extends Controller
                         'reference_id',
                         DB::raw("CONCAT(author, ' ', content) as citation")
                     )
+                    ->orderBy('citation', 'asc')
                     ->get()
                     ->toArray();
             }
