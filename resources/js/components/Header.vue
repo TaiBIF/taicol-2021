@@ -46,6 +46,21 @@
                 <router-link :to="{name: 'help'} " class="navbar-item"
                              v-text="$t('header.help')"/>
                 <a v-if="user.roleId === 1"
+                   :class="{active: showImportSubMenu}"
+                   class="navbar-item"
+                   v-on:mouseenter="() => (showImportSubMenu = true)"
+                   v-on:mouseleave="() => (showImportSubMenu = false)"
+                >
+                    {{ $t('header.import') }}
+                    <div class="submenu">
+                        <router-link :to="{name: 'reference-ai-create'}" class="item"
+                                     v-text="$t('header.importMenu.literatureParsing')"/>
+                    </div>
+                </a>
+
+                <router-link :to="{name: 'help'} " class="navbar-item"
+                             v-text="$t('header.help')"/>
+                <a v-if="user.roleId === 1"
                    :class="{active: showAdminSubMenu}"
                    class="navbar-item"
                    v-on:mouseenter="() => (showAdminSubMenu = true)"
@@ -139,6 +154,7 @@ export default {
     data() {
         return {
             showAdminSubMenu: false,
+            showImportSubMenu: false,
             showUserSubMenu: false,
             showLanguageSubMenu: false,
             showCollectionSubMenu: false,

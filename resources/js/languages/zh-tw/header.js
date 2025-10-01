@@ -17,6 +17,10 @@ export default {
         taxonNameImport: '學名匯入',
         usageCheck: '學名使用檢查',
     },
+    import: '匯入工具',
+    importMenu: {
+        literatureParsing: '文獻解析',
+    },
     help: '支援',
     collectionMenu: {
         myCollection: '我的收藏',

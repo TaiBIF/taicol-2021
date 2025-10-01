@@ -127,6 +127,14 @@ const routes = [
         },
     },
     {
+        name: 'reference-ai-create',
+        path: 'reference/import/tool',
+        component: () => import(/* webpackChunkName: "reference-ai-create" */'./pages/ReferenceAiCreatePage.vue'),
+        meta: {
+            backgroundColor: 'grey',
+        },
+    },
+    {
         name: 'reference-edit',
         path: 'references/:id/edit',
         component: () => import(/* webpackChunkName: "reference-edit" */'./pages/ReferenceFormPage.vue'),

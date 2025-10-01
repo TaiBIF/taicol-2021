@@ -17,6 +17,10 @@ export default {
         taxonNameImport: 'Taxon Name Import',
         usageCheck: 'Usage Check',
     },
+    import: 'Import Tool',
+    importMenu: {
+        literatureParsing: 'Literature Parsing',
+    },
     help: 'Help',
     collectionMenu: {
         myCollection: 'My Collection',
