@@ -48,7 +48,7 @@
                                          class="my-link"
                                          v-text="`${renderPersonFullName(author)}`"/>
                         </p>
-                        <p v-if="properties.authorsName">
+                        <p v-if="authors.length === 0 && properties.authorsName">
                             {{ properties.authorsName }}
                         </p>
                     </div>
