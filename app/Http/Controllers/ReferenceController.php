@@ -456,7 +456,7 @@ class ReferenceController extends Controller
 
         $references = $query->select(
                 'api_citations.reference_id',
-                DB::raw("CONCAT(api_citations.short_author, ' ', api_citations.content) as citation")
+                DB::raw("CONCAT(api_citations.author, ' ', api_citations.content) as citation")
             )
             ->paginate(20);
 
