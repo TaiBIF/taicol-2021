@@ -7,7 +7,7 @@
               :options="filteredPersons"
               clearable
               label="fullName"
-              multiple
+              :multiple="multiple"
               v-on:input="onUpdateValue"
               v-on:typing="fetchFilteredPersons"
               :insertedAuthors="insertedAuthors"
@@ -43,8 +43,9 @@ import { factory as personFactory, fullName } from '../../utils/preview/person';
 export default {
     props: {
         value: {
-            type: Array,
-            required: true,
+            type: [Array, Object, null],
+            required: false,
+            default: () => [],
         },
         errors: {
             type: Array,
@@ -52,6 +53,10 @@ export default {
         disabled: {
             type: Boolean,
             default: false,
+        },
+        multiple: {
+            type: Boolean,
+            default: true, // 預設為多選
         },
         // Nomenclauture 類別「動物」或「植物」
         group: {
@@ -62,12 +67,18 @@ export default {
         },
         insertAuthorsAction: {
             type: Number,
+        },
+        // 新增：作者資料，用於預填表單
+        authorData: {
+            type: Object,
+            required: false,
+            default: () => ({}),
         }
     },
     data() {
         return {
             filteredPersons: [],
-            localValue: this.value,
+            localValue: this.multiple ? (Array.isArray(this.value) ? this.value : []) : (Array.isArray(this.value) ? this.value : []),
             isLoading: false,
         };
     },
@@ -75,6 +86,13 @@ export default {
         tSelect: Select,
     },
     watch: {
+        value: {
+            handler(newValue) {
+                this.localValue = Array.isArray(newValue) ? newValue : [];
+            },
+            deep: true,
+            immediate: true,
+        },
         disabled(value) {
             if (value) {
                 this.localValue = [];
@@ -110,9 +128,23 @@ export default {
         },
         onAddPersonFormLayer() {
             this.$refs.mySelect.$refs.mySelect.onEscape();
+            
+            // 準備預設資料
+            const presetData = {};
+            if (this.authorData.given) {
+                presetData.firstName = this.authorData.given;
+            }
+            if (this.authorData.family) {
+                presetData.lastName = this.authorData.family;
+            }
+
+
             this.$store.commit('layer/ADD', {
                 template: () => import('../layers/PersonLayer.vue'),
                 defaultText: this.localValue,
+                props: {
+                    presetName: presetData
+                },
                 events: {
                     onAfterSubmit: this.onAfterCreate,
                 },

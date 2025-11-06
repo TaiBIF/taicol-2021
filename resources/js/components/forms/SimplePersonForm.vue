@@ -185,13 +185,30 @@ export default defineComponent({
             type: Function as PropType<(data) => void>,
             required: true,
         },
+        presetName: {
+            type: Object,
+            required: false,
+        },
+
     },
     setup(props, context) {
         const axios: any = inject('axios');
         const errors = ref({});
         const app: any = context.root;
 
+        // 初始化 form
         const form = ref<PersonDetail>(personDetailResource(props.presetData));
+
+        // 如果有 presetName，填入 lastName 和 firstName
+        if (props.presetName) {            
+            // 填入姓名欄位到已初始化的 form
+            if (props.presetName.lastName) {
+                form.value.lastName = props.presetName.lastName;
+            }
+            if (props.presetName.firstName) {
+                form.value.firstName = props.presetName.firstName;
+            }
+        }
 
         const isEdit = computed(() => !!form.value?.id);
         const formData = computed(() => ({

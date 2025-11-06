@@ -8,6 +8,7 @@
         </div>
         <div class="layer-content box">
             <person-form ref="form"
+                         :presetName="presetName"
                          :on-after-submit="onAfterFormSubmit"/>
         </div>
         <div class="layer-footer">
@@ -33,6 +34,10 @@ export default {
         onAfterSubmit: {
             type: Function,
             required: true,
+        },
+        presetName: { // DOI or 文獻預處理工具帶入的學名
+            type: Object,
+            required: false,
         },
     },
     methods: {
