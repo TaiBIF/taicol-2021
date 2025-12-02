@@ -43,6 +43,7 @@ class UsageCollection extends JsonResource
             'type_specimens' => collect($this->type_specimens)->map(function($typeSpecimen) {
                 $typeSpecimen['country'] = isset($typeSpecimen['country_id']) ? Country::find($typeSpecimen['country_id']) : null;
                 $typeSpecimen['collectors'] = PersonCollection::collection(Person::whereIn('id', $typeSpecimen['collector_ids'] ?? [])->get());
+                $typeSpecimen['lecto_designated_reference'] = isset($typeSpecimen['lecto_designated_reference_id']) ? ReferenceCollection::collection([Reference::find($typeSpecimen['lecto_designated_reference_id'])])->first() : null;
                 return $typeSpecimen;
             }),
             'type_name' => $typeName,

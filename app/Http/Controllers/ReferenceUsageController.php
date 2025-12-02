@@ -13,6 +13,7 @@ use App\Reference;
 use App\ReferenceUsage;
 use App\TmpNamespaceUsage;
 use App\TaxonName;
+use App\Country;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -125,6 +126,8 @@ class ReferenceUsageController extends Controller
             }),
             'type_specimens' => collect($usage->type_specimens)->map(function ($t) {
                     $t['collectors'] = PersonCollection::collection(Person::whereIn('id', $t['collector_ids'] ?? [])->get());
+                    $t['country'] = isset($t['country_id']) ? Country::find($t['country_id']) : null;
+                    $t['lecto_designated_reference'] = isset($t['lecto_designated_reference_id']) ? ReferenceCollection::collection([Reference::find($t['lecto_designated_reference_id'])])->first() : null;
                     return $t;
                 }) ?? [],
             'name_remark' => $usage->name_remark,
