@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Entities;
+use Illuminate\Support\Facades\Log;
 
 class JournalReferenceEntity implements ReferenceOtherProperties
 {
@@ -25,6 +26,7 @@ class JournalReferenceEntity implements ReferenceOtherProperties
         $this->doi = $data['doi'] ?? '';
         $this->url = $data['url'] ?? '';
         $this->copyright = $data['copyright'] ?? '';
+        $this->file = $data['file'] ?? '';
 
         return $this;
     }
@@ -47,6 +49,7 @@ class JournalReferenceEntity implements ReferenceOtherProperties
             'doi' => $this->doi,
             'url' => $this->url,
             'copyright' => $this->copyright,
+            'file' => $this->file,
         ];
     }
 }

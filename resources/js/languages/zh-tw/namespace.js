@@ -32,4 +32,7 @@ export default {
     insertNameCard: '新增學名卡片',
     setAllProperties: '設定屬性',
     setAllPropertiesInfo: '此為設定全名錄的所有屬性為一致。注意：設定後會覆蓋原有個別屬性設定且不能復原。',
+
+    bindReference: '綁定文獻',
+    continueToImportChecklist: '確認綁定並繼續匯入異名表',
 };

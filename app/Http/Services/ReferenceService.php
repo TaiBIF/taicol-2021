@@ -6,10 +6,12 @@ use App\Book;
 use App\FavoriteMineItem;
 use App\Http\Entities\ReferenceOtherPropertiesFactory;
 use App\Reference;
+use App\ReferenceUsage;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class ReferenceService
 {
@@ -112,7 +114,7 @@ class ReferenceService
         ]));
     }
 
-    public function hasReferenceExist($title, $publishYear, $authors, bool $isPublish): bool
+    public function hasReferenceExist($title, $publishYear, $authors, bool $isPublish, bool $returnReference = false)
     {
         $existQuery = Reference::query()
             ->where('title', $title)
@@ -126,8 +128,123 @@ class ReferenceService
             $existQuery->where('id', '!=', $this->reference->id);
         }
 
+        if ($returnReference) {
+            $references = $existQuery->get();
+            return $references->isNotEmpty() ? $references : false;
+        }
+
         return $existQuery->count() > 0;
     }
+
+    public function hasReferenceWithFile($title, $publishYear, $authors, bool $isPublish): array
+    {
+        $existQuery = Reference::query()
+            ->where('title', $title)
+            ->where('publish_year', $publishYear)
+            ->where('is_publish', $isPublish)
+            ->whereHas('authors', function ($query) use ($authors) {
+                $query->whereIn('persons.id', $authors);
+            }, '=', count($authors));
+
+        if ($this->reference->id) {
+            $existQuery->where('id', '!=', $this->reference->id);
+        }
+
+        $references = $existQuery->get();
+
+        if ($references->isEmpty()) {
+            return ['exists' => false];
+        }
+
+        // 檢查是否有檔案不為空的文獻
+        foreach ($references as $reference) {
+            $properties = is_string($reference->properties) 
+                ? json_decode($reference->properties, true) 
+                : $reference->properties;
+                
+            $file = $properties['file'] ?? null;
+            
+            if (!empty($file) && $file !== '' && $file !== null) {
+                return [
+                    'exists' => true,
+                    'reference' => [
+                        'id' => $reference->id,
+                        'title' => $reference->title
+                    ]
+                ];
+            }
+        }
+
+        return ['exists' => false];
+    }
+    public function hasReferenceWithUsage($title, $publishYear, $authors, bool $isPublish): array
+    {
+        $existQuery = Reference::query()
+            ->where('title', $title)
+            ->where('publish_year', $publishYear)
+            ->where('is_publish', $isPublish)
+            ->whereHas('authors', function ($query) use ($authors) {
+                $query->whereIn('persons.id', $authors);
+            }, '=', count($authors));
+
+        if ($this->reference->id) {
+            $existQuery->where('id', '!=', $this->reference->id);
+        }
+
+        $references = $existQuery->get();
+
+        if ($references->isEmpty()) {
+            return ['exists' => false];
+        }
+
+        $referenceIds = $references->pluck('id');
+        
+        $hasUsage = ReferenceUsage::whereIn('reference_id', $referenceIds)
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if ($hasUsage) {
+            $firstReference = $references->first();
+            return [
+                'exists' => true,
+                'reference' => [
+                    'id' => $firstReference->id,
+                    'title' => $firstReference->title
+                    // 不需要 URL，讓前端處理
+                ]
+            ];
+        }
+
+        return ['exists' => false];
+    }
+    // public function hasReferenceWithUsage($title, $publishYear, $authors, bool $isPublish): bool
+    // {
+    //     $existQuery = Reference::query()
+    //         ->where('title', $title)
+    //         ->where('publish_year', $publishYear)
+    //         ->where('is_publish', $isPublish)
+    //         ->whereHas('authors', function ($query) use ($authors) {
+    //             $query->whereIn('persons.id', $authors);
+    //         }, '=', count($authors));
+
+    //     // if ($this->reference->id) {
+    //     //     $existQuery->where('id', '!=', $this->reference->id);
+    //     // }
+
+    //     $references = $existQuery->get();
+
+    //     if ($references->isEmpty()) {
+    //         return false;
+    //     }
+
+    //     $referenceIds = $references->pluck('id');
+        
+    //     return ReferenceUsage::whereIn('reference_id', $referenceIds)
+    //         ->whereNull('deleted_at')
+    //         ->exists();
+    // }
+
+
 
     public function create(array $data): Model
     {

@@ -63,6 +63,7 @@ export default {
     exist: '文獻已存在',
     publishTitle: '發表文獻',
     doiImport: 'DOI 匯入工具',
+    aiImport: 'AI 匯入工具',
 
     // view
     nameInReference: '本文獻分類群及其異名表',

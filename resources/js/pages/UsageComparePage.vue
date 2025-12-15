@@ -188,7 +188,10 @@ export default {
                 || p.isBrackish
                 || p.isMarine
                 || p.commonNames?.length
+                || p.additionalFields?.length
+                || p.customFields?.length
                 || p.note
+                || p.isInTaiwan === 1
             );
         },
     },

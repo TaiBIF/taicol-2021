@@ -44,6 +44,12 @@ const store = new Vuex.Store({
             state.modal.lang = lang;
             Vue.i18n.set(lang);
         },
+        setReferencePresetData(state, data) {
+            state.referencePresetData = data;
+        },
+        setBindReferenceData(state, data) {
+            state.bindReferenceData = data;
+        },
     },
 });
 

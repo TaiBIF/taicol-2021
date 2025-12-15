@@ -48,4 +48,7 @@ export default {
     'user.required': 'Required',
     'user.email': 'Format does not match',
 
+    'referenceUsagePrefix': "Reference that already has usages existing in the database cannot be imported. To make edits, please go to the reference page and edit checklist: ",
+    'referenceHasFile': 'This reference has already been created and a PDF file is available. It cannot be imported. please go to the reference page and edit checklist:'
+
 };

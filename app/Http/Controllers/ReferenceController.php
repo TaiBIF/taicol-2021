@@ -15,11 +15,17 @@ use App\Http\Services\ReferenceService;
 use App\Person;
 use App\Reference;
 use App\ReferenceUsage;
+use App\ImportAiLog;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Redis;
+
 
 class ReferenceController extends Controller
 {
@@ -217,13 +223,14 @@ class ReferenceController extends Controller
 
         $service = new ReferenceService(new Reference());
 
+
         if ($service->hasReferenceExist($title, $publishYear, $authors, true)) {
             return response([
-                'message' => 'Reference exist'
+                'message' => 'Reference exist',
             ])->setStatusCode(409);
         } else if  ($service->hasReferenceExist($title, $publishYear, $authors, false)) {
             return response([
-                'message' => 'Reference draft exist'
+                'message' => 'Reference draft exist',
             ])->setStatusCode(409);
         }
 
@@ -401,6 +408,274 @@ class ReferenceController extends Controller
             'language' => $language,
         ]);
     }
+
+
+
+    public function savePDF($file)
+    {
+        if ($file) {
+            $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            $path = sprintf(
+                'references/%s_%s.pdf',
+                $originalName,
+                Carbon::now()->format('Ymd')
+            );
+
+            Storage::disk('pdfs')->put($path, file_get_contents($file));
+            return $path; // 回傳儲存路徑
+        }
+
+        return null;
+    }
+
+    public function fetchReferenceAi(Request $request)
+    {
+        // NOTE 這邊是測試用的
+
+        $existingReferences = Reference::whereIn('id', [6014])->get();
+
+
+        return response()->json([
+            'message' => 'Reference exists',
+            'data' => ReferenceCollection::collection($existingReferences)
+        ], 409);
+
+        // 只允許檔案上傳
+
+        $file = $request->file('file');
+
+        if (!$file || !$file->isValid()) {
+            $errorCode = $file ? $file->getError() : 'NO_FILE';
+            
+            // 根據不同錯誤回傳不同訊息
+            $errorMessages = [
+                UPLOAD_ERR_INI_SIZE => '檔案大小超過系統限制',
+                UPLOAD_ERR_FORM_SIZE => '檔案大小超過表單限制', 
+                UPLOAD_ERR_PARTIAL => '檔案上傳不完整',
+                UPLOAD_ERR_NO_FILE => '沒有選擇檔案',
+                'NO_FILE' => '沒有接收到檔案'
+            ];
+            
+            $message = $errorMessages[$errorCode] ?? '檔案上傳失敗';
+            
+            return response()->json([
+                'message' => $message,
+            ], 400); 
+        }
+
+        // 檔案正常，繼續處理
+        $filePath = $this->savePDF($file);
+
+        // 建立 JobLog
+        $jobLog = ImportAiLog::create([
+            'job_type' => 'reference_gemini_url',
+            'job_class' => 'ReferenceGeminiController',
+            'status' => 'processing',
+            'user_id' => Auth::user()->id,
+            'started_at' => now(),
+            'metadata' => [
+                'file_url' => $filePath,
+            ]
+        ]);
+
+        // 檢查API限制
+        $today = date('Y-m-d');
+        $dailyKey = "gemini_api_calls:{$today}";
+        $currentCalls = Redis::get($dailyKey) ?? 0;
+        
+        if ($currentCalls >= config('services.gemini.daily_limit', 1000)) {
+            throw new \Exception('Daily API limit exceeded');
+        }
+
+        // 呼叫 python API
+
+        $data = [];
+
+        try {
+            // 呼叫 Python API
+            // Log::info('referenceeeee');
+            $response = Http::timeout(120)->post('http://127.0.0.1:8009/process-reference', [
+                'file_path' => $filePath
+            ]);
+            
+            if ($response->successful()) {
+                $result = $response->json();
+                
+                if ($result['success']) {
+
+                    // 處理成功
+                    $data = $result['result'] ?? [];
+
+                    $metadata = $result['metadata'] ?? [];
+                    
+                    $jobLog->update([
+                        'status' => 'completed',
+                        'completed_at' => now(),
+                        'file_uri' => $result['file_uri'],
+                        'metadata' => array_merge($jobLog->metadata ?? [], [
+                            'tokens_used' => $metadata['tokens_used'],
+                            'input_tokens' => $metadata['input_tokens'],
+                            'output_tokens' => $metadata['output_tokens']
+                        ])
+                    ]);
+                                        
+                } else {
+                    // Python API 回傳錯誤
+                    throw new \Exception($result['error'] ?? 'Unknown error from Python service');
+                }
+                
+            } else {
+                // HTTP 請求失敗
+                throw new \Exception("Python API HTTP error: {$response->status()} - {$response->body()}");
+            }
+
+        } catch (\Exception $e) {
+            // 統一錯誤處理
+            Log::error('Gemini processing failed', [
+                'error' => $e->getMessage(),
+                'file_path' => $request->file_path ?? null
+            ]);
+
+            $jobLog->update([
+                'status' => 'failed',
+                'completed_at' => now(),
+                'error_message' => $e->getMessage()
+            ]);
+
+            // TODO 這邊回傳錯誤還要回傳給vue前端
+
+        }
+
+        // Log::info('API Response: ' . json_encode($data));
+
+        // 更新API計數
+        Redis::incr($dailyKey);
+        Redis::expire($dailyKey, 86400);
+
+        // 更新JobLog為成功
+
+        $typeMapping = [
+            'journal-article' => Reference::TYPE_JOURNAL,
+            'book-chapter' => Reference::TYPE_BOOK_ARTICLE,
+            'book' => Reference::TYPE_BOOK,
+            'checklist' => Reference::TYPE_CHECKLIST
+        ];
+
+
+        // 檢查 type 是否存在
+        $dataType = $data['type'] ?? null;
+        if (!$dataType || !isset($typeMapping[$dataType])) {
+            return response()
+                ->json([
+                    'message' => '不匯入資料'
+                ])
+                ->setStatusCode(409);
+        }
+
+        $type = $typeMapping[$dataType];
+        $authors = $data['author'] ?? [];
+        $publishedData = $data['published'] ?? [];
+        $dateParts = $publishedData['date-parts'] ?? [];
+        $publishYear = isset($dateParts[0][0]) ? $dateParts[0][0] : '';
+        $authorPossible = [];
+
+        foreach ($authors as $key => $author) {
+            $givenName = isset($author['given']) ? str_replace(['.', ' '], '', $author['given']) : '';
+            $familyName = $author['family'] ?? '';
+            
+            if ($givenName && $familyName) {
+                $person = Person::whereRaw('CONCAT(first_name, middle_name) like ?', ["%$givenName%"])
+                    ->where('last_name', 'like', "%$familyName%")
+                    ->first();
+                $authorPossible[$key] = $person ? PersonCollection::collection([$person])[0] : null;
+            } else {
+                $authorPossible[$key] = null;
+            }
+        }
+
+        $authorPossibleIds = array_filter(array_map(function($author) {
+            if ($author && $author instanceof \App\Http\Resources\PersonCollection) {
+                return $author->resource->id; // 取得 Person 模型的 ID
+            }
+            return null;
+        }, $authorPossible));
+
+        $titles = $data['title'] ?? [];
+        $articleTitle = isset($titles[0]) ? $titles[0] : '';
+
+        $containerTitles = $data['container-title'] ?? [];
+        $bookTitle = !empty($containerTitles) ? implode(';', $containerTitles) : '';
+
+        $book = $bookTitle ? Book::where('title', $bookTitle)->first() : null;
+        $bookAbbr = $book ? ($book->title_abbreviation ?? '') : '';
+        $volume = $data['volume'] ?? '';
+        $issue = $data['issue'] ?? '';
+        $page = isset($data['page']) ? str_replace('-', '–', $data['page']) : '';
+        $DOI = $data['doi'] ?? '';
+        $URL = $data['url'] ?? '';
+        $language = $data['language'] ?? '';
+
+        $service = new ReferenceService(new Reference());
+
+        $usageCheck = $service->hasReferenceWithUsage($articleTitle, $publishYear, $authorPossibleIds, true);
+        $fileCheck = $service->hasReferenceWithFile($articleTitle, $publishYear, $authorPossibleIds, true);
+        $existingReferences = $service->hasReferenceExist($articleTitle, $publishYear, $authorPossibleIds, true, true);
+
+        if ($usageCheck['exists']) {
+            // 有usage 不提供匯入
+            return response()->json([
+                'message' => 'Reference has usage',
+                'errors' => [
+                    'file' => [
+                            'type' => 'reference_usage',
+                            'reference' => $usageCheck['reference']
+                    ]
+                ]
+            ])->setStatusCode(409);
+        } else if ($fileCheck['exists']) {
+            // 有文獻PDF 不提供匯入
+            return response()->json([
+                'message' => "Reference exists with file",
+                'errors' => [
+                    'file' => [
+                            'type' => 'reference_with_file',
+                            'reference' => $fileCheck['reference']
+                    ]
+                ]
+            ])->setStatusCode(409);
+        } else if ($existingReferences) {
+            // 有找到已建立的ref 提供匯入
+                return response()->json([
+                    'message' => 'Reference exists',
+                    'data' => ReferenceCollection::collection($existingReferences)
+                ], 409);
+        } else if  ($service->hasReferenceExist($articleTitle, $publishYear, $authorPossibleIds, false)) {
+            // 有文獻草稿 不提供匯入
+            return response([
+                'message' => '該筆資料已被建立為草稿，請到我的收藏裡的草稿確認並發布，若該筆不是您建立的草稿，請聯絡管理員。(catalogueoflife.taiwan@gmail.com)',
+            ])->setStatusCode(409);
+        }
+
+
+        return response()->json([
+            'type' => $type,
+            'authors' => $authors,
+            'authors_possible' => $authorPossible,
+            'publish_year' => $publishYear,
+            'articleTitle' => $articleTitle,
+            'book_title' => $bookTitle,
+            'book_title_abbreviation' => $bookAbbr,
+            'volume' => $volume,
+            'issue' => $issue,
+            'page' => $page,
+            'doi' => $DOI,
+            'url' => $URL,
+            'language' => $language,
+            'file' => $filePath,
+        ]);
+
+    }
+
 
     public function import(Request $request)
     {

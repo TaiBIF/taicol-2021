@@ -157,7 +157,6 @@ export default {
 
             this.isUsageLoading = true;
 
-
             this.axios.post(`/import/checklist/usages`, {
                 tmpChecklistId: this.tmpChecklistId,
                 title: this.title,

@@ -50,6 +50,7 @@ Route::get('taxon-names/{id}/parents', 'TaxonNameController@parents');
 Route::get('taxon-names/{id}/per_usages', 'TaxonNameController@per_usages');
 Route::get('taxon-names/{id}/type-specimens', 'TaxonNameController@typeSpecimens');
 Route::get('/doi', 'ReferenceController@fetchDoi');
+Route::post('/fetch/reference/ai', 'ReferenceController@fetchReferenceAi');
 Route::get('/higher-taxa', 'ReferenceUsageController@higherTaxa');
 Route::post('/selected-usages', 'ReferenceUsageController@usages');
 Route::get('/tmp-usages', 'ReferenceUsageController@tmpUsages');
@@ -109,6 +110,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/import/namespaces/{id}/usages', 'MyNamespaceUsageController@import');
     Route::post('/import/checklist/usages', 'MyNamespaceUsageController@importChecklist');
     Route::post('/clear/checklist/usages', 'MyNamespaceUsageController@clearChecklist');
+    Route::post('/fetch/namespace/usage/ai', 'MyNamespaceUsageController@fetchUsageAi');
 
     Route::middleware('auth.admin')->group(function () {
         Route::get('/users', 'UserController@list');

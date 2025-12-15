@@ -17,6 +17,7 @@ class ChecklistReferenceEntity implements ReferenceOtherProperties
         $this->bookTitleAbbreviation = $data['book_title_abbreviation'] ?? '';
         $this->url = $data['url'] ?? '';
         $this->copyright = $data['copyright'] ?? '';
+        $this->file = $data['file'] ?? '';
 
         return $this;
     }
@@ -34,6 +35,7 @@ class ChecklistReferenceEntity implements ReferenceOtherProperties
             'book_title_abbreviation' => $this->bookTitleAbbreviation,
             'url' => $this->url,
             'copyright' => $this->copyright,
+            'file' => $this->file,
         ];
     }
 }

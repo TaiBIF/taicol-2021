@@ -22,6 +22,7 @@ class BookArticleReferenceEntity implements ReferenceOtherProperties
         $this->pagesRange = str_replace('-', '–', $data['pages_range'] ?? '');
         $this->url = $data['url'] ?? '';
         $this->copyright = $data['copyright'] ?? '';
+        $this->file = $data['file'] ?? '';
 
         return $this;
     }
@@ -43,6 +44,7 @@ class BookArticleReferenceEntity implements ReferenceOtherProperties
             'pages_range' => $this->pagesRange,
             'url' => $this->url,
             'copyright' => $this->copyright,
+            'file' => $this->file,
         ];
     }
 }

@@ -47,4 +47,7 @@ export default {
     // user
     'user.required': '必填',
     'user.email': '格式不符',
+
+    'referenceUsagePrefix': "文獻已建立分類群不得匯入，若需編輯請至文獻頁面的編輯異名表：",
+    'referenceHasFile': "此篇文獻已建立並已有文獻PDF檔案，不得匯入，若需編輯請至文獻頁面的編輯異名表："
 };

@@ -33,4 +33,7 @@ export default {
     setAllProperties: 'Set Properties',
     setAllPropertiesInfo: 'This is to set all properties of the full checklist to be consistent. '
         + 'Notice: After setting, the original properties settings will be overwritten and cannot be restored.',
+
+    bindReference: 'Bind Reference',
+    continueToImportChecklist: 'Confirm the Binding and Continue to Import Checklist',
 };

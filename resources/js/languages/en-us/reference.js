@@ -63,6 +63,7 @@ export default {
     exist: 'Reference already exists',
     publishTitle: 'Reference',
     doiImport: 'DOI Import Tool',
+    aiImport: 'AI Import Tool',
 
     // view
     nameInReference: 'Names in This Reference',

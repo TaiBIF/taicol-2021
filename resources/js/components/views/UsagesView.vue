@@ -49,8 +49,7 @@
                     <div
                         v-for="usage in [usages.filter((u) => !u.isTitle && u.status === 'accepted')[0]]"
                         v-if="usage &&
-                              showProperties(usage.properties) &&
-                              !isSimple"
+                              showProperties(usage.properties) && !isSimple"
                         class="border-b border-gray-300 py-2 px-5 flex flex-col gap-2">
                         <!-- <div v-if="usage.properties.commonNames && usage.properties.commonNames.length" class="px-2 c-tag">
                             <table class="text-center">
@@ -128,6 +127,8 @@ export default {
                 || p.isBrackish
                 || p.isMarine
                 || p.commonNames?.length
+                || p.additionalFields?.length
+                || p.customFields?.length
                 || p.note
                 || p.isInTaiwan === 1
             );

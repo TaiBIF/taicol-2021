@@ -1,6 +1,6 @@
 <template>
     <div class="form">
-        <div class="columns">
+        <div class="columns" v-if="reference.type !== 0 | !fromAiImport">
             <div class="column is-3">
                 <div class="field">
                     <label class="label" v-text="$t('reference.cover')"/>
@@ -361,6 +361,10 @@ export default {
             type: Function,
             required: true,
         },
+        fromAiImport: {
+            type: Boolean,
+            default: false
+        }
     },
     computed: {
         hideDraftMark(){
@@ -424,6 +428,8 @@ export default {
         }
     },
     data() {
+
+        // console.log(this.presetData);
         return {
             targetBook: this.presetData?.book || null,
             targetAuthors: this.presetData?.authors || [],
@@ -462,6 +468,7 @@ export default {
             doi,
             url,
             language,
+            file
         }) {
             this.reference.type = type;
             this.reference.publishYear = publishYear;
@@ -481,6 +488,10 @@ export default {
                 this.reference.properties.url = url;
             } else if (type === ReferenceTypes.TYPE_BOOK) {
                 this.reference.properties.url = url;
+            }
+
+            if (file){
+                this.reference.properties.file = file;
             }
 
             const lanMapping = {
@@ -530,6 +541,8 @@ export default {
             }).catch(({ status, message, errors }) => {
                 if (status === 409 &&  message === 'Reference exist') {
                     openNotify(this.$t('reference.exist'), 'is-danger');
+                    // TODO 這邊需要判斷是不是從AI匯入工具來的 如果是的話要跳出是否繼續匯出異名表
+
                 } else if (status === 409 &&  message === 'Reference draft exist') {
                     this.$store.commit('openModal', {
                         component: () => import('../modals/ConfirmDraftModal.vue'),

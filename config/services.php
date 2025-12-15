@@ -30,4 +30,8 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'gemini' => [
+        'api_key' => env('GEMINI_API_KEY'),
+        'daily_limit' => env('GEMINI_API_DAILY_LIMIT', 1000),
+    ],
 ];

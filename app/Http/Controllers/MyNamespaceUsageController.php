@@ -20,6 +20,7 @@ use App\ImportChecklistLog;
 use App\User;
 use App\Country;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -28,7 +29,10 @@ use App\Exports\UsagesExport;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Http\Services\UsagePreviewService;
 use App\Http\Resources\TaxonNameSimpleSubResource;
-
+use App\ImportAiLog;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Redis;
+use App\Jobs\ProcessAiUsageRequest;
 
 class MyNamespaceUsageController extends Controller
 {
@@ -935,6 +939,31 @@ class MyNamespaceUsageController extends Controller
         );
 
     }
+
+
+    public function fetchUsageAi(Request $request)  
+    {
+        $data = $request->all();
+        Log::info($data);
+
+        $referenceId = $request->input('reference_id');
+        $userId = Auth::user()->id;
+
+        // 背景處理
+
+        ProcessAiUsageRequest::dispatch($referenceId, $userId);
+        
+        return response()->json([
+            'status' => 'queued', 
+            'message' => '請求已送出，處理完成後將寄信通知，完成後也可以至「我的名錄區」查看及編輯。',
+        ]);
+
+
+    }
+
+
+
+
 
 
     // public function usage_preview(Request $request)

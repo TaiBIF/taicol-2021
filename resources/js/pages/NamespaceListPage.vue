@@ -1,17 +1,22 @@
 <template>
     <div class="w-screen-xl max-w-[85%] my-0 mx-auto container">
         <div class="flex flex-row-reverse py-2">
-            <button class="button items-end flex justify-center items-center"
+            <button class="button items-end flex justify-center items-center ml-3"
                     v-on:click="isShowAddColumn = !isShowAddColumn">
                 <i class="fas fa-plus"></i>&nbsp;{{ $t('namespace.create') }}
+            </button>
+            <button class="button items-end flex justify-center items-center"
+                    v-on:click="() => onFetchAIReference(true)">
+                <i class="fas fa-plus"></i>&nbsp;{{ $t('reference.aiImport') }}
             </button>
         </div>
         <div class="h-full overflow-y-auto">
             <table class="table is-fullwidth is-hoverable table-fixed">
                 <thead class="font-bold">
                 <tr>
-                    <th class="w-[170px]" v-text="$t('namespace.type')"/>
-                    <th class="pl-2" v-text="$t('namespace.title')"/>
+                    <th class="w-[100px]" v-text="$t('namespace.type')"/>
+                    <th v-text="$t('usage.usageReferences')"/>
+                    <th v-text="$t('namespace.title')"/>
                     <th class="w-[180px]" v-text="$t('namespace.lastUpdatedTime')"/>
                     <th class="w-[270px]"></th>
                 </tr>
@@ -23,6 +28,7 @@
                                                :errors="errors"
                         />
                     </td>
+                    <td></td>
                     <td>
                         <div class="field is-grouped">
                             <div class="control is-expanded">
@@ -44,6 +50,12 @@
                     <template v-if="namespace.isEdit">
                         <td>
                             <span class="pl-2" v-text="$t(`namespace.typeOptions.${namespace.type}`)"></span>
+                        </td>
+                        <td>
+                            <router-link :to="{name: 'reference-page', params: {id: namespace.referenceId}}"
+                                         class="my-link" target="_blank">
+                                <span v-text="namespace.referenceTitle"></span>
+                            </router-link>
                         </td>
                         <td>
                            <div class="field is-grouped">
@@ -68,8 +80,14 @@
                             <span class="pl-2" v-text="$t(`namespace.typeOptions.${namespace.type}`)"></span>
                         </td>
                         <td>
+                            <router-link :to="{name: 'reference-page', params: {id: namespace.referenceId}}"
+                                         class="my-link" target="_blank">
+                                <span v-text="namespace.referenceTitle"></span>
+                            </router-link>
+                        </td>
+                        <td>
                             <router-link :to="{name: 'namespace-usage-list', params: {id: namespace.id}}"
-                                         class="my-link pl-2">
+                                         class="my-link">
                                 <span v-text="namespace.title"></span>
                             </router-link>
                         </td>
@@ -108,7 +126,7 @@
         </div>
     </div>
 </template>
-<script lang="ts">
+<script>
 import {
     defineComponent, inject, onBeforeUnmount, onMounted, ref,
 } from '@vue/composition-api';
@@ -117,96 +135,180 @@ import NamespaceTypeSelect from '../components/selects/NamespaceTypeSelect.vue';
 import Tooltip from '../components/Tooltip.vue';
 import { openNotify } from '../utils';
 
-export default defineComponent({
-    setup(props, context) {
-        const axios: any = inject('axios');
 
-        const app: any = context.root;
-        const store = app.$store;
+export default {
+    components: { 
+        Tooltip, 
+        GeneralInput, 
+        NamespaceTypeSelect 
+    },
+    data() {
+        return {
+            myNamespaces: [],
+            newNamespaceTitle: '',
+            newNamespaceType: 0,
+            isShowAddColumn: false,
+        };
+    },
+    mounted() {
+        this.$store.commit('breadcrumb/SET_ITEMS', [
+            {
+                url: '#',
+                name: this.$t('namespace.myNamespace'),
+                to: { name: 'namespaces' },
+            },
+        ]);
 
-        const myNamespaces = ref<{ isConfirmDelete: boolean, isEdit: boolean }[]>([]);
-        const newNamespaceTitle = ref<string>('');
-        const newNamespaceType = ref<number>(0);
-        const isShowAddColumn = ref<boolean>(false);
-
-        const onAddNewNamespace = () => {
-            axios
-                .post('/namespaces', { title: newNamespaceTitle.value, type: newNamespaceType.value })
+        this.$http
+            .get('/namespaces')
+            .then(({ data: { data } }) => {
+                this.myNamespaces = data.map((n) => ({ ...n, isConfirmDelete: false, isEdit: false }));
+            });
+    },
+    destroyed() {
+        this.$store.commit('breadcrumb/CLEAR_ITEMS');
+    },
+    methods: {
+        onFetchAIReference() {
+            this.$store.commit('openModal', {
+                component: () => import('../components/modals/AiReferenceModal.vue'),
+                props: {
+                    onOverwrite: (data) => {
+                        this.$refs.form.onOverwrite(data);
+                    },
+                },
+            });
+        },
+        onAddNewNamespace() {
+            this.$http
+                .post('/namespaces', { title: this.newNamespaceTitle, type: this.newNamespaceType })
                 .then(({ data: { data } }) => {
-                    myNamespaces.value.unshift(data);
-                    isShowAddColumn.value = false;
-                    newNamespaceTitle.value = '';
-                    openNotify(app.$t('common.createSuccess'));
+                    // 需要為新增的資料添加 isConfirmDelete 和 isEdit 屬性
+                    this.myNamespaces.unshift({ ...data, isConfirmDelete: false, isEdit: false });
+                    this.isShowAddColumn = false;
+                    this.newNamespaceTitle = '';
+                    openNotify(this.$t('common.createSuccess'));
                 }).catch(() => {
                 // ..
                 });
-        };
-
-        const onEditNamespace = (index, namespace) => {
-            axios.put(`/namespaces/${namespace.id}`, { title: namespace.title })
+        },
+        onEditNamespace(index, namespace) {
+            this.$http.put(`/namespaces/${namespace.id}`, { title: namespace.title })
                 .then(() => {
-                    myNamespaces.value[index] = { ...myNamespaces.value[index], isEdit: false };
-                    myNamespaces.value = [...myNamespaces.value];
-                    openNotify(app.$t('common.saveSuccess'));
+                    this.$set(this.myNamespaces, index, { ...this.myNamespaces[index], isEdit: false });
+                    openNotify(this.$t('common.saveSuccess'));
                 })
                 .catch(() => {
                     // TODO
                 });
-        };
-
-        const onToggleEditNamespace = (e, index) => {
+        },
+        onToggleEditNamespace(e, index) {
             e.stopPropagation();
-            myNamespaces.value[index] = { ...myNamespaces.value[index], isEdit: true };
-            myNamespaces.value = [...myNamespaces.value];
-        };
-
-        const onDeleteNamespace = (e, index, namespace: any) => {
+            this.$set(this.myNamespaces, index, { ...this.myNamespaces[index], isEdit: true });
+        },
+        onDeleteNamespace(e, index, namespace) {
             e.stopPropagation();
-            myNamespaces.value[index].isConfirmDelete = true;
-            axios
+            this.$set(this.myNamespaces[index], 'isConfirmDelete', true);
+            this.$http
                 .delete(`/namespaces/${namespace.id}`)
                 .then(() => {
-                    myNamespaces.value.splice(index, 1);
-                    openNotify(app.$t('common.deleteSuccess'));
+                    this.myNamespaces.splice(index, 1);
+                    openNotify(this.$t('common.deleteSuccess'));
                 });
-        };
-
-        onBeforeUnmount(() => {
-            store.commit('breadcrumb/CLEAR_ITEMS');
-        });
-
-        onMounted(() => {
-            store.commit('breadcrumb/SET_ITEMS', [
-                {
-                    url: '#',
-                    name: app.$t('namespace.myNamespace'),
-                    to: { name: 'namespaces' },
-                },
-            ]);
-
-            axios
-                .get('/namespaces')
-                .then(({ data: { data } }) => {
-                    myNamespaces.value = data.map((n) => ({ ...n, isConfirmDelete: false }));
-                });
-        });
-
-        return {
-            myNamespaces,
-            isShowAddColumn,
-            newNamespaceTitle,
-            newNamespaceType,
-            onAddNewNamespace,
-            onEditNamespace,
-            onToggleEditNamespace,
-            onDeleteNamespace,
-
-        };
+        },
     },
-    methods: {},
-    components: { Tooltip, GeneralInput, NamespaceTypeSelect },
+};
 
-});
+// export default defineComponent({
+//     setup(props, context) {
+//         const axios: any = inject('axios');
+
+//         const app: any = context.root;
+//         const store = app.$store;
+
+//         const myNamespaces = ref<{ isConfirmDelete: boolean, isEdit: boolean }[]>([]);
+//         const newNamespaceTitle = ref<string>('');
+//         const newNamespaceType = ref<number>(0);
+//         const isShowAddColumn = ref<boolean>(false);
+
+//         const onAddNewNamespace = () => {
+//             axios
+//                 .post('/namespaces', { title: newNamespaceTitle.value, type: newNamespaceType.value })
+//                 .then(({ data: { data } }) => {
+//                     myNamespaces.value.unshift(data);
+//                     isShowAddColumn.value = false;
+//                     newNamespaceTitle.value = '';
+//                     openNotify(app.$t('common.createSuccess'));
+//                 }).catch(() => {
+//                 // ..
+//                 });
+//         };
+
+//         const onEditNamespace = (index, namespace) => {
+//             axios.put(`/namespaces/${namespace.id}`, { title: namespace.title })
+//                 .then(() => {
+//                     myNamespaces.value[index] = { ...myNamespaces.value[index], isEdit: false };
+//                     myNamespaces.value = [...myNamespaces.value];
+//                     openNotify(app.$t('common.saveSuccess'));
+//                 })
+//                 .catch(() => {
+//                     // TODO
+//                 });
+//         };
+
+//         const onToggleEditNamespace = (e, index) => {
+//             e.stopPropagation();
+//             myNamespaces.value[index] = { ...myNamespaces.value[index], isEdit: true };
+//             myNamespaces.value = [...myNamespaces.value];
+//         };
+
+//         const onDeleteNamespace = (e, index, namespace: any) => {
+//             e.stopPropagation();
+//             myNamespaces.value[index].isConfirmDelete = true;
+//             axios
+//                 .delete(`/namespaces/${namespace.id}`)
+//                 .then(() => {
+//                     myNamespaces.value.splice(index, 1);
+//                     openNotify(app.$t('common.deleteSuccess'));
+//                 });
+//         };
+
+//         onBeforeUnmount(() => {
+//             store.commit('breadcrumb/CLEAR_ITEMS');
+//         });
+
+//         onMounted(() => {
+//             store.commit('breadcrumb/SET_ITEMS', [
+//                 {
+//                     url: '#',
+//                     name: app.$t('namespace.myNamespace'),
+//                     to: { name: 'namespaces' },
+//                 },
+//             ]);
+
+//             axios
+//                 .get('/namespaces')
+//                 .then(({ data: { data } }) => {
+//                     myNamespaces.value = data.map((n) => ({ ...n, isConfirmDelete: false }));
+//                 });
+//         });
+
+//         return {
+//             myNamespaces,
+//             isShowAddColumn,
+//             newNamespaceTitle,
+//             newNamespaceType,
+//             onAddNewNamespace,
+//             onEditNamespace,
+//             onToggleEditNamespace,
+//             onDeleteNamespace,
+
+//         };
+//     },
+//     methods: {},
+//     components: { Tooltip, GeneralInput, NamespaceTypeSelect },
+
+// });
 </script>
 <style lang="scss" scoped>
 .container {
