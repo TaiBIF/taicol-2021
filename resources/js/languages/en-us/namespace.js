@@ -35,5 +35,7 @@ export default {
         + 'Notice: After setting, the original properties settings will be overwritten and cannot be restored.',
 
     bindReference: 'Bind Reference',
+    importToReference: 'Import to Binded Reference',
     continueToImportChecklist: 'Confirm the Binding and Continue to Import Checklist',
+    addNameAndContinueToImportChecklist: 'Confirm Adding Names and Continue to Import Checklist',
 };

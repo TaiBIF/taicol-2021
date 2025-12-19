@@ -1,5 +1,6 @@
 export default {
     create: '新增學名',
+    bulkCreate: '批次新增學名',
     edit: '編輯學名',
     createCommonName: '新增俗名',
 

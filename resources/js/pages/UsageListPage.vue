@@ -30,6 +30,10 @@
                 >
                     {{ $t('namespace.insertNameCard') }}
                 </button>
+                <button v-if="configs.type === 'namespace'" class="button namespace-button"
+                        v-on:click="onOpenImportToBindReferenceModal">
+                    {{ $t('namespace.importToReference') }}
+                </button>
                 <button class="button namespace-button"
                         v-on:click="onToggleSimpleForm">
                     {{ isListSimple ? $t('namespace.listDetail') : $t('namespace.listSimple') }}
@@ -223,6 +227,7 @@ export default {
             model: null,
             usages: [],
             configs: null,
+            bindReference: null,
 
             newTaxonNameStatus: 'accepted',
             newTaxonNameIsInTaiwan: 1,
@@ -691,6 +696,14 @@ export default {
                 },
             });
         },
+        onOpenImportToBindReferenceModal() {
+            this.$store.commit('openModal', {
+                component: () => import('../components/modals/ImportToBindReferenceModal.vue'),
+                props: {
+                    reference: this.bindReference,
+                },
+            });
+        },
         onUpdateAllProperties(data) {
             const { id } = this.$route.params;
 
@@ -767,6 +780,16 @@ export default {
             try {
                 let offset = 0;
                 const resp = await this.axios.get(`${url}?offset=${offset}`);
+
+                if (resp.data.hasUnmatchedNames) {
+                    this.$router.push({
+                        name: resp.data.redirectTo,
+                        params: { lang: this.$route.params.lang }
+                    });
+                    return;
+                }
+
+
                 let data = resp.data.usages;
                 let groupCount = resp.data.groupCount;
 
@@ -776,6 +799,8 @@ export default {
                     taxonNameId: u.taxonName?.id,
                     parentTaxonNameId: u.parentTaxonName?.id,
                 }));
+
+                this.bindReference = resp.data.bindReference;
 
                 if (groupCount > 100) {
                     for (let i = 100; i <= groupCount; i += 100) {

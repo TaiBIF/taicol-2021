@@ -25,6 +25,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Auth;
 
 
 class ReferenceController extends Controller
@@ -432,13 +433,13 @@ class ReferenceController extends Controller
     {
         // NOTE 這邊是測試用的
 
-        $existingReferences = Reference::whereIn('id', [6014])->get();
+        // $existingReferences = Reference::whereIn('id', [6014])->get();
 
 
-        return response()->json([
-            'message' => 'Reference exists',
-            'data' => ReferenceCollection::collection($existingReferences)
-        ], 409);
+        // return response()->json([
+        //     'message' => 'Reference exists',
+        //     'data' => ReferenceCollection::collection($existingReferences)
+        // ], 409);
 
         // 只允許檔案上傳
 
@@ -469,13 +470,10 @@ class ReferenceController extends Controller
         // 建立 JobLog
         $jobLog = ImportAiLog::create([
             'job_type' => 'reference_gemini_url',
-            'job_class' => 'ReferenceGeminiController',
             'status' => 'processing',
             'user_id' => Auth::user()->id,
             'started_at' => now(),
-            'metadata' => [
-                'file_url' => $filePath,
-            ]
+            'file_path' => $filePath,
         ]);
 
         // 檢查API限制
@@ -494,7 +492,7 @@ class ReferenceController extends Controller
         try {
             // 呼叫 Python API
             // Log::info('referenceeeee');
-            $response = Http::timeout(120)->post('http://127.0.0.1:8009/process-reference', [
+            $response = Http::timeout(600)->post('http://127.0.0.1:8009/process-reference', [
                 'file_path' => $filePath
             ]);
             
@@ -518,7 +516,7 @@ class ReferenceController extends Controller
                             'output_tokens' => $metadata['output_tokens']
                         ])
                     ]);
-                                        
+
                 } else {
                     // Python API 回傳錯誤
                     throw new \Exception($result['error'] ?? 'Unknown error from Python service');
@@ -621,40 +619,40 @@ class ReferenceController extends Controller
         $fileCheck = $service->hasReferenceWithFile($articleTitle, $publishYear, $authorPossibleIds, true);
         $existingReferences = $service->hasReferenceExist($articleTitle, $publishYear, $authorPossibleIds, true, true);
 
-        if ($usageCheck['exists']) {
-            // 有usage 不提供匯入
-            return response()->json([
-                'message' => 'Reference has usage',
-                'errors' => [
-                    'file' => [
-                            'type' => 'reference_usage',
-                            'reference' => $usageCheck['reference']
-                    ]
-                ]
-            ])->setStatusCode(409);
-        } else if ($fileCheck['exists']) {
-            // 有文獻PDF 不提供匯入
-            return response()->json([
-                'message' => "Reference exists with file",
-                'errors' => [
-                    'file' => [
-                            'type' => 'reference_with_file',
-                            'reference' => $fileCheck['reference']
-                    ]
-                ]
-            ])->setStatusCode(409);
-        } else if ($existingReferences) {
-            // 有找到已建立的ref 提供匯入
-                return response()->json([
-                    'message' => 'Reference exists',
-                    'data' => ReferenceCollection::collection($existingReferences)
-                ], 409);
-        } else if  ($service->hasReferenceExist($articleTitle, $publishYear, $authorPossibleIds, false)) {
-            // 有文獻草稿 不提供匯入
-            return response([
-                'message' => '該筆資料已被建立為草稿，請到我的收藏裡的草稿確認並發布，若該筆不是您建立的草稿，請聯絡管理員。(catalogueoflife.taiwan@gmail.com)',
-            ])->setStatusCode(409);
-        }
+        // if ($usageCheck['exists']) {
+        //     // 有usage 不提供匯入
+        //     return response()->json([
+        //         'message' => 'Reference has usage',
+        //         'errors' => [
+        //             'file' => [
+        //                     'type' => 'reference_usage',
+        //                     'reference' => $usageCheck['reference']
+        //             ]
+        //         ]
+        //     ])->setStatusCode(409);
+        // } else if ($fileCheck['exists']) {
+        //     // 有文獻PDF 不提供匯入
+        //     return response()->json([
+        //         'message' => "Reference exists with file",
+        //         'errors' => [
+        //             'file' => [
+        //                     'type' => 'reference_with_file',
+        //                     'reference' => $fileCheck['reference']
+        //             ]
+        //         ]
+        //     ])->setStatusCode(409);
+        // } else if ($existingReferences) {
+        //     // 有找到已建立的ref 提供匯入
+        //         return response()->json([
+        //             'message' => 'Reference exists',
+        //             'data' => ReferenceCollection::collection($existingReferences)
+        //         ], 409);
+        // } else if  ($service->hasReferenceExist($articleTitle, $publishYear, $authorPossibleIds, false)) {
+        //     // 有文獻草稿 不提供匯入
+        //     return response([
+        //         'message' => '該筆資料已被建立為草稿，請到我的收藏裡的草稿確認並發布，若該筆不是您建立的草稿，請聯絡管理員。(catalogueoflife.taiwan@gmail.com)',
+        //     ])->setStatusCode(409);
+        // }
 
 
         return response()->json([

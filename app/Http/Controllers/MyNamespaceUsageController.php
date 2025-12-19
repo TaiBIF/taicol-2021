@@ -19,6 +19,7 @@ use App\TmpNamespaceUsage;
 use App\ImportChecklistLog;
 use App\User;
 use App\Country;
+use App\Nomenclature;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -33,6 +34,8 @@ use App\ImportAiLog;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redis;
 use App\Jobs\ProcessAiUsageRequest;
+use App\Http\Services\UsageAiImportService;
+use App\Http\Services\TaxonNameAiImportService;
 
 class MyNamespaceUsageController extends Controller
 {
@@ -40,6 +43,19 @@ class MyNamespaceUsageController extends Controller
     public function index(Request $request, $namespaceId)
     {
         $namespace = MyNamespace::find($namespaceId);
+
+        // 判斷從ai匯入的話是不是有需要新增的學名
+        $hasUnmatchedNames = ImportAiLog::where('import_to_id', $namespaceId)
+            ->whereRaw("JSON_EXTRACT(metadata, '$.unmatched_name_count') > 0")
+            ->where('status', '!=', 'added')
+            ->exists();
+
+        if ($hasUnmatchedNames) {
+            return response()->json([
+                'has_unmatched_names' => true,
+                'redirect_to' => 'namespace-name-create-page'
+            ]);
+        }
 
         if ($namespace->user_id !== $request->user()->id) {
             return response()->json([], 401);
@@ -59,6 +75,7 @@ class MyNamespaceUsageController extends Controller
         $data = MyNamespaceCollection::collection([$namespace])->first()->toArray($request);
         $data['usages'] = UsageCollection::collection($usages);
         $data['group_count'] = $groupCount;
+        $data['bind_reference'] =   isset($namespace->reference_id) ? ReferenceCollection::collection([Reference::find($namespace->reference_id)])->first() : null;
 
         return response($data);
     }
@@ -140,7 +157,6 @@ class MyNamespaceUsageController extends Controller
                     $t['collectors'] = PersonCollection::collection(Person::whereIn('id', $t['collector_ids'] ?? [])->get());
                     $t['country'] = isset($t['country_id']) ? Country::find($t['country_id']) : null;
                     $t['lecto_designated_reference'] = isset($t['lecto_designated_reference_id']) ? ReferenceCollection::collection([Reference::find($t['lecto_designated_reference_id'])])->first() : null;
-
                     return $t;
                 }) ?? [],
             'name_remark' => $usage->name_remark,
@@ -944,7 +960,6 @@ class MyNamespaceUsageController extends Controller
     public function fetchUsageAi(Request $request)  
     {
         $data = $request->all();
-        Log::info($data);
 
         $referenceId = $request->input('reference_id');
         $userId = Auth::user()->id;
@@ -961,6 +976,124 @@ class MyNamespaceUsageController extends Controller
 
     }
 
+    public function createName(Request $request, $namespaceId)  
+    {
+        $namespace = MyNamespace::find($namespaceId);
+
+        // 1 - 重新判斷一次需要新增的學名 並回傳給前端
+
+        $jobLog = ImportAiLog::where('import_to_id', $namespaceId)->first();
+        $fileUri = $jobLog->file_uri;
+        $usageJson = json_decode(file_get_contents(public_path('usage_results/' . $fileUri . '.json')), true);
+
+        $service = new UsageAiImportService();
+        $processedData = $service->processScientificNames($usageJson);
+        $unmatchedCount = $service->countUnmatchedScientificNames($processedData);
+
+        if ($unmatchedCount > 0){
+
+            $data = $service->getUnmatchedScientificNames($processedData);
+
+            return response([
+                'data' => $data,
+                'nomenclatures' => Nomenclature::with('ranks','kingdoms')->get(),
+            ]);
+
+
+        } else {
+            // 2 - 如果在這步就沒有缺學名了 直接匯入學名使用 完成後redirect到名錄編輯區
+            $importedCount = $service->handle($processedData, $namespace->id);
+            $jobLog->update([
+                'status' => 'added'
+            ]);
+
+
+            return response([
+                'finished' => True,
+            ]);
+
+        }
+
+
+
+    }
+
+    public function addNameAndUsage(Request $request, $namespaceId)  
+    {
+        try {
+            // 新增學名
+            $submitData = $request->getContent();
+            $submitData = json_decode($submitData, true);
+
+            // 1. 挑出沒有 selectedName 的資料並新增學名
+            $dataWithoutSelectedName = collect($submitData)->filter(function ($item) {
+                return empty($item['selected_name']);
+            });
+
+            $dataToImport = [
+                'scientific_names' => $dataWithoutSelectedName->toArray()  
+            ];
+
+            $importService = new TaxonNameAiImportService($dataToImport);
+            $result = $importService->handle();
+            Log::info('--result--');
+            Log::info($result);
+
+            // 2. 讀取原本的 JSON
+            $jobLog = ImportAiLog::where('import_to_id', $namespaceId)->first();
+            $fileUri = $jobLog->file_uri;
+            $usageJson = json_decode(file_get_contents(public_path('usage_results/' . $fileUri . '.json')), true);
+            
+            // 3. 建立 original_name 到 taxon_name_id 的映射
+            $nameToTaxonNameId = [];
+
+            // 新增學名的映射
+            foreach ($result['imported_taxon_names'] as $importedTaxon) {
+                $nameToTaxonNameId[$importedTaxon['original_name']] = $importedTaxon['taxon_name_id'];
+            }
+
+            // 原本就有 selected_name 的映射
+            foreach ($submitData as $item) {
+                if (!empty($item['selected_name'])) {
+                    $nameToTaxonNameId[$item['original_name']] = $item['selected_name'];
+                }
+            }
+            Log::info('--nameToTaxonNameId--');
+            Log::info($nameToTaxonNameId);
+
+            // 4. 用更新後的資料匯入學名使用
+            $service = new UsageAiImportService();
+            $processedData = $service->processScientificNames($usageJson);
+
+            // 更新 scientific_names 的 taxon_name_id
+            foreach ($processedData['scientific_names'] as &$scientificName) {
+                if (isset($nameToTaxonNameId[$scientificName['latin_name']])) {
+                    $scientificName['taxon_name_id'] = $nameToTaxonNameId[$scientificName['latin_name']];
+                }
+            }
+            Log::info('--processedData--');
+            Log::info($processedData);
+
+            $importedCount = $service->handle($processedData, $namespaceId);
+
+            // 修改jobLog
+            $jobLog->update([
+                'status' => 'added'
+            ]);
+
+            return response()->json([
+                'success' => true,
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    
 
 
 

@@ -12,16 +12,16 @@ class ImportAiLog extends Model
 
     protected $fillable = [
         'job_type',
-        'job_class',
+        // 'job_class',
         'status',
         'user_id',
         'file_path',
-        'gemini_file_uri',
+        'file_uri',
         'started_at',
         'completed_at',
         'error_message',
         'metadata',
-        'result_summary'
+        'import_to_id'
     ];
 
     protected $casts = [

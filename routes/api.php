@@ -50,7 +50,6 @@ Route::get('taxon-names/{id}/parents', 'TaxonNameController@parents');
 Route::get('taxon-names/{id}/per_usages', 'TaxonNameController@per_usages');
 Route::get('taxon-names/{id}/type-specimens', 'TaxonNameController@typeSpecimens');
 Route::get('/doi', 'ReferenceController@fetchDoi');
-Route::post('/fetch/reference/ai', 'ReferenceController@fetchReferenceAi');
 Route::get('/higher-taxa', 'ReferenceUsageController@higherTaxa');
 Route::post('/selected-usages', 'ReferenceUsageController@usages');
 Route::get('/tmp-usages', 'ReferenceUsageController@tmpUsages');
@@ -78,6 +77,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::resource('references', 'ReferenceController')->except('index', 'show');
     Route::get('references/{id}/info', 'ReferenceController@info');
+    Route::post('/fetch/reference/ai', 'ReferenceController@fetchReferenceAi');
 
     Route::resource('taxon-names', 'TaxonNameController')->except('index', 'show');
     Route::get('taxon-names/{id}/info', 'TaxonNameController@info');
@@ -99,6 +99,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('namespaces/{namespaceId}/usages', 'MyNamespaceUsageController@index');
     Route::post('namespaces/{namespaceId}/usages', 'MyNamespaceUsageController@store');
+    Route::get('namespaces/{namespaceId}/names', 'MyNamespaceUsageController@createName');
+    Route::post('namespaces/{namespaceId}/import/nameandusage', 'MyNamespaceUsageController@addNameAndUsage');
 
     Route::post('namespaces/{namespaceId}/clear', 'MyNamespaceUsageController@clear');
 

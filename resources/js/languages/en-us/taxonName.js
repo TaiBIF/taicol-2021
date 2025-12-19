@@ -1,5 +1,6 @@
 export default {
     create: 'Add Name',
+    bulkCreate: 'Bulk Add Names',
     edit: 'Edit Name',
     createCommonName: 'Add Common Name',
 

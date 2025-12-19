@@ -50,7 +50,7 @@ const renderGeneralTypeSpecimen = (typeSpecimen) => {
     ].filter(Boolean).join(' ');
 
     // 模式標本 ([herbarium] [[accession_number]], iso[type_use] [[accession_number]]).
-    const ss = s.specimens.map(
+    const ss = s.specimens?.map(
         (s, i) => [
             s.herbarium,
             `${s.accessionNumber ? `[${s.accessionNumber}]` : ''}`,
@@ -60,7 +60,7 @@ const renderGeneralTypeSpecimen = (typeSpecimen) => {
     );
 
     const useString = typeSpecimen.use.toLowerCase();
-    const specimens = ss.length ?
+    const specimens = ss?.length ?
         [
             ss.slice(0, 2).join(`; ${isoString(useString)}: `),
             ss.slice(2).join(', '),

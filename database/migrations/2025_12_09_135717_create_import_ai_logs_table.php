@@ -3,8 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
+\return new class extends Migration
 {
     /**
      * Run the migrations.
@@ -17,7 +16,7 @@ return new class extends Migration
             $table->id();
             $table->string('job_type'); // 'gemini_file_processing', 'simple_gemini', etc.
             $table->string('job_class')->nullable(); // Job class name
-            $table->enum('status', ['pending', 'processing', 'completed', 'failed'])->default('pending');
+            $table->enum('status', ['pending', 'processing', 'completed', 'failed', 'added'])->default('pending');
             $table->unsignedBigInteger('user_id')->nullable();
             $table->string('file_path')->nullable(); // 處理的檔案路徑
             $table->string('gemini_file_uri')->nullable(); // Gemini File API URI

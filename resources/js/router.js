@@ -261,6 +261,14 @@ const routes = [
         ],
     },
     {
+        name: 'namespace-name-create-page',
+        path: 'namespaces/:id/names',
+        component: () => import(/* webpackChunkName: "namespace-name-create-page" */ './pages/UsageCreateNamePage.vue'),
+        meta: {
+            backgroundColor: 'grey',
+        },
+    },
+    {
         name: 'favorite-folder-list',
         path: 'favorite-folders',
         component: () => import(/* webpackChunkName: "favorite-folder-page" */ './pages/FavoriteFolderPage.vue'),
@@ -332,17 +340,7 @@ const routes = [
                 name: 'admin-usage-check',
                 path: 'usage-check',
                 component: () => import(
-                    /* webpackChunkName: "taxon-name-import-page" */ './pages/admin/UsageCheckPage.vue'
-                ),
-                meta: {
-                    backgroundColor: 'grey',
-                },
-            },
-            {
-                name: 'admin-test',
-                path: 'test',
-                component: () => import(
-                    /* webpackChunkName: "taxon-name-import-page" */ './pages/admin/ReferenceImportPage.vue'
+                    /* webpackChunkName: "usage-check-page" */ './pages/admin/UsageCheckPage.vue'
                 ),
                 meta: {
                     backgroundColor: 'grey',

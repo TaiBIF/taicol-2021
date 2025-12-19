@@ -214,11 +214,25 @@ export default defineComponent({
                 return;
             }
 
+            // 檢查檔名是否含有中文或特殊字符
+            const fileName = uploadedFile.value.name;
+            const hasNonAscii = /[^\x00-\x7F]/.test(fileName);
+            
+            if (hasNonAscii) {
+
+                errors.value = { 
+                    // doi: ['請填入DOI、URL或上傳PDF檔案'], 
+                    // url: ['請填入DOI、URL或上傳PDF檔案'], 
+                    file: ['檔案名稱含有中文或特殊字符，可能導致處理失敗，請重新命名檔案後再上傳'] 
+                };
+
+                return;
+            }
+
             isLoading.value = true;
             errors.value = {};
 
             // 如果有上傳檔案，使用 POST 與 FormData
-            // if (uploadedFile.value) {
                 const formData = new FormData();
                 formData.append('file', uploadedFile.value);
 
@@ -232,23 +246,10 @@ export default defineComponent({
                     }]
                 })
                 .then(({ data }) => {
-
-                    console.log(data);
                     result.value = data;
                     errors.value = {};
                     isLoading.value = false;
                 })
-                // .catch(({ errors: e, status, message }) => {
-                //     result.value = null;
-                //     if (status === 422) {
-                //         errors.value = e;
-                //     } else if (status === 409) {
-                //         errors.value = { file: [message] };
-                //     } else {
-                //         errors.value = { file: [message || '處理失敗'] };
-                //     }
-                //     isLoading.value = false;
-                // });
                 .catch(({ errors: e, status, message, data }) => {
 
                     console.log( e, status, message, data)
@@ -327,40 +328,42 @@ export default defineComponent({
 
             console.log('Preparing to send reference data:', referenceData);
 
-            // 將資料存到 store 中
-            app.$store.commit('setReferencePresetData', referenceData);
+            
 
-            // 關閉當前 modal
-            app.$store.commit('closeModal');
+            // // 將資料存到 store 中
+            // app.$store.commit('setReferencePresetData', referenceData);
 
-            // 打開 ReferenceLayer
-            app.$store.commit('layer/ADD', {
-                template: () => import('../layers/ReferenceLayer.vue'),
-                props: {
-                    usePresetFromStore: true,
-                },
-                events: {
-                    onAfterSubmit: (data) => {
-                        console.log('Reference created:', data);
-                        // 將資料存到 store 中
-                        app.$store.commit('setBindReferenceData', data);
+            // // 關閉當前 modal
+            // app.$store.commit('closeModal');
 
-                        // // AI 導入特殊的後續處理
-                        app.$toast && app.$toast.success('文獻已成功發布！');
+            // // 打開 ReferenceLayer
+            // app.$store.commit('layer/ADD', {
+            //     template: () => import('../layers/ReferenceLayer.vue'),
+            //     props: {
+            //         usePresetFromStore: true,
+            //     },
+            //     events: {
+            //         onAfterSubmit: (data) => {
+            //             console.log('Reference created:', data);
+            //             // 將資料存到 store 中
+            //             app.$store.commit('setBindReferenceData', data);
 
-                        // 這邊要直接打開另外一個綁定modal
-                        app.$store.commit('layer/CLOSE');
+            //             // // AI 導入特殊的後續處理
+            //             app.$toast && app.$toast.success('文獻已成功發布！');
 
-                        app.$store.commit('openModal', {
-                            component: () => import('../modals/BindReferenceModal.vue'),
-                        });
+            //             // 這邊要直接打開另外一個綁定modal
+            //             app.$store.commit('layer/CLOSE');
 
-                        if (props.onOverwrite && typeof props.onOverwrite === 'function') {
-                            props.onOverwrite(data);
-                        }
-                    },
-                }
-            });
+            //             app.$store.commit('openModal', {
+            //                 component: () => import('../modals/BindReferenceModal.vue'),
+            //             });
+
+            //             if (props.onOverwrite && typeof props.onOverwrite === 'function') {
+            //                 props.onOverwrite(data);
+            //             }
+            //         },
+            //     }
+            // });
         };
 
         const onAuthorSelect = (authorIndex: number, selectedPersons: any[]) => {
@@ -371,10 +374,15 @@ export default defineComponent({
             const finalAuthors: any[] = [];
             
             result.value?.authors?.forEach((originalAuthor, index) => {
+
                 if (selectedAuthors.value[index]) {
+                    // 下拉選單的會是list 取第一個
+                    console.log('selectedAuthors', selectedAuthors.value[index]);
                     finalAuthors.push(selectedAuthors.value[index]);
                 } else if (result.value?.authorsPossible && result.value.authorsPossible[index]) {
                     finalAuthors.push(result.value.authorsPossible[index]);
+                    console.log('finalAuthors', result.value.authorsPossible[index]);
+
                 }
             });
             

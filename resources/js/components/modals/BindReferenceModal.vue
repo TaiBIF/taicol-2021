@@ -60,6 +60,8 @@ export default {
                 openNotify(data.message, 'is-danger')
             });
 
+            this.$store.commit('closeModal');
+
         }
     }
 };
