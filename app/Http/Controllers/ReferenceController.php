@@ -491,8 +491,7 @@ class ReferenceController extends Controller
 
         try {
             // 呼叫 Python API
-            // Log::info('referenceeeee');
-            $response = Http::timeout(600)->post('http://127.0.0.1:8009/process-reference', [
+            $response = Http::timeout(600)->post(env('TAICOL_AI_API_ROOT') . '/process-reference', [
                 'file_path' => $filePath
             ]);
             
@@ -544,7 +543,6 @@ class ReferenceController extends Controller
 
         }
 
-        // Log::info('API Response: ' . json_encode($data));
 
         // 更新API計數
         Redis::incr($dailyKey);
@@ -624,40 +622,40 @@ class ReferenceController extends Controller
         $fileCheck = $service->hasReferenceWithFile($articleTitle, $publishYear, $authorPossibleIds, true);
         $existingReferences = $service->hasReferenceExist($articleTitle, $publishYear, $authorPossibleIds, true, true);
 
-        // if ($usageCheck['exists']) {
-        //     // 有usage 不提供匯入
-        //     return response()->json([
-        //         'message' => 'Reference has usage',
-        //         'errors' => [
-        //             'file' => [
-        //                     'type' => 'reference_usage',
-        //                     'reference' => $usageCheck['reference']
-        //             ]
-        //         ]
-        //     ])->setStatusCode(409);
-        // } else if ($fileCheck['exists']) {
-        //     // 有文獻PDF 不提供匯入
-        //     return response()->json([
-        //         'message' => "Reference exists with file",
-        //         'errors' => [
-        //             'file' => [
-        //                     'type' => 'reference_with_file',
-        //                     'reference' => $fileCheck['reference']
-        //             ]
-        //         ]
-        //     ])->setStatusCode(409);
-        // } else if ($existingReferences) {
-        //     // 有找到已建立的ref 提供匯入
-        //         return response()->json([
-        //             'message' => 'Reference exists',
-        //             'data' => ReferenceCollection::collection($existingReferences)
-        //         ], 409);
-        // } else if  ($service->hasReferenceExist($articleTitle, $publishYear, $authorPossibleIds, false)) {
-        //     // 有文獻草稿 不提供匯入
-        //     return response([
-        //         'message' => '該筆資料已被建立為草稿，請到我的收藏裡的草稿確認並發布，若該筆不是您建立的草稿，請聯絡管理員。(catalogueoflife.taiwan@gmail.com)',
-        //     ])->setStatusCode(409);
-        // }
+        if ($usageCheck['exists']) {
+            // 有usage 不提供匯入
+            return response()->json([
+                'message' => 'Reference has usage',
+                'errors' => [
+                    'file' => [
+                            'type' => 'reference_usage',
+                            'reference' => $usageCheck['reference']
+                    ]
+                ]
+            ])->setStatusCode(409);
+        } else if ($fileCheck['exists']) {
+            // 有文獻PDF 不提供匯入
+            return response()->json([
+                'message' => "Reference exists with file",
+                'errors' => [
+                    'file' => [
+                            'type' => 'reference_with_file',
+                            'reference' => $fileCheck['reference']
+                    ]
+                ]
+            ])->setStatusCode(409);
+        } else if ($existingReferences) {
+            // 有找到已建立的ref 提供匯入
+                return response()->json([
+                    'message' => 'Reference exists',
+                    'data' => ReferenceCollection::collection($existingReferences)
+                ], 409);
+        } else if  ($service->hasReferenceExist($articleTitle, $publishYear, $authorPossibleIds, false)) {
+            // 有文獻草稿 不提供匯入
+            return response([
+                'message' => '該筆資料已被建立為草稿，請到我的收藏裡的草稿確認並發布，若該筆不是您建立的草稿，請聯絡管理員。(catalogueoflife.taiwan@gmail.com)',
+            ])->setStatusCode(409);
+        }
 
 
         return response()->json([

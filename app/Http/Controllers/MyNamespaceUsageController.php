@@ -1036,8 +1036,6 @@ class MyNamespaceUsageController extends Controller
 
             $importService = new TaxonNameAiImportService($dataToImport);
             $result = $importService->handle();
-            Log::info('--result--');
-            Log::info($result);
 
             // 2. 讀取原本的 JSON
             $jobLog = ImportAiLog::where('import_to_id', $namespaceId)->first();
@@ -1058,8 +1056,6 @@ class MyNamespaceUsageController extends Controller
                     $nameToTaxonNameId[$item['original_name']] = $item['selected_name'];
                 }
             }
-            Log::info('--nameToTaxonNameId--');
-            Log::info($nameToTaxonNameId);
 
             // 4. 用更新後的資料匯入學名使用
             $service = new UsageAiImportService();
@@ -1071,8 +1067,6 @@ class MyNamespaceUsageController extends Controller
                     $scientificName['taxon_name_id'] = $nameToTaxonNameId[$scientificName['latin_name']];
                 }
             }
-            Log::info('--processedData--');
-            Log::info($processedData);
 
             $importedCount = $service->handle($processedData, $namespaceId);
 
@@ -1092,11 +1086,6 @@ class MyNamespaceUsageController extends Controller
             ], 500);
         }
     }
-
-    
-
-
-
 
 
     // public function usage_preview(Request $request)

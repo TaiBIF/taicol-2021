@@ -63,7 +63,7 @@ class ProcessAiUsageRequest implements ShouldQueue
 
         try {
             // 呼叫 Python API
-            $response = Http::timeout(3600)->post('http://127.0.0.1:8009/process-usage', [
+            $response = Http::timeout(3600)->post(env('TAICOL_AI_API_ROOT') . '/process-usage', [
                 'file_path' => $filePath
             ]);
                 
