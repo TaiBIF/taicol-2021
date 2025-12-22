@@ -14,7 +14,7 @@
         <div class="flex justify-end sticky bottom-0 p-4 bg-white border-t gap-2">
             <button class="button" v-on:click="onClose">{{ $t('common.cancel') }}</button>
             <a class="button" 
-            :href="`https://biota.taibif.tw/publications?namespace_id=${namespaceId || ''}`" 
+            :href="`https://biota.biodiv.tw/publications?namespace_id=${namespaceId || ''}`" 
             target="_blank">
                 {{ $t('common.submit') }}
             </a>        
