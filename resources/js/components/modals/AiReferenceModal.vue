@@ -279,7 +279,6 @@ export default defineComponent({
                             errorMessage = app.$t('validation.referenceHasFile') + 
                                         `<a class="my-link" href="${referenceUrl}" target="_blank">${e.file.reference.title}</a>`;
                         } else if (message == 'Reference exists') {
-                            console.log(data)
                             app.$store.commit('closeModal');
                             app.$toast && app.$toast.success('文獻已存在，將直接綁定');
 
@@ -326,47 +325,45 @@ export default defineComponent({
                 fromAiImport: true
             };
 
-            console.log('Preparing to send reference data:', referenceData);
-
             
+            // 將資料存到 store 中
+            app.$store.commit('setReferencePresetData', referenceData);
 
-            // // 將資料存到 store 中
-            // app.$store.commit('setReferencePresetData', referenceData);
+            // 關閉當前 modal
+            app.$store.commit('closeModal');
 
-            // // 關閉當前 modal
-            // app.$store.commit('closeModal');
+            // 打開 ReferenceLayer
+            app.$store.commit('layer/ADD', {
+                template: () => import('../layers/ReferenceLayer.vue'),
+                props: {
+                    usePresetFromStore: true,
+                },
+                events: {
+                    onAfterSubmit: (data) => {
+                        console.log('Reference created:', data);
+                        // 將資料存到 store 中
+                        app.$store.commit('setBindReferenceData', data);
 
-            // // 打開 ReferenceLayer
-            // app.$store.commit('layer/ADD', {
-            //     template: () => import('../layers/ReferenceLayer.vue'),
-            //     props: {
-            //         usePresetFromStore: true,
-            //     },
-            //     events: {
-            //         onAfterSubmit: (data) => {
-            //             console.log('Reference created:', data);
-            //             // 將資料存到 store 中
-            //             app.$store.commit('setBindReferenceData', data);
+                        // // AI 導入特殊的後續處理
+                        app.$toast && app.$toast.success('文獻已成功發布！');
 
-            //             // // AI 導入特殊的後續處理
-            //             app.$toast && app.$toast.success('文獻已成功發布！');
+                        // 這邊要直接打開另外一個綁定modal
+                        app.$store.commit('layer/CLOSE');
 
-            //             // 這邊要直接打開另外一個綁定modal
-            //             app.$store.commit('layer/CLOSE');
+                        app.$store.commit('openModal', {
+                            component: () => import('../modals/BindReferenceModal.vue'),
+                        });
 
-            //             app.$store.commit('openModal', {
-            //                 component: () => import('../modals/BindReferenceModal.vue'),
-            //             });
-
-            //             if (props.onOverwrite && typeof props.onOverwrite === 'function') {
-            //                 props.onOverwrite(data);
-            //             }
-            //         },
-            //     }
-            // });
+                        if (props.onOverwrite && typeof props.onOverwrite === 'function') {
+                            props.onOverwrite(data);
+                        }
+                    },
+                }
+            });
         };
 
         const onAuthorSelect = (authorIndex: number, selectedPersons: any[]) => {
+
             selectedAuthors.value[authorIndex] = selectedPersons;
         };
 
@@ -374,15 +371,14 @@ export default defineComponent({
             const finalAuthors: any[] = [];
             
             result.value?.authors?.forEach((originalAuthor, index) => {
-
                 if (selectedAuthors.value[index]) {
-                    // 下拉選單的會是list 取第一個
-                    console.log('selectedAuthors', selectedAuthors.value[index]);
-                    finalAuthors.push(selectedAuthors.value[index]);
+                    // 如果是array，取第一個；如果不是array，直接使用
+                    const selectedAuthor = Array.isArray(selectedAuthors.value[index]) 
+                        ? selectedAuthors.value[index][0] 
+                        : selectedAuthors.value[index];
+                    finalAuthors.push(selectedAuthor);
                 } else if (result.value?.authorsPossible && result.value.authorsPossible[index]) {
                     finalAuthors.push(result.value.authorsPossible[index]);
-                    console.log('finalAuthors', result.value.authorsPossible[index]);
-
                 }
             });
             

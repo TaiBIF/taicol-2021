@@ -578,9 +578,14 @@ class ReferenceController extends Controller
         $authorPossible = [];
 
         foreach ($authors as $key => $author) {
-            $givenName = isset($author['given']) ? str_replace(['.', ' '], '', $author['given']) : '';
-            $familyName = $author['family'] ?? '';
+            $givenName = isset($author['given']) ? 
+                ucwords(strtolower(str_replace(['.', ' '], '', $author['given'])), '-') : '';
+            $familyName = isset($author['family']) ? 
+                ucwords(strtolower($author['family']), '-') : '';
             
+            $authors[$key]['given'] = $givenName;
+            $authors[$key]['family'] = $familyName;
+
             if ($givenName && $familyName) {
                 $person = Person::whereRaw('CONCAT(first_name, middle_name) like ?', ["%$givenName%"])
                     ->where('last_name', 'like', "%$familyName%")
