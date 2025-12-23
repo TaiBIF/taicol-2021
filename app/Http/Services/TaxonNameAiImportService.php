@@ -45,13 +45,13 @@ class TaxonNameAiImportService
             $min_taxon_name_id = 0;
 
             foreach ($this->scientificNamesData['scientific_names'] as $arrayIndex => $scientificName) {
-                $originalIndex = $scientificName['index'] ?? $arrayIndex;
+                // $originalIndex = $scientificName['index'] ?? $arrayIndex;
                 $taxonName = $this->saveTaxonName($arrayIndex, $scientificName);
 
                 // 使用原始的 index
                 $importedTaxonNames[] = [
                     'original_name' => $scientificName['original_name'],
-                    'original_index' => $originalIndex,
+                    // 'original_index' => $originalIndex,
                     'taxon_name_id' => $taxonName->id,
                     'taxon_name' => $taxonName
                 ];
@@ -87,7 +87,7 @@ class TaxonNameAiImportService
         $service = new TaxonNameService(new TaxonName());
 
         foreach ($this->scientificNamesData['scientific_names'] as $arrayIndex => $scientificName) {
-            $originalIndex = $scientificName['index'] ?? $arrayIndex;
+            // $originalIndex = $scientificName['index'] ?? $arrayIndex;
             
             $nomenclature = $scientificName['nomenclature'] ?? null;
             $rankString = $scientificName['rank'] ?? null;
@@ -96,26 +96,26 @@ class TaxonNameAiImportService
             $authorsString = $scientificName['authors'] ?? null;
 
             if (!$nomenclature) {
-                $this->throwError($originalIndex, 'nomenclature 錯誤');
+                $this->throwError($arrayIndex, 'nomenclature 錯誤');
             }
 
             if (!$rankString) {
-                $this->throwError($originalIndex, 'rank 未填寫');
+                $this->throwError($arrayIndex, 'rank 未填寫');
             }
 
             if (!$name) {
-                $this->throwError($originalIndex, 'name 未填寫');
+                $this->throwError($arrayIndex, 'name 未填寫');
             }
 
             if (!isset($this->ranks[$rankString])) {
-                $this->throwError($originalIndex, 'rank 錯誤');
+                $this->throwError($arrayIndex, 'rank 錯誤');
             }
 
-            $authors = $this->findPersonsByString($originalIndex, $authorsString);
+            $authors = $this->findPersonsByString($arrayIndex, $authorsString);
             if ($service->hasTaxonNameExist($nomenclature, $this->ranks[$rankString]->id, $name, $referenceId, $authors->pluck('id')->toArray(), true)) {
-                $this->throwError($originalIndex, '學名重複');
+                $this->throwError($arrayIndex, '學名重複');
             } else if ($service->hasTaxonNameExist($nomenclature, $this->ranks[$rankString]->id, $name, $referenceId, $authors->pluck('id')->toArray(), false)) {
-                $this->throwError($originalIndex, '學名已存在於草稿');
+                $this->throwError($arrayIndex, '學名已存在於草稿');
             }
         }
     }
@@ -148,7 +148,7 @@ class TaxonNameAiImportService
 
     private function saveTaxonName(int $arrayIndex, array $scientificName)
     {
-        $originalIndex = $scientificName['index'] ?? $arrayIndex;
+        // $originalIndex = $scientificName['index'] ?? $arrayIndex;
         
         $taxonName = new TaxonName();
         $service = new TaxonNameService($taxonName);
@@ -180,26 +180,26 @@ class TaxonNameAiImportService
 
         $originalTaxonName = null;
         if ($originNameString) {
-            $originalTaxonName = $this->findOriginalTaxonName($originNameString, $originNameAuthorString, $originNameExAuthorString, $originalIndex);
+            $originalTaxonName = $this->findOriginalTaxonName($originNameString, $originNameAuthorString, $originNameExAuthorString, $arrayIndex);
         }
 
         if (!$originalTaxonName && $originNameString) {
-            $this->throwError($originalIndex, "找不到 $originNameString");
+            $this->throwError($arrayIndex, "找不到 $originNameString");
         }
 
         $kingdomTaxonName = null;
         if ($kingdomNameString) {
-            $kingdomTaxonName = $this->findKingdomTaxonName($kingdomNameString, $originalIndex);
+            $kingdomTaxonName = $this->findKingdomTaxonName($kingdomNameString, $arrayIndex);
         }
 
         if (!$kingdomTaxonName && $kingdomNameString) {
-            $this->throwError($originalIndex, "找不到 $kingdomNameString");
+            $this->throwError($arrayIndex, "找不到 $kingdomNameString");
         }
 
         $species = TaxonName::where('name', "$latinGenus $latinS1")->first();
 
-        $authors = $this->findPersonsByString($originalIndex, $authorsString);
-        $exAuthors = $this->findPersonsByString($originalIndex, $exAuthorsString);
+        $authors = $this->findPersonsByString($arrayIndex, $authorsString);
+        $exAuthors = $this->findPersonsByString($arrayIndex, $exAuthorsString);
 
         $taxonName = $service->saveAll([
             'nomenclature_id' => $nomenclature,

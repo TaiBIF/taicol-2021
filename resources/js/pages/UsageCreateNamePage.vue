@@ -160,7 +160,7 @@ export default {
                     if (missingFields.length > 0) {
                         invalidRows.push({
                             rowIndex: index + 1,
-                            originalIndex: row.index,
+                            // originalIndex: row.index,
                             missingFields: missingFields
                         });
                     }

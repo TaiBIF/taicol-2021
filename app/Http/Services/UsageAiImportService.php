@@ -127,7 +127,7 @@ class UsageAiImportService
                         's2_rank' => $scientificName['s2_rank'] ?? null,
                         'latin_s2' => $scientificName['latin_s2'] ?? null,
                         'formatted_authors' => $scientificName['formatted_authors'] ?? null,
-                        'index' => $scientificName['index'],
+                        // 'index' => $scientificName['index'],
                         'original_name' => $scientificName['latin_name'] ?? null,
                     ];
                     
