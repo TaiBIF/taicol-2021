@@ -411,7 +411,6 @@ class UsageAiImportService
 
             // 處理 country_id 轉換
             $countryId = null;
-            Log::info($specimen['country']);
             if (isset($specimen['country']) && $specimen['country']) {
                 $country = Country::where('display->en-us', $specimen['country'])->first();
                 $countryId = $country ? $country->numeric_code : null;
@@ -422,7 +421,7 @@ class UsageAiImportService
                 "sex" => null,
                 "url" => null,
                 "use" => $specimen['use'] ?? null,
-                "kind" => $specimen['kind'] ?? null,
+                "kind" => $specimen['kind'] ?? 1,
                 "country_id" => $countryId,
                 "locality" => $specimen['locality'] ?? null,
                 "specimens" => [
