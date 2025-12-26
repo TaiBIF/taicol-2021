@@ -37,6 +37,7 @@ class ReferenceRequest extends FormRequest
             'required' => 'reference.required', //'必填',
             'required_if' => 'reference.required_if', //'必填',
             'integer' => 'reference.integer', //'須為數字',
+            'alpha_num' => 'reference.alpha_num',
             'properties.volume.regex' => 'reference.properties.volume.regex', //'只允許「數字」、「英文」',
             'properties.chapter.regex' => 'reference.properties.chapter.regex', //'只允許「數字」、「英文」',
             'properties.pages_range.regex' => 'reference.properties.pages_range.regex', //'只允許「數字」、「–」、「,」',

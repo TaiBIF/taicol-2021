@@ -181,7 +181,7 @@ class ReferenceUsageController extends Controller
             'type_specimens.*.collector_ids' => 'array|exists:persons,id',
             'type_specimens.*.isotypes.*.herbarium' => 'required',
             'per_usages.*.reference_id' => 'required',
-            'per_usages.*.show_page' => 'integer|nullable',
+            'per_usages.*.show_page' => 'alpha_num|nullable',
             'properties.is_in_taiwan' => $status === 'accepted' ? 'required' : '',
             'properties.common_names.*.name' => 'required',
             'properties.common_names.*.language' => 'required',
@@ -199,6 +199,7 @@ class ReferenceUsageController extends Controller
             'required_if' => 'usage.required',
             'required_without' => 'usage.required',
             'integer' => 'usage.integer',
+            'alpha_num' => 'usage.alpha_num',
         ]);
 
         $reference = Reference::find($id);
