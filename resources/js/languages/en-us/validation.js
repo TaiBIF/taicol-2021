@@ -8,6 +8,7 @@ export default {
     'reference.required': 'Required',
     'reference.required_if': 'Required',
     'reference.integer': '須為數字',
+    'reference.alpha_num': '須為數字或英文字母',
     'reference.properties.volume.regex': 'Only allow numbers and letters',
     'reference.properties.chapter.regex': 'Only allow number and letters',
     'reference.properties.pages_range.regex': 'Only allow number, – and ,',

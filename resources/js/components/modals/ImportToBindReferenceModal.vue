@@ -3,11 +3,12 @@
         <div class="px-16 py-12 w-[768px]">
             <div>
                 <p class="title text-center">{{ $t('namespace.importToReference') }}</p>
-                <p>綁定文獻：</p>
+                <p class="select-margin">{{ $t('namespace.referenceToBind') }}</p>
                 <reference-select
                     v-model="selectedReference"
                 />
-                <p>注意！</p>
+                <br>
+                <p>{{ $t('namespace.importToReferenceNotice') }}</p>
 
             </div>
         </div>
@@ -55,10 +56,19 @@ export default {
 
             this.isLoading = true;
 
+            // 先確認文獻是否已有usage
+
+
             this.axios.post(`/namespaces/import/${ this.selectedReference.id}`, {
                 ids: [this.$route.params.id],
                 overwrite: false,
-            }).then(() => {
+            }).then((response) => {
+                if (response.data.data === true) {
+                    openNotify('此文獻已有學名使用存在，不得匯入', 'is-danger');
+                    this.isLoading = false;
+                    return;
+                }
+
                 this.$router.push({ name: 'reference-page', params: { id: this.selectedReference.id } });
                 this.$store.commit('closeModal');
             }).catch((error) => {
@@ -75,3 +85,10 @@ export default {
     }
 };
 </script>
+
+<style lang="scss" scoped>
+
+.select-margin {
+   margin-bottom: .75rem;
+}
+</style>

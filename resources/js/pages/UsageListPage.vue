@@ -30,10 +30,6 @@
                 >
                     {{ $t('namespace.insertNameCard') }}
                 </button>
-                <button v-if="configs.type === 'namespace'" class="button namespace-button"
-                        v-on:click="onOpenImportToBindReferenceModal">
-                    {{ $t('namespace.importToReference') }}
-                </button>
                 <button class="button namespace-button"
                         v-on:click="onToggleSimpleForm">
                     {{ isListSimple ? $t('namespace.listDetail') : $t('namespace.listSimple') }}
@@ -192,6 +188,10 @@
                     <button class="button m-0"
                         v-on:click="goBack()"
                         v-text="$t('common.goBack')"/>
+                    <button v-if="configs.type === 'namespace'" class="button m-0"
+                            v-on:click="onOpenImportToBindReferenceModal">
+                        {{ $t('namespace.importToReference') }}
+                    </button>
                     <a :class="{ 'is-loading': isLoading }"
                        class="button"
                        v-on:click="onSave"

@@ -8,6 +8,7 @@ export default {
     'reference.required': '必填',
     'reference.required_if': '必填',
     'reference.integer': '須為數字',
+    'reference.alpha_num': '須為數字或英文字母',
     'reference.properties.volume.regex': '只允許「數字」、「英文」',
     'reference.properties.chapter.regex': '只允許「數字」、「英文」',
     'reference.properties.pages_range.regex': '只允許「數字」、「–」、「,」',
@@ -43,6 +44,7 @@ export default {
     'usage.required_if': '必填',
     'usage.required_without': '必填',
     'usage.integer': '須為數字',
+    'usage.alpha_num': '須為數字或英文字母',
 
     // user
     'user.required': '必填',

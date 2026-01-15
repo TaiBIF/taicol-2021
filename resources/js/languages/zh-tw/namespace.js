@@ -35,6 +35,8 @@ export default {
 
     bindReference: '綁定文獻',
     importToReference: '匯入綁定文獻',
+    referenceToBind: '欲綁定文獻：',
+    importToReferenceNotice: '注意：本功能只能匯入一次，請確認編輯完之後再做匯入。綁定文獻若已有學名使用，也不可再次匯入。',
     continueToImportChecklist: '確認綁定並繼續匯入異名表',
     addNameAndContinueToImportChecklist: '確認新增學名並繼續匯入異名表',
 };

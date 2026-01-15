@@ -35,7 +35,9 @@ export default {
         + 'Notice: After setting, the original properties settings will be overwritten and cannot be restored.',
 
     bindReference: 'Bind Reference',
-    importToReference: 'Import to Binded Reference',
+    importToReference: 'Import to Bound Reference',
+    referenceToBind: 'Reference to Bind:',
+    importToReferenceNotice: 'Notice: This function allows one-time import only. Please make sure all edits are complete before importing. If a bound reference already has name usage, it cannot be imported again.',
     continueToImportChecklist: 'Confirm the Binding and Continue to Import Checklist',
     addNameAndContinueToImportChecklist: 'Confirm Adding Names and Continue to Import Checklist',
 };

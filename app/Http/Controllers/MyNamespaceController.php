@@ -104,6 +104,20 @@ class MyNamespaceController extends Controller
 
     public function import(Request $request, $referenceId)
     {
+
+
+        $hasUsageExists = ReferenceUsage::where('reference_id', $referenceId)
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if ($hasUsageExists){
+            return response([
+                'data' =>  $hasUsageExists
+            ]);
+
+        }
+
+
         $namespaceIds = $request->get('ids');
         $overwrite = $request->get('overwrite', false);
         $note = $request->get('note');
