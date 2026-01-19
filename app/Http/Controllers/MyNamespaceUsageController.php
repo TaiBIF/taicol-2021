@@ -234,8 +234,6 @@ class MyNamespaceUsageController extends Controller
             return response()->setStatusCode(404);
         }
 
-        Log::info('hello');
-
         DB::beginTransaction();
 
         $namespace->touch();
@@ -1028,9 +1026,19 @@ class MyNamespaceUsageController extends Controller
             $submitData = $request->getContent();
             $submitData = json_decode($submitData, true);
 
+            // 取得要跳過的 original_name 清單
+            $skipNames = collect($submitData)
+                ->filter(fn($item) => $item['skip'] ?? false)
+                ->pluck('original_name')
+                ->toArray();
+
+
             // 1. 挑出沒有 selectedName 的資料並新增學名
+            // $dataWithoutSelectedName = collect($submitData)->filter(function ($item) {
+            //     return empty($item['selected_name']);
+            // });
             $dataWithoutSelectedName = collect($submitData)->filter(function ($item) {
-                return empty($item['selected_name']);
+                return empty($item['selected_name']) && empty($item['skip']);
             });
 
             $dataToImport = [
@@ -1043,26 +1051,47 @@ class MyNamespaceUsageController extends Controller
             // 2. 讀取原本的 JSON
             $jobLog = ImportAiLog::where('import_to_id', $namespaceId)->first();
             $fileUri = $jobLog->file_uri;
+            // $fileUri = 'files/uyhkzl8dq049';
             $usageJson = json_decode(file_get_contents(public_path('usage_results/' . $fileUri . '.json')), true);
             
-            // 3. 建立 original_name 到 taxon_name_id 的映射
+            // 3. 計算要跳過的 usage index
+            $skipIndexes = $this->calculateSkipIndexes($usageJson['scientific_names'], $skipNames);
+
+            // 4. 建立 original_name 到 taxon_name_id 的映射
             $nameToTaxonNameId = [];
 
-            // 新增學名的映射
             foreach ($result['imported_taxon_names'] as $importedTaxon) {
                 $nameToTaxonNameId[$importedTaxon['original_name']] = $importedTaxon['taxon_name_id'];
             }
 
-            // 原本就有 selected_name 的映射
             foreach ($submitData as $item) {
-                if (!empty($item['selected_name'])) {
+                if (!empty($item['selected_name']) && empty($item['skip'])) {
                     $nameToTaxonNameId[$item['original_name']] = $item['selected_name'];
                 }
             }
 
-            // 4. 用更新後的資料匯入學名使用
+            // // 新增學名的映射
+            // foreach ($result['imported_taxon_names'] as $importedTaxon) {
+            //     $nameToTaxonNameId[$importedTaxon['original_name']] = $importedTaxon['taxon_name_id'];
+            // }
+
+            // // 原本就有 selected_name 的映射
+            // foreach ($submitData as $item) {
+            //     if (!empty($item['selected_name'])) {
+            //         $nameToTaxonNameId[$item['original_name']] = $item['selected_name'];
+            //     }
+            // }
+
+            // 5. 用更新後的資料匯入學名使用
             $service = new UsageAiImportService();
             $processedData = $service->processScientificNames($usageJson);
+
+            // 過濾掉要跳過的 usage
+            $processedData['scientific_names'] = array_values(
+                array_filter($processedData['scientific_names'], function ($item) use ($skipIndexes) {
+                    return !in_array($item['index'], $skipIndexes);
+                })
+            );
 
             // 更新 scientific_names 的 taxon_name_id
             foreach ($processedData['scientific_names'] as &$scientificName) {
@@ -1090,6 +1119,37 @@ class MyNamespaceUsageController extends Controller
         }
     }
 
+    /**
+     * 計算要跳過的 usage index
+     */
+    private function calculateSkipIndexes(array $scientificNames, array $skipNames): array
+    {
+        $skipIndexes = [];
+        
+        foreach ($scientificNames as $i => $item) {
+            if (!in_array($item['latin_name'], $skipNames)) {
+                continue;
+            }
+            
+            // 如果是 accepted，跳過到下一個 accepted 之前的所有 usage
+            if ($item['status'] === 'accepted') {
+                $skipIndexes[] = $item['index'];
+                
+                // 往後找到下一個 accepted 為止
+                for ($j = $i + 1; $j < count($scientificNames); $j++) {
+                    if ($scientificNames[$j]['status'] === 'accepted') {
+                        break;
+                    }
+                    $skipIndexes[] = $scientificNames[$j]['index'];
+                }
+            } else {
+                // 非 accepted 只跳過該筆
+                $skipIndexes[] = $item['index'];
+            }
+        }
+        
+        return $skipIndexes;
+    }
 
     // public function usage_preview(Request $request)
     // {

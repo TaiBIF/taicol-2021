@@ -1,28 +1,58 @@
 <template>
     <page :preload="onPreload" class="container">
         <div class="flex flex-col h-full py-6 mb-4">
-            <div class="box overflow-y-auto px-10 py-4">
-                <div class="py-3 flex items-center">
+            <!-- <div class="box overflow-y-auto px-10 py-4"> -->
+            <div class="box overflow-y-auto overflow-x-auto px-10 py-4 flex-1"">
+                <div class="py-3">
                     <p class="ml-3 font-bold text-3xl inline">{{ $t('taxonName.bulkCreate') }}</p>
+                    <br>
+                    <i class="mt-8 ml-3 fas fa-info-circle"></i>
+                    <span v-html="$t('taxonName.bulkCreateNote1')"></span>
+                    <br>
+                    <i class="ml-3 fas fa-info-circle"></i>
+                    <span v-html="$t('taxonName.bulkCreateNote2')"></span>
+                    <br>
+                    <i class="ml-3 fas fa-info-circle"></i>
+                    <span v-html="$t('taxonName.bulkCreateNote3')"></span>
                 </div>
-
-                <table class="table is-fullwidth is-hoverable has-text-left">
+                <!-- <table class="mt-1 table is-fullwidth is-hoverable has-text-left"> -->
+                <table class="mt-1 table is-fullwidth is-hoverable has-text-left sticky-table">
                     <thead>
                     <tr>
-                        <th class="w-[200px] is-marked">{{ $t('taxonName.nomenclature') }}</th>
-                        <th>{{ $t('taxonName.kingdom') }}</th>
+                        <th class="w-[60px]">{{ $t('taxonName.skip') }}</th>
+                        <th class="w-[115px] is-marked">
+                            {{ $t('taxonName.nomenclature') }}
+                            <nomenclature-select
+                                v-model="headerNomenclature"
+                                @input="onHeaderNomenclatureChange"
+                            />
+                        </th>
+
+                        <th>{{ $t('taxonName.kingdom') }}
+                            <kingdom-select
+                                v-model="headerKingdom"
+                                :options="headerKingdomOptions"
+                                @input="onHeaderKingdomChange"
+                                placeholder="批次設定"
+                            />
+                        </th>
                         <th class="w-[100px] is-marked">{{ $t('taxonName.rank') }}</th>
-                        <th class="is-marked">{{ $t('taxonName.name') }}</th>
+                        <th class="w-[200px] is-marked">{{ $t('taxonName.name') }}</th>
                         <th>{{ $t('taxonName.latinGenus') }}</th>
                         <th>{{ $t('taxonName.latinS1') }}</th>
-                        <th>{{ $t('taxonName.sRank',{s: $t('taxonName.s')}) }}</th>
-                        <th>{{ $t('taxonName.sLatin',{s: $t('taxonName.s')}) }}</th>
+                        <th>{{ $t('taxonName.sRank',
+                                {s: $t('taxonName.s').repeat(1)},1) }}</th>
+                        <th>{{ $t('taxonName.sLatin',
+                                {s: $t('taxonName.s').repeat(1)},1)}}</th>
                         <th>{{ $t('taxonName.authors') }}</th>
-                        <th class="w-[200px]">選擇其他學名</th>
+                        <th class="w-[200px]">{{ $t('taxonName.selectAnotherScientificName') }}</th>
                     </tr>
                     </thead>
                     <tbody>
                     <tr v-for="p in presetData">
+                        <td>
+                            <input type="checkbox" v-model="p._skip" />
+                        </td>
                         <td>
                             <nomenclature-select
                                 v-model="p._nomenclature"
@@ -95,6 +125,9 @@ export default {
     },
     data() {
         return {
+            headerNomenclature: null,
+            headerKingdom: null,
+            headerKingdomOptions: [],
             formStatus: this.$c.PAGE_IS_LOADING,
             presetData: null,
             isLoading: false,
@@ -110,6 +143,36 @@ export default {
 
     },
     methods: {
+        onHeaderNomenclatureChange(value) {
+            // 更新表頭 kingdom 的選項
+            this.headerKingdomOptions = value?.kingdoms || [];
+            this.headerKingdom = null;
+
+            // 同步更新所有資料列的 nomenclature（但不清空 rank）
+            this.presetData.forEach(p => {
+                p._nomenclature = value;
+                
+                // 只更新 options，不清空值
+                p._rankOptions = value?.ranks.filter(rank => rank.id !== 47) || [];
+                p._kingdomOptions = value?.kingdoms || [];
+                
+                // 只清空 kingdom（因為選項變了）
+                p._kingdom = null;
+                
+                // rank 保留原值，但檢查是否還在新的選項中
+                if (p._rank && !p._rankOptions.find(r => r.key === p._rank.key)) {
+                    p._rank = null;  // 只有當原本的 rank 不在新選項中才清空
+                }
+            });
+        },
+        onHeaderKingdomChange(value) {
+            this.presetData.forEach(p => {
+                const found = p._kingdomOptions.find(k => k.name === value?.name);
+                if (found) {
+                    p._kingdom = found;
+                }
+            });
+        },        
         onNomenclatureChange(row) {
             const n = row._nomenclature
 
@@ -131,6 +194,7 @@ export default {
 
             const submitData = this.presetData.map(row => ({
                 // index: row.index,
+                skip: row._skip || false, 
                 original_name: row.originalName,
                 nomenclature: row._nomenclature?.id,
                 kingdom: row._kingdom?.name || null,
@@ -144,7 +208,6 @@ export default {
                 selected_name: row._selectedName?.id || null, // 加上這個欄位
             }));
 
-            console.log(submitData);
 
             // 驗證必填欄位
             const invalidRows = [];
@@ -199,9 +262,7 @@ export default {
                 const { data: {data, nomenclatures, finished} } = await this.axios.get(`/namespaces/${this.$route.params.id}/names`);
 
                 if (finished) {
-
                     this.$router.push({ name: 'namespace-usage-list', params: { id: this.$route.params.id} });
-
                 } 
 
                 this.presetData = data;
@@ -212,9 +273,16 @@ export default {
                 const rank = nomenclature.ranks.find(n => n.key === p.rank)
                 const kingdom = nomenclature.kingdoms.find(n => n.name === p.kingdom) ?? null;
 
+                // 設定表頭預設值為第一筆的 nomenclature
+                if (this.presetData.length > 0) {
+                    // this.headerNomenclature = this.presetData[0].nomenclature;
+                    this.headerNomenclature = nomenclatures.find(n => n.id === this.presetData[0].nomenclature);
+                    this.headerKingdomOptions = this.headerNomenclature?.kingdoms || [];
+                }
+
                 return {
                     ...p,
-
+                    _skip: false, 
 
                     // v-model 用
                     _selectedName: null,
@@ -243,5 +311,38 @@ export default {
 .is-marked::before {
     content: '*';
     color: red;
+}
+
+.sticky-table {
+    border-collapse: collapse;
+    
+    thead {
+        position: sticky;
+        top: 0;
+        background: white;
+        z-index: 1;
+    }
+    
+    th, td {
+        min-width: 150px;
+        white-space: nowrap;
+    }
+    
+    // 特定欄位寬度
+    th:nth-child(1), td:nth-child(1) {
+        min-width: 60px; // 學名欄位
+    }
+
+    th:nth-child(5), td:nth-child(5) {
+        min-width: 200px; // 學名欄位
+    }
+    
+    th:nth-child(11), td:nth-child(11) {
+        min-width: 200px; // 選擇其他學名欄位
+    }
+
+    .box.flex-1 {
+        min-height: 0; // 讓 flex-1 在 flex container 中正常運作
+    }
 }
 </style>

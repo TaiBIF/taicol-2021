@@ -12,6 +12,7 @@ export default {
         0: '分類研究',
         1: '純名錄',
     },
+    reference: '文獻',
 
     downloadDoc: '下載 Word 檔',
     clearNamespace: '清空名錄',

@@ -203,8 +203,8 @@ class UsageAiImportService
                     $order++;
                 }
 
-                // 處理 parent taxon
-                $parentTaxonName = $this->processParentTaxon($scientificName['parent_taxon'] ?? null);
+                // 處理 parent taxon // 目前應該是沒有這個parent_taxon的欄位
+                $parentTaxonNameId = $this->processParentTaxon($taxonName->id);
 
                 // 處理 common names
                 $commonNames = $this->processCommonNames($scientificName['common_name'] ?? '');
@@ -244,7 +244,7 @@ class UsageAiImportService
                     $properties['alien_status_note'] = $alienStatusNote;
                 }
 
-                $this->saveUsage($taxonName, $parentTaxonName, $properties, $group, $order, $perUsages, $scientificName);
+                $this->saveUsage($taxonName, $parentTaxonNameId, $properties, $group, $order, $perUsages, $scientificName);
                 $count++;
             }
             
@@ -257,22 +257,67 @@ class UsageAiImportService
         return $count;
     }
 
-    private function processParentTaxon(?string $parentTaxonNameString): ?TaxonName
+    private function processParentTaxon(int $taxon_name_id)
     {
-        if (!$parentTaxonNameString) {
-            return null;
+        // if (!$parentTaxonNameString) {
+        //     return null;
+        // }
+
+        // 優先採用usage
+
+        $parent = null;
+
+        $parent = DB::table('accepted_usages')
+            ->select('parent_taxon_name_id')
+            ->where('taxon_name_id', $taxon_name_id)
+            ->first();
+
+
+        $parent = $parent->parent_taxon_name_id ?? null;
+
+        $nowName = TaxonName::find($taxon_name_id);
+        $nomenclatureId = $nowName->nomenclature_id;
+
+        if (empty($parent) && $nomenclatureId != 4){
+
+            $speciesLayer = $nowName->properties['species_layers'];
+
+            if (count($speciesLayer) == 1) {
+                $parent = $nowName->properties['species_id'];
+            } else if (count($speciesLayer) == 2){
+                $parentTaxonNameString = $nowName->properties['latin_genus'] . ' '  . $nowName->properties['latin_s1'];
+                $parentTaxonNameString .= ' ' . $speciesLayer[0]['rank_abbreviation'] . ' ' . $speciesLayer[0]['latin_name'];
+        
+                $parent_query = TaxonName::where('name', $parentTaxonNameString)
+                                    ->where('nomenclature_id', $nomenclatureId);
+                if ($parent_query->count() > 0){
+                    $parent = $parent_query->first()->id;
+                }
+            
+            } else if ($nowName->rank_id == 34) {
+                // 種
+                $parentTaxonNameString = $nowName->properties['latin_genus'];
+
+                $parent_query = TaxonName::where('name', $parentTaxonNameString)
+                                    ->where('nomenclature_id', $nomenclatureId);
+                if ($parent_query->count() > 0){
+                    $parent = $parent_query->first()->id;
+                }
+
+            }
         }
 
-        $parentTaxonNames = TaxonName::query()->where('name', $parentTaxonNameString)->get();
+
+        // $parentTaxonNames = TaxonName::query()->where('name', $parentTaxonNameString)->get();
         
-        if ($parentTaxonNames->count() === 1) {
-            return $parentTaxonNames->first();
-        } else if ($parentTaxonNames->count() > 1) {
-            // 需要更多資訊來區分，這裡簡化處理
-            return $parentTaxonNames->first();
-        }
+        // if ($parentTaxonNames->count() === 1) {
+        //     return $parentTaxonNames->first();
+        // } else if ($parentTaxonNames->count() > 1) {
+        //     // 需要更多資訊來區分，這裡簡化處理
+        //     return $parentTaxonNames->first();
+        // }
         
-        return null;
+        return $parent;
     }
 
     private function processCommonNames(string $commonNameString): array
@@ -450,12 +495,12 @@ class UsageAiImportService
         return $processedSpecimens;
     }
 
-    private function saveUsage(TaxonName $taxonName, ?TaxonName $parentTaxonName, array $properties, int $group, int $order, array $perUsages, array $scientificName)
+    private function saveUsage(TaxonName $taxonName, ?int $parentTaxonNameId, array $properties, int $group, int $order, array $perUsages, array $scientificName)
     {
         $usage = new MyNamespaceUsage();
         $usage->namespace_id = $this->namespaceId;
         $usage->taxon_name_id = $taxonName->id;
-        $usage->parent_taxon_name_id = $parentTaxonName?->id;
+        $usage->parent_taxon_name_id = $parentTaxonNameId;
         $usage->status = $scientificName['status'] ?? 'accepted';
         $usage->name_remark = '';
         $usage->custom_name_remark = '';

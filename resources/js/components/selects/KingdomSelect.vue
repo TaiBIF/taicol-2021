@@ -48,6 +48,11 @@ export default {
     mounted() {
         // this.options = this.$store.state.nomenclature.items;
     },
+    watch: {
+        value(newVal) {
+            this.localValue = newVal || null;
+        },
+    },
     methods: {
         onUpdateValue(value) {
             this.$emit('input', value || null);

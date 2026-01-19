@@ -1,6 +1,11 @@
 export default {
     create: 'Add Name',
     bulkCreate: 'Bulk Add Names',
+    bulkCreateNote1: 'This list shows scientific names that must be added first before they can be imported into \'My Checklist\'. If an expected scientific name cannot be found due to a misspelling in the reference, please use \'Select Another Scientific Name\' to assign the correct match.',
+    bulkCreateNote2: 'Lower infraspecific names and hybrid formula cannot be added here. If needed, please add them later when editing in \'My Checklist\'.',
+    bulkCreateNote3: 'Scientific names that are not selected for addition will not be imported into \'My Checklist\'',
+    selectAnotherScientificName: 'Select Another Scientific Name',
+    skip: 'Skip',
     edit: 'Edit Name',
     createCommonName: 'Add Common Name',
 

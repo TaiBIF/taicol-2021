@@ -22,6 +22,7 @@ class MyNamespaceCollection extends JsonResource
             'type' => $this->type,
             'reference_id' => $this->reference_id,
             'reference_title' => optional(Reference::find($this->reference_id))->title,
+            'reference_subtitle' => optional(Reference::find($this->reference_id))->subtitle,
             'updated_at' => $this->updated_at->format('Y-m-d H:i:s'),
         ];
     }

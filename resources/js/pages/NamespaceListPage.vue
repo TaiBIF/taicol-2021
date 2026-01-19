@@ -15,7 +15,7 @@
                 <thead class="font-bold">
                 <tr>
                     <th class="w-[100px]" v-text="$t('namespace.type')"/>
-                    <th v-text="$t('usage.usageReferences')"/>
+                    <th v-text="$t('namespace.reference')"/>
                     <th v-text="$t('namespace.title')"/>
                     <th class="w-[180px]" v-text="$t('namespace.lastUpdatedTime')"/>
                     <th class="w-[270px]"></th>
@@ -54,7 +54,7 @@
                         <td>
                             <router-link :to="{name: 'reference-page', params: {id: namespace.referenceId}}"
                                          class="my-link" target="_blank">
-                                <span v-text="namespace.referenceTitle"></span>
+                                <span v-text="namespace.referenceSubtitle"></span>
                             </router-link>
                         </td>
                         <td>
@@ -82,7 +82,7 @@
                         <td>
                             <router-link :to="{name: 'reference-page', params: {id: namespace.referenceId}}"
                                          class="my-link" target="_blank">
-                                <span v-text="namespace.referenceTitle"></span>
+                                <span v-text="namespace.referenceSubtitle"></span>
                             </router-link>
                         </td>
                         <td>

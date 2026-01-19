@@ -646,10 +646,18 @@ class ReferenceController extends Controller
             ])->setStatusCode(409);
         } else if ($existingReferences) {
             // 有找到已建立的ref 提供匯入
-                return response()->json([
-                    'message' => 'Reference exists',
-                    'data' => ReferenceCollection::collection($existingReferences)
-                ], 409);
+            // 這邊要存file的資料
+
+            $record =  $existingReferences->first();
+            $currentProperties = $record->properties ?? []; 
+            $currentProperties['file'] = $filePath;
+            $record->properties = $currentProperties;
+            $record->save();
+
+            return response()->json([
+                'message' => 'Reference exists',
+                'data' => ReferenceCollection::collection($existingReferences)
+            ], 409);
         } else if  ($service->hasReferenceExist($articleTitle, $publishYear, $authorPossibleIds, false)) {
             // 有文獻草稿 不提供匯入
             return response([

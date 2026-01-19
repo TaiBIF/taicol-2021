@@ -8,6 +8,7 @@ export default {
     // Namespace List Page
     titlePlaceholder: 'Please enter checklist title',
     type: 'Checklist Type',
+    reference: 'Reference',
     typeOptions: {
         0: 'Taxonomy',
         1: 'Simple',

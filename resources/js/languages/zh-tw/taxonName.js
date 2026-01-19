@@ -1,6 +1,11 @@
 export default {
     create: '新增學名',
     bulkCreate: '批次新增學名',
+    bulkCreateNote1: '此清單為檢查後需要先新增才能匯入「我的名錄」的學名，如有理應存在的學名但因文獻誤拼而找不到對應，可使用後方「選擇其他學名」協助其對應。',
+    bulkCreateNote2: '種下下名和雜交組合無法在此批次新增，如有需要可以進到我的名錄編輯時再新增。',
+    bulkCreateNote3: '選擇不新增的學名，不會匯入「我的名錄」。',
+    selectAnotherScientificName: '選擇其他學名',
+    skip: '不新增',
     edit: '編輯學名',
     createCommonName: '新增俗名',
 
