@@ -145,7 +145,7 @@ class ProcessAiUsageRequest implements ShouldQueue
             // 統一錯誤處理
             Log::error('Gemini processing failed', [
                 'error' => $e->getMessage(),
-                'file_path' => $request->file_path ?? null
+                'file_path' => $filePath ?? null
             ]);
 
             $jobLog->update([
@@ -154,8 +154,21 @@ class ProcessAiUsageRequest implements ShouldQueue
                 'error_message' => $e->getMessage()
             ]);
 
+
+            $statusCode = $e->getCode();
+            $mailSubject = 'TaiCOL物種學名管理工具 - 文獻匯入失敗';
+            $errorDetail = $e->getMessage();
+
             // 寄信通知管理員失敗
-            Mail::to(env('TAICOL_EMAIL', 'catalogueoflife.taiwan@gmail.com'))->send(new Email('使用者在物種學名管理工具匯入的學名使用有錯誤，錯誤訊息如下：<br>' . $e->getMessage(), 'TaiCOL物種學名管理工具 - 文獻匯入失敗', 'TaiCOL管理員'));
+            // Mail::to(env('TAICOL_EMAIL', 'catalogueoflife.taiwan@gmail.com'))->send(new Email('使用者在物種學名管理工具匯入的學名使用有錯誤，錯誤訊息如下：<br>' . $e->getMessage(), 'TaiCOL物種學名管理工具 - 文獻匯入失敗', 'TaiCOL管理員'));
+            
+            Mail::to(env('TAICOL_EMAIL', 'catalogueoflife.taiwan@gmail.com'))
+                ->send(new Email(
+                    '使用者在物種學名管理工具匯入的學名使用有錯誤，錯誤訊息如下：<br>' . nl2br($errorDetail), 
+                    $mailSubject, 
+                    'TaiCOL管理員'
+                ));
+                
             throw $e;
 
         }

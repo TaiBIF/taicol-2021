@@ -15,7 +15,7 @@
         </div>
         <p v-for="m in errors" class="is-danger">
             <span v-if="containsHtml(m)" v-html="m"></span>
-            <span v-else>{{ $t(`validation.${m}`) }}</span>
+            <span v-else>{{ getErrorMessage(m) }}</span>
         </p>
     </div>
 </template>
@@ -24,7 +24,7 @@
 export default {
     props: {
         value: {
-            type: [String, Number, File], // 加上 File 類型
+            type: [String, Number, File],
             default: '',
         },
         type: {
@@ -58,10 +58,23 @@ export default {
         },
         onFileChange(event) {
             const file = event.target.files[0];
-            this.$emit('input', file); // 發送 File 物件而不是字串
+            this.$emit('input', file);
         },
         onPressEnter() {
             this.$emit('pressEnter');
+        },
+        getErrorMessage(m) {
+            const key = `validation.${m}`;
+            const translated = this.$t(key);
+
+            // 邏輯：如果翻譯出來的結果跟 Key 一模一樣 (例如都還是 "validation.檔案太大...")
+            // 代表翻譯檔找不到這個 Key，那就回傳原本的 m (中文錯誤訊息)
+            if (translated === key) {
+                return m;
+            }
+
+            // 否則回傳翻譯後的結果
+            return translated;
         },
     },
 };

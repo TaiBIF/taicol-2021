@@ -431,6 +431,7 @@ class ReferenceController extends Controller
 
     public function fetchReferenceAi(Request $request)
     {
+      
         // NOTE 這邊是測試用的
 
         // $existingReferences = Reference::whereIn('id', [6014])->get();
@@ -442,6 +443,12 @@ class ReferenceController extends Controller
         // ], 409);
 
         // 只允許檔案上傳
+        // 先檢查是否因為 POST 太大導致資料遺失
+        if (empty($request->file('file')) && empty($request->post()) && $request->header('CONTENT_LENGTH') > 0) {
+            return response()->json([
+                'message' => '上傳的檔案總大小超過系統限制 (Post Max Size)',
+            ], 400);
+        }
 
         $file = $request->file('file');
 
@@ -499,12 +506,9 @@ class ReferenceController extends Controller
                 $result = $response->json();
                 
                 if ($result['success']) {
-
-                    // 處理成功
                     $data = $result['result'] ?? [];
-
                     $metadata = $result['metadata'] ?? [];
-                    
+
                     $jobLog->update([
                         'status' => 'completed',
                         'completed_at' => now(),
@@ -517,20 +521,22 @@ class ReferenceController extends Controller
                     ]);
 
                 } else {
-                    // Python API 回傳錯誤
-                    throw new \Exception($result['error'] ?? 'Unknown error from Python service');
+                    // Python API 回傳邏輯錯誤 (例如 parse 失敗)
+                    throw new \Exception($result['error'] ?? 'Unknown error from Python service', 400);
                 }
                 
             } else {
-                // HTTP 請求失敗
-                throw new \Exception("Python API HTTP error: {$response->status()} - {$response->body()}");
+                // HTTP 請求失敗 (包含 500, 503 等等)
+                // *** 修改點 1: 將 response 的 status code 傳進 Exception ***
+                throw new \Exception("Python API Error: " . $response->body(), $response->status());
             }
 
         } catch (\Exception $e) {
             // 統一錯誤處理
             Log::error('Gemini processing failed', [
                 'error' => $e->getMessage(),
-                'file_path' => $request->file_path ?? null
+                'code' => $e->getCode(),
+                'file_path' => $filePath
             ]);
 
             $jobLog->update([
@@ -539,8 +545,25 @@ class ReferenceController extends Controller
                 'error_message' => $e->getMessage()
             ]);
 
-            // TODO 這邊回傳錯誤還要回傳給vue前端
+            // *** 修改點 2: 根據錯誤代碼回傳給前端，並停止執行 ***
+            
+            $statusCode = $e->getCode();
+            // 確保 status code 是有效的 HTTP code (大於 0)，否則預設 500
+            $httpStatus = ($statusCode && $statusCode > 0) ? $statusCode : 500;
+            
+            $message = '檔案處理失敗';
 
+            // 特別針對 503 處理
+            if ($httpStatus === 503) {
+                $message = 'AI 服務目前忙碌中 (Service Unavailable)，請稍後再試。';
+            } else {
+                 // 可以在這顯示更詳細錯誤，或保留通用訊息
+                $message = '處理發生錯誤: ' . $e->getMessage();
+            }
+
+            return response()->json([
+                'message' => $message,
+            ], $httpStatus);
         }
 
 
@@ -561,11 +584,10 @@ class ReferenceController extends Controller
         // 檢查 type 是否存在
         $dataType = $data['type'] ?? null;
         if (!$dataType || !isset($typeMapping[$dataType])) {
-            return response()
-                ->json([
-                    'message' => '不匯入資料'
-                ])
-                ->setStatusCode(409);
+            return response()->json([
+                            'code' => 'UNKNOWN_TYPE',
+                            'message' => '不匯入資料（未知的文獻類型）'
+                        ], 409);
         }
 
         $type = $typeMapping[$dataType];
@@ -626,24 +648,20 @@ class ReferenceController extends Controller
             // 有usage 不提供匯入
             return response()->json([
                 'message' => 'Reference has usage',
-                'errors' => [
-                    'file' => [
-                            'type' => 'reference_usage',
-                            'reference' => $usageCheck['reference']
-                    ]
+                'data' => [
+                    'code' => 'REF_HAS_USAGE', // 藏在這裡！
+                    'payload' => $usageCheck['reference'] // 真正的資料改名叫 payload
                 ]
-            ])->setStatusCode(409);
+            ], 409);
         } else if ($fileCheck['exists']) {
             // 有文獻PDF 不提供匯入
             return response()->json([
-                'message' => "Reference exists with file",
-                'errors' => [
-                    'file' => [
-                            'type' => 'reference_with_file',
-                            'reference' => $fileCheck['reference']
-                    ]
-                ]
-            ])->setStatusCode(409);
+                            'message' => 'Reference exists with file',
+                            'data' => [
+                                'code' => 'REF_WITH_FILE',
+                                'payload' => $fileCheck['reference']
+                            ]
+                        ], 409);
         } else if ($existingReferences) {
             // 有找到已建立的ref 提供匯入
             // 這邊要存file的資料
@@ -654,37 +672,46 @@ class ReferenceController extends Controller
             $record->properties = $currentProperties;
             $record->save();
 
+            $refData = ReferenceCollection::collection($existingReferences)->first();
             return response()->json([
                 'message' => 'Reference exists',
-                'data' => ReferenceCollection::collection($existingReferences)
+                'data' => [
+                    'code' => 'REF_EXISTS',
+                    'payload' => $refData
+                ]
             ], 409);
         } else if  ($service->hasReferenceExist($articleTitle, $publishYear, $authorPossibleIds, false)) {
             // 有文獻草稿 不提供匯入
-            return response([
-                'message' => '該筆資料已被建立為草稿，請到我的收藏裡的草稿確認並發布，若該筆不是您建立的草稿，請聯絡管理員。(catalogueoflife.taiwan@gmail.com)',
-            ])->setStatusCode(409);
+            return response()->json([
+                            'message' => '該筆資料已被建立為草稿，請到我的收藏裡的草稿確認並發布。',
+                            'data' => [
+                                                'code' => 'DRAFT_EXISTS',
+                                                'payload' => null // 這裡沒有資料物件
+                                            ]
+                        ], 409);
         }
 
 
         return response()->json([
-            'type' => $type,
-            'authors' => $authors,
-            'authors_possible' => $authorPossible,
-            'publish_year' => $publishYear,
-            'articleTitle' => $articleTitle,
-            'book_title' => $bookTitle,
-            'book_title_abbreviation' => $bookAbbr,
-            'volume' => $volume,
-            'issue' => $issue,
-            'page' => $page,
-            'doi' => $DOI,
-            'url' => $URL,
-            'language' => $language,
-            'file' => $filePath,
+            'code' => 'SUCCESS',
+            'data' => [
+                'type' => $type,
+                'authors' => $authors,
+                'authorsPossible' => $authorPossible,
+                'publishYear' => $publishYear,
+                'articleTitle' => $articleTitle,
+                'bookTitle' => $bookTitle,
+                'bookTitleAbbreviation' => $bookAbbr,
+                'volume' => $volume,
+                'issue' => $issue,
+                'page' => $page,
+                'doi' => $DOI,
+                'url' => $URL,
+                'language' => $language,
+                'file' => $filePath,
+            ]
         ]);
-
     }
-
 
     public function import(Request $request)
     {

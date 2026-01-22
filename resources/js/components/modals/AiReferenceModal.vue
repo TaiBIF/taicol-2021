@@ -21,7 +21,7 @@
                 </p>
                 <general-input
                     class="grow"
-                    accept=".pdf,application/pdf"
+                    accept=".txt,.doc,.docx,.pdf,.rtf,.odt,text/plain,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     type="file"
                     :errors="errors.file"
                     v-model="uploadedFile"
@@ -171,25 +171,8 @@ export default defineComponent({
         // });
 
         // 響應式變數
-        const doi = ref<string>('');
-        const url = ref<string>('');
         const uploadedFile = ref<File | null>(null);
-        const result = ref<{
-            type: number,
-            authors: Array<{ given: string, family: string }>,
-            authorsPossible: object,
-            publishYear: string,
-            articleTitle: string,
-            bookTitle: string,
-            bookTitleAbbreviation: string,
-            volume: string,
-            issue: string,
-            page: string,
-            doi: string,
-            url: string,
-            language: string,
-            file: string,
-        } | null>(null);
+        const result = ref<any>(null);
         const errors = ref<object>({});
         const isLoading = ref<boolean>(false);
         const selectedAuthors = ref<{[key: number]: any[]}>({});
@@ -200,131 +183,134 @@ export default defineComponent({
         //     uploadedFile.value = file;
         // };
 
-        // 發送 AI 請求
         const onFetchReferenceAI = () => {
 
-            // 檢查是否有填寫任一項目
-            // if (!doi.value && !url.value && !uploadedFile.value) {
+            // 1. 前端基本驗證
             if (!uploadedFile.value) {
-                errors.value = { 
-                    // doi: ['請填入DOI、URL或上傳PDF檔案'], 
-                    // url: ['請填入DOI、URL或上傳PDF檔案'], 
-                    file: ['請上傳PDF檔案'] 
-                };
+                errors.value = { file: ['請上傳PDF檔案'] };
                 return;
             }
 
-            // 檢查檔名是否含有中文或特殊字符
-            const fileName = uploadedFile.value.name;
-            const hasNonAscii = /[^\x00-\x7F]/.test(fileName);
-            
-            if (hasNonAscii) {
-
-                errors.value = { 
-                    // doi: ['請填入DOI、URL或上傳PDF檔案'], 
-                    // url: ['請填入DOI、URL或上傳PDF檔案'], 
-                    file: ['檔案名稱含有中文或特殊字符，可能導致處理失敗，請重新命名檔案後再上傳'] 
-                };
-
+            // 檢查檔名是否含有非 ASCII 字符
+            // eslint-disable-next-line no-control-regex
+            if (/[^\x00-\x7F]/.test(uploadedFile.value.name)) {
+                errors.value = { file: ['檔案名稱含有中文或特殊字符，可能導致處理失敗，請重新命名檔案後再上傳'] };
                 return;
             }
 
             isLoading.value = true;
             errors.value = {};
+            result.value = null;
 
-            // 如果有上傳檔案，使用 POST 與 FormData
-                const formData = new FormData();
-                formData.append('file', uploadedFile.value);
+            const formData = new FormData();
+            formData.append('file', uploadedFile.value);
 
-                axios.post('/fetch/reference/ai', formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                        'Accept': 'application/json'
-                    },
-                    transformRequest: [function (data) {
-                        return data; // 不要讓 axios 轉換 FormData
-                    }]
-                })
-                .then(({ data }) => {
-                    result.value = data;
-                    errors.value = {};
-                    isLoading.value = false;
-                })
-                .catch(({ errors: e, status, message, data }) => {
+            axios.post('/fetch/reference/ai', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    'Accept': 'application/json'
+                },
+            })
+            .then(({ data }) => {
+                // 成功處理
+                result.value = data.data; 
+                errors.value = {};
+            })
+            .catch((error) => {
+            // --- 重構重點：正確解析 Axios 錯誤物件 ---
+                console.error('API Error:', error);
+                result.value = null;
 
-                    console.log( e, status, message, data)
-                    result.value = null;
+                const res = error.data || error;
+                const status = error.status || 500;
 
-                    if (status === 400) {
-                        errors.value = { file: [message || '檔案處理失敗'] };
-                    } else if (status === 422) {
-                        errors.value = { file: [e || '檔案處理失敗'] } ;
-                    } else if (status === 409) {
-                        let errorMessage = '';
-                        
-                        if (e?.file.type === 'reference_usage' && e?.file.reference) {
-                            const referenceUrl = app.$router.resolve({
-                                name: 'reference-page',
-                                params: { id: e.file.reference.id }
-                            }).href;
-                            
-                            errorMessage = app.$t('validation.referenceUsagePrefix') + 
-                                        `<a class="my-link" href="${referenceUrl}" target="_blank">${e.file.reference.title}</a>`;
-                        } else if (e?.file.type === 'reference_with_file' && e?.file.reference) {
-                            const referenceUrl = app.$router.resolve({
-                                name: 'reference-page',
-                                params: { id: e.file.reference.id }
-                            }).href;
-                            
-                            errorMessage = app.$t('validation.referenceHasFile') + 
-                                        `<a class="my-link" href="${referenceUrl}" target="_blank">${e.file.reference.title}</a>`;
-                        } else if (message == 'Reference exists') {
-                            app.$store.commit('closeModal');
-                            app.$toast && app.$toast.success('文獻已存在，將直接綁定');
+                // 2. 抓取我們定義的 code 與 message
+                const message = res.message || error.message || '處理失敗';
+                const code = res.code || 'UNKNOWN'; // 從 data 裡面拿 code
+                const conflictData = res.payload;   // 從 data 裡面拿 payload
 
-                            // 將資料存到 store 中
-                            app.$store.commit('setBindReferenceData', data[0]);
+                // 3. 根據 Status 分流
+                switch (status) {
+                    case 409: 
+                        handleConflict(code, message, conflictData);
+                        break;
+                    
+                    case 413:
+                        errors.value = { file: ['檔案大小超過伺服器限制'] };
+                        break;
 
-                            app.$store.commit('openModal', {
-                                component: () => import('../modals/BindReferenceModal.vue'),
-                            });
+                    case 503:
+                        errors.value = { file: ['AI 服務忙碌中，請稍後再試'] };
+                        break;
 
-                        } else {
-                            errorMessage = message || e?.message || '檔案處理失敗';
-                        }
-
-                        errors.value = { file: [errorMessage] };
-                    } else {
-                        errors.value = { file: [message || '檔案處理失敗'] };
-                    }
-                    isLoading.value = false;
-                });
+                    default:
+                        // 400, 422, 500 等直接顯示訊息
+                        errors.value = { file: [message] };
+                }
+            })
+            .finally(() => {
+                isLoading.value = false;
+            });
         };
+
+
+        const getRefLink = (ref: any) => {
+            if (!ref) return '';
+            const link = app.$router.resolve({ 
+                name: 'reference-page', 
+                params: { id: ref.id } 
+            }).href;
+            return `<a class="my-link" href="${link}" target="_blank">${ref.title}</a>`;
+        };
+        // [簡潔化] 專門處理 409 邏輯，依賴明確的 Code
+        const handleConflict = (code: string, message: string, data: any) => {
+
+            let errorMessage = '';
+
+            switch (code) {
+                case 'REF_HAS_USAGE': {
+                    const link = getRefLink(data);
+                    errorMessage = `${app.$t('validation.referenceUsagePrefix')} ${link}`;
+                    break;
+                }
+                case 'REF_WITH_FILE': {
+                    const link = getRefLink(data);
+                    errorMessage = `${app.$t('validation.referenceHasFile')} ${link}`;
+                    break;
+                }
+                case 'REF_EXISTS': {
+                    // 情境：文獻已存在，系統自動補件成功 -> 關閉當前 Modal -> 開啟綁定 Modal
+                    if (data) {
+                        app.$store.commit('setBindReferenceData', data);
+                        // 這裡是用 closeModal，因為我們還在 AI Import Modal 裡面
+                        app.$store.commit('closeModal'); 
+                        app.$store.commit('openModal', {
+                            component: () => import('../modals/BindReferenceModal.vue'),
+                        });
+                        if (app.$toast) app.$toast.success('文獻已存在，已自動上傳 PDF 並轉至綁定流程');
+                        return; 
+                    }
+                    errorMessage = '文獻已存在但資料讀取錯誤';
+                    break;
+                }
+                default: // DRAFT_EXISTS or UNKNOWN_TYPE
+                    errorMessage = message;
+                    break;
+            }
+
+            errors.value = { file: [errorMessage] };
+        };
+
 
         const onSetToForm = () => {
 
             if (!result.value) return;
 
-            const finalAuthorsPossible = getFinalAuthorsPossible();
-
-            // 準備要傳遞給 ReferenceLayer 的資料
             const referenceData = {
-                type: result.value.type,
-                authors: finalAuthorsPossible,
-                publishYear: result.value.publishYear,
-                articleTitle: result.value.articleTitle,
-                bookTitle: result.value.bookTitle,
-                bookTitleAbbreviation: result.value.bookTitleAbbreviation,
-                volume: result.value.volume,
-                issue: result.value.issue,
-                page: result.value.page,
-                doi: result.value.doi,
-                url: result.value.url,
-                language: result.value.language,
-                file: result.value.file,
-                fromAiImport: true
-            };
-
+                 ...result.value, // 展開所有後端回傳屬性 (已是 camelCase)
+                 authors: getFinalAuthorsPossible(), // 覆蓋處理過的 authors
+                 fromAiImport: true
+             };
             
             // 將資料存到 store 中
             app.$store.commit('setReferencePresetData', referenceData);
@@ -395,8 +381,6 @@ export default defineComponent({
         };
 
         return {
-            doi,
-            url,
             uploadedFile,
             result,
             errors,
