@@ -131,6 +131,7 @@ export default {
                 || p.customFields?.length
                 || p.note
                 || p.isInTaiwan === 1
+                || p.isInTaiwan === 0
             );
         },
         getIndications(indicationArray) {
