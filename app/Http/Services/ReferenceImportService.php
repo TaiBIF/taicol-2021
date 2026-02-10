@@ -6,6 +6,7 @@ namespace App\Http\Services;
 
 use App\Person;
 use App\Reference;
+use App\Book;
 use Illuminate\Support\Facades\DB;
 
 class ReferenceImportService
@@ -273,11 +274,22 @@ class ReferenceImportService
         $service = new ReferenceService($reference);
 
         $authorIds = $authors->pluck('id')->toArray();
-        if ($service->hasReferenceExist($title, $publishYear, $authorIds, true)) {
+
+        $book = $bookTitle ? Book::where('title', $bookTitle)->first() : null;
+        $bookId = $book ? ($book->id ?? '') : '';
+
+
+        if ($service->hasReferenceExist($title, $publishYear, $authorIds, true, $bookId, $volume, $pageRange)) {
             throw new \Exception('資料重複');
-        } else if ($service->hasReferenceExist($title, $publishYear, $authorIds, false)) {
+        } else if ($service->hasReferenceExist($title, $publishYear, $authorIds, false, $bookId, $volume, $pageRange)) {
             throw new \Exception('文獻已存在於草稿');
         }
+
+        // if ($service->hasReferenceExist($title, $publishYear, $authorIds, true)) {
+        //     throw new \Exception('資料重複');
+        // } else if ($service->hasReferenceExist($title, $publishYear, $authorIds, false)) {
+        //     throw new \Exception('文獻已存在於草稿');
+        // }
 
         $service->create([
             'type' => $type,

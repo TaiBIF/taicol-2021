@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Auth;
-
+use Illuminate\Support\Str;
 
 class ReferenceController extends Controller
 {
@@ -124,6 +124,8 @@ class ReferenceController extends Controller
 
     public function update(ReferenceRequest $request, $id)
     {
+        $hasChecked = $request->boolean('has_checked_duplicates');
+
         $reference = Reference::with(['book', 'authors'])->find($id);
 
         $referenceLogService = new ReferenceLogService();
@@ -148,19 +150,64 @@ class ReferenceController extends Controller
         $title = $request->get('title', '') ?? '';
         $type = $request->get('type');
         $publishYear = $request->get('publish_year') ?? '';
+        $bookTitle = Str::squish($request->input('properties.book_title'));
+        $volume = $request->input('properties.volume');
+        $pagesRange = $request->input('properties.pages_range');
+        $bookId = $request->input('book_id');
         $properties = $request->get('properties');
 
         $service = new ReferenceService($reference);
 
-        if ($service->hasReferenceExist($title, $publishYear, $authors, true)) {
+        // if ($service->hasReferenceExist($title, $publishYear, $authors, true)) {
+        //     return response([
+        //         'message' => 'Reference exist'
+        //     ])->setStatusCode(409);
+        // } else if  ($service->hasReferenceExist($title, $publishYear, $authors, false)) {
+        //     return response([
+        //         'message' => 'Reference draft exist'
+        //     ])->setStatusCode(409);
+        // }
+
+        if ($service->hasReferenceExist($title, $publishYear, $authors, true, $bookId, $volume, $pagesRange)) {
             return response([
-                'message' => 'Reference exist'
+                'message' => 'Reference exist',
             ])->setStatusCode(409);
-        } else if  ($service->hasReferenceExist($title, $publishYear, $authors, false)) {
+        } else if ($service->hasReferenceExist($title, $publishYear, $authors, false, $bookId, $volume, $pagesRange)) {
             return response([
-                'message' => 'Reference draft exist'
+                'message' => 'Reference draft exist',
             ])->setStatusCode(409);
         }
+
+        $checkData = [
+                // 基礎欄位 (注意前端是用 publishYear)
+                'type'          => $type,
+                'publish_year'  => $publishYear, 
+                // 作者群 (前端送來的就是 ID array: [1, 5, 10])
+                'authors'       => $authors, 
+                // 標題類 (從 properties 裡面撈，並預防性去除多餘空白)
+                'article_title' => $title,
+                'book_title'    => $bookTitle,
+                // 詳細資訊
+                'volume'        => $volume,
+                'pages_range'   => $pagesRange,                
+                // 嘗試撈取 book_id，如果前端 reference 物件本身有帶 book_id 就抓，沒有就 null
+                // 備註：Vue 的 formData 展開了 ...this.reference，如果原本資料有 book_id 會在這裡
+                'book_id'       => $bookId, 
+            ];
+
+        // Log::info($checkData);
+
+        if (!$hasChecked){
+
+            $duplicates = $service->getPotentialDuplicates($checkData);
+
+            if (count($duplicates) > 0) {
+                return response([
+                    'message' => 'Reference possibly duplicates',
+                    'data' => $duplicates,
+                ])->setStatusCode(409);
+            }
+        } 
 
         DB::beginTransaction();
 
@@ -204,6 +251,9 @@ class ReferenceController extends Controller
 
     public function store(ReferenceRequest $request)
     {
+
+        $hasChecked = $request->boolean('has_checked_duplicates');
+
         $authors = $request->get('authors');
         $authorsWithOrder = Person::whereIn('id', $authors)
             ->get()->sortBy(function ($model) use ($authors) {
@@ -217,24 +267,60 @@ class ReferenceController extends Controller
                 ];
             });
 
-        $title = $request->get('title', '');
+        $title = Str::squish($request->input('title'));
         $type = $request->get('type');
         $publishYear = $request->get('publish_year', '');
+        $bookTitle = Str::squish($request->input('properties.book_title'));
+        $volume = $request->input('properties.volume');
+        $pagesRange = $request->input('properties.pages_range');
+        $bookId = $request->input('book_id');
         $properties = $request->get('properties');
+
+
+        // 判斷是否有可能重複的
+
+        $checkData = [
+                // 基礎欄位 (注意前端是用 publishYear)
+                'type'          => $type,
+                'publish_year'  => $publishYear, 
+                // 作者群 (前端送來的就是 ID array: [1, 5, 10])
+                'authors'       => $authors, 
+                // 標題類 (從 properties 裡面撈，並預防性去除多餘空白)
+                'article_title' => $title,
+                'book_title'    => $bookTitle,
+                // 詳細資訊
+                'volume'        => $volume,
+                'pages_range'   => $pagesRange,                
+                // 嘗試撈取 book_id，如果前端 reference 物件本身有帶 book_id 就抓，沒有就 null
+                // 備註：Vue 的 formData 展開了 ...this.reference，如果原本資料有 book_id 會在這裡
+                'book_id'       => $bookId, 
+            ];
 
         $service = new ReferenceService(new Reference());
 
 
-        if ($service->hasReferenceExist($title, $publishYear, $authors, true)) {
+        if ($service->hasReferenceExist($title, $publishYear, $authors, true, $bookId, $volume, $pagesRange)) {
             return response([
                 'message' => 'Reference exist',
             ])->setStatusCode(409);
-        } else if  ($service->hasReferenceExist($title, $publishYear, $authors, false)) {
+        } else if ($service->hasReferenceExist($title, $publishYear, $authors, false, $bookId, $volume, $pagesRange)) {
             return response([
                 'message' => 'Reference draft exist',
             ])->setStatusCode(409);
         }
 
+
+        if (!$hasChecked){
+
+            $duplicates = $service->getPotentialDuplicates($checkData);
+
+            if (count($duplicates) > 0) {
+                return response([
+                    'message' => 'Reference possibly duplicates',
+                    'data' => $duplicates,
+                ])->setStatusCode(409);
+            }
+        } 
 
         DB::beginTransaction();
 
@@ -631,6 +717,7 @@ class ReferenceController extends Controller
 
         $book = $bookTitle ? Book::where('title', $bookTitle)->first() : null;
         $bookAbbr = $book ? ($book->title_abbreviation ?? '') : '';
+        $bookId = $book ? ($book->id ?? '') : '';
         $volume = $data['volume'] ?? '';
         $issue = $data['issue'] ?? '';
         $page = isset($data['page']) ? str_replace('-', '–', $data['page']) : '';
@@ -642,7 +729,8 @@ class ReferenceController extends Controller
 
         $usageCheck = $service->hasReferenceWithUsage($articleTitle, $publishYear, $authorPossibleIds, true);
         $fileCheck = $service->hasReferenceWithFile($articleTitle, $publishYear, $authorPossibleIds, true);
-        $existingReferences = $service->hasReferenceExist($articleTitle, $publishYear, $authorPossibleIds, true, true);
+        // $existingReferences = $service->hasReferenceExist($articleTitle, $publishYear, $authorPossibleIds, true, true);
+        $existingReferences = $service->hasReferenceExist($articleTitle, $publishYear, $authorPossibleIds, true, $bookId, $volume, $page, true);
 
         if ($usageCheck['exists']) {
             // 有usage 不提供匯入
@@ -665,7 +753,6 @@ class ReferenceController extends Controller
         } else if ($existingReferences) {
             // 有找到已建立的ref 提供匯入
             // 這邊要存file的資料
-
             $record =  $existingReferences->first();
             $currentProperties = $record->properties ?? []; 
             $currentProperties['file'] = $filePath;
@@ -680,14 +767,14 @@ class ReferenceController extends Controller
                     'payload' => $refData
                 ]
             ], 409);
-        } else if  ($service->hasReferenceExist($articleTitle, $publishYear, $authorPossibleIds, false)) {
+        } else if ($service->hasReferenceExist($articleTitle, $publishYear, $authorPossibleIds, false, $bookId, $volume, $page)) {
             // 有文獻草稿 不提供匯入
             return response()->json([
                             'message' => '該筆資料已被建立為草稿，請到我的收藏裡的草稿確認並發布。',
                             'data' => [
-                                                'code' => 'DRAFT_EXISTS',
-                                                'payload' => null // 這裡沒有資料物件
-                                            ]
+                                        'code' => 'DRAFT_EXISTS',
+                                        'payload' => null // 這裡沒有資料物件
+                                    ]
                         ], 409);
         }
 
@@ -702,6 +789,7 @@ class ReferenceController extends Controller
                 'articleTitle' => $articleTitle,
                 'bookTitle' => $bookTitle,
                 'bookTitleAbbreviation' => $bookAbbr,
+                'bookId' => $bookId,
                 'volume' => $volume,
                 'issue' => $issue,
                 'page' => $page,

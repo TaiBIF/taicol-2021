@@ -410,6 +410,7 @@ export default {
                 ...this.reference,
                 authors: this.targetAuthors.map((author) => author.id),
                 language: this.targetLanguage?.id || '',
+                bookId: this.targetBook?.id || null,
                 properties: {
                     ...this.reference.properties,
                     bookTitle: this.targetBook?.title || null,
@@ -462,6 +463,7 @@ export default {
             articleTitle,
             bookTitle,
             bookTitleAbbreviation,
+            bookId,
             volume,
             issue,
             page,
@@ -478,7 +480,7 @@ export default {
             this.targetAuthors = authors;
 
             if (type === ReferenceTypes.TYPE_JOURNAL) {
-                this.targetBook = { title: bookTitle };
+                this.targetBook = { title: bookTitle, id: bookId };
                 this.reference.properties.articleTitle = articleTitle;
                 this.reference.properties.bookTitleAbbreviation = bookTitleAbbreviation;
                 this.reference.properties.issue = issue;
@@ -517,28 +519,34 @@ export default {
                 this.reference.properties.bookTitleAbbreviation = '';
             }
         },
-        submit: debounce(async function (isPublish) {
+        // 1. 修改 submit 方法，增加 hasCheckedDuplicates 參數，預設為 false
+        submit: debounce(async function (isPublish, hasCheckedDuplicates = false) {
 
-            // 等待 base64 編碼
             const image = this.reference.cover
                 ? await getBase64(this.reference.cover)
                 : null;
 
+            // 將 hasCheckedDuplicates 加入傳送的資料中
             const data = {
                 ...this.formData,
                 isPublish,
                 image,
+                hasCheckedDuplicates: hasCheckedDuplicates // [新增] 這裡傳給後端
             };
 
             this.axios({
                 method: this.$route.name === 'reference-edit' ? 'PUT' : 'POST',
                 url: this.$route.name === 'reference-edit' ? `/references/${this.reference.id}` : '/references',
                 data
-                // data: { ...this.formData, 'isPublish': isPublish },
             }).then(({ data }) => {
                 this.onAfterSubmit(data);
                 openNotify(this.$t('common.saveSuccess'));
-            }).catch(({ status, message, errors }) => {
+            }).catch(({ status, message, data, errors }) => {
+
+                if (this.$parent && 'isLoading' in this.$parent) {
+                        this.$parent.isLoading = false;
+                    }
+
                 if (status === 409 &&  message === 'Reference exist') {
                     openNotify(this.$t('reference.exist'), 'is-danger');
                     // TODO 這邊需要判斷是不是從AI匯入工具來的 如果是的話要跳出是否繼續匯出異名表
@@ -552,6 +560,24 @@ export default {
                             },
                         },
                     });
+                } else if (status === 409 &&  message === 'Reference possibly duplicates') {
+
+                    this.$store.commit('openModal', {
+                        // 建議建立一個新的 Modal 專門顯示重複清單
+                        component: () => import('../modals/ConfirmReferenceDuplicatesModal.vue'),
+                        props: {
+                            // 把後端回傳的重複陣列傳進去
+                            duplicates: data, 
+                            // [新增] 這裡定義當 Modal 按下 "Publish" 時要幹嘛
+                            onForceSave: () => {
+                                // 重新呼叫 submit，
+                                // 參數 1: 維持原本的 isPublish 狀態
+                                // 參數 2: 傳入 true，代表「我檢查過了，強制存檔」
+                                this.submit(isPublish, true); 
+                            }
+                        },
+                    });
+
                 } else {
                     this.errors = errors;
                 }

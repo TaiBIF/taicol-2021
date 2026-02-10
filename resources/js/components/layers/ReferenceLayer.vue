@@ -22,6 +22,7 @@
                     v-text="$t('common.close')">
             </button>
             <button class="button"
+                    :class="{'is-loading': isLoading}"
                     v-if="!isReferenceUsageEdit && !isPublished && !isFromAiImport" 
                     v-on:click="onSubmit(false)"
                     v-text="$t('common.saveAsDraft')">

@@ -83,6 +83,7 @@ html {
 
     .my-link {
         color: $black;
+        cursor: pointer;
 
         &::after {
             font-family: "Font Awesome 5 Free";

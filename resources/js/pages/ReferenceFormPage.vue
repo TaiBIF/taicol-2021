@@ -26,14 +26,17 @@
                             v-on:click="goBack()"
                             v-text="$t('common.goBack')"/>
                     <button class="button m-0"
+                            :class="{'is-loading': isLoading}"
                             v-if="!isPublished" 
                             v-on:click="onSubmit(false)"
                             v-text="$t('common.saveAsDraft')"/>
                     <button class="button m-0"
+                            :class="{'is-loading': isLoading}"
                             v-if="!isPublished"
                             v-on:click="onSubmit(true)"
                             v-text="$t('common.publish')"/>
                     <button class="button m-0"
+                            :class="{'is-loading': isLoading}"
                             v-if="isPublished"
                             v-on:click="onSubmit(true)"
                             v-text="$t('common.save')"/>
@@ -144,9 +147,11 @@ export default {
                 });
         },
         onSubmit(isPublish) {
+            this.isLoading = true;
             this.$refs.form.submit(isPublish);
         },
         onAfterFormSubmit(data) {
+            this.isLoading = false;
             // 如果是草稿的話 留在編輯頁面
             if (data.isPublish == false){
                 // this.reload();

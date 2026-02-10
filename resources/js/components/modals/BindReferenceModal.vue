@@ -40,15 +40,10 @@ export default {
         },
         onSubmit(){
             // TODO 待處理
-
-            console.log( this.reference)
-
-            console.log('this.reference.id', this.reference.id)
             // // 發送 AI 請求
             // this.isLoading = true;
 
             const referenceId = this.reference.id;
-            console.log('this.reference.id', referenceId)
 
             this.axios.post(`/fetch/namespace/usage/ai`, {
                 referenceId: referenceId,
