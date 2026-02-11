@@ -38,6 +38,8 @@ export default {
     // 'usage.wrongRank': '請選擇正確的種下上階層',
     'usage.wrongParent': '請選擇正確上階層',
     'usage.firstMustBeAccepted': '第一張卡片必須為有效學名',
+    'usage.hasTaxonUsageExists': '本筆學名使用已被收錄，請以「編輯」代替「刪除再新增」，如本筆學名使用是錯誤匯入，請回報管理員處理。',
+    'usage.hasReferenceUsageExists': '已有相同學名使用存在，無法匯入所有學名使用。若需要更新已建立學名使用內容，請使用「編輯異名表」更新內容。',
     'usage.min': '必填',
     'usage.not_in': '必填',
     'usage.required': '必填',

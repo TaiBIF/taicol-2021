@@ -57,8 +57,6 @@ export default {
             this.isLoading = true;
 
             // 先確認文獻是否已有usage
-
-
             this.axios.post(`/namespaces/import/${ this.selectedReference.id}`, {
                 ids: [this.$route.params.id],
                 overwrite: false,
@@ -68,6 +66,7 @@ export default {
                     this.isLoading = false;
                     return;
                 }
+                // 這邊不會有重複匯入的情況 因為一旦有學名使用就不得匯入
 
                 this.$router.push({ name: 'reference-page', params: { id: this.selectedReference.id } });
                 this.$store.commit('closeModal');

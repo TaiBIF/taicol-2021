@@ -625,7 +625,7 @@ export default {
         onRemove(e, index) {
             e.stopPropagation();
             this.usages[index].isDeleted = true;
-            this.onSubmit();
+            this.onSubmit(index);
         },
         onToggleSimpleForm() {
             this.isListSimple = !this.isListSimple;
@@ -731,7 +731,7 @@ export default {
                 }
             });
         },
-        onSubmit: _.debounce(function () {
+        onSubmit: _.debounce(function (index) {
             const { id } = this.$route.params;
             this.isLoading = true;
 
@@ -771,8 +771,14 @@ export default {
                     this.isLoading = false;
                     this.refresh();
                 })
-                .catch(() => {
-                    openNotify('發生錯誤，資料儲存失敗', 'is-danger');
+                .catch((error) => {
+
+                    if (error.status === 409) {
+                        this.refresh();
+                        openNotify(this.$t('validation.usage.hasTaxonUsageExists'), 'is-danger');
+                    } else {
+                        openNotify('發生錯誤，資料儲存失敗', 'is-danger');
+                    }
                 });
         }),
 

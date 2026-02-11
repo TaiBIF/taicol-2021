@@ -489,7 +489,22 @@ class ReferenceUsageController extends Controller
                         $currentUsage->save();
                     }
 
+                    // TODO 這邊要判斷
                     if ($currentUsage && isset($usage['is_deleted']) && (bool) $usage['is_deleted']) {
+
+                        // 先確認是否已存在api_taxon_usages
+
+                        $hasTaxonUsageExists = DB::table('api_taxon_usages')
+                            ->where('reference_usage_id', $usage['id'])
+                            ->exists();
+                        
+                        if ($hasTaxonUsageExists){
+                            return response()->json([
+                                'message' => '本筆學名使用已被收錄，請以「編輯」代替「刪除再新增」，如本筆學名使用是錯誤匯入，請回報管理員處理。'
+                            ], 409);
+                        }
+
+
                         $currentUsage->delete();
                         $edit_log = new ImportUsageLog();
                         $edit_log->reference_usage_id = $usage['id'];

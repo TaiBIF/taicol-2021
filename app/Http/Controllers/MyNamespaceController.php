@@ -102,21 +102,23 @@ class MyNamespaceController extends Controller
         $namespace->delete();
     }
 
-    public function import(Request $request, $referenceId)
+    public function import(Request $request, $referenceId) // 異名表匯入
     {
 
 
-        $hasUsageExists = ReferenceUsage::where('reference_id', $referenceId)
-            ->whereNull('deleted_at')
-            ->exists();
+        if (!$request->get('from_reference_page')){
 
-        if ($hasUsageExists){
-            return response([
-                'data' =>  $hasUsageExists
-            ]);
+            $hasUsageExists = ReferenceUsage::where('reference_id', $referenceId)
+                ->whereNull('deleted_at')
+                ->exists();
 
+            // 這邊會造成原本文獻頁的匯入異名表無法加入
+            if ($hasUsageExists){
+                return response([
+                    'data' =>  $hasUsageExists
+                ]);
+            }
         }
-
 
         $namespaceIds = $request->get('ids');
         $overwrite = $request->get('overwrite', false);
@@ -128,13 +130,36 @@ class MyNamespaceController extends Controller
 
         $reference = Reference::with('usages')->find($referenceId);
 
+        // --- 1. 預載入：減少資料庫查詢次數 ---
+        $existingUsages = ReferenceUsage::where('reference_id', $referenceId)
+            ->whereNull('deleted_at')
+            ->get();
+
+        // 快速比對 Key
+        $lookup = $existingUsages->mapWithKeys(function ($item) {
+            $key = "{$item->taxon_name_id}|{$item->status}|{$item->accepted_taxon_name_id}|{$item->is_title}";
+            return [$key => true];
+        });
+
+        // 建立 Group 與 Order 對照表
+        $groupMap = $existingUsages->whereNotNull('accepted_taxon_name_id')
+            ->groupBy('accepted_taxon_name_id')
+            ->map(function ($items) {
+                return [
+                    'group' => $items->first()->group,
+                    'max_order' => $items->max('order')
+                ];
+            })->toArray();
+
+        $globalMaxGroup = $existingUsages->max('group') ?? -1;
+        $hasDuplicate = false; // 旗標：用來標記是否有任何重複被跳過
+
         try {
             DB::beginTransaction();
 
-            $latestUsage = ReferenceUsage::select('group')->where('reference_id', $referenceId)
-                ->orderBy('group', 'desc')
-                ->first();
-
+            // $latestUsage = ReferenceUsage::select('group')->where('reference_id', $referenceId)
+            //     ->orderBy('group', 'desc')
+            //     ->first();
 
             $log = new ImportUsageLog();
             $log->reference_id = $reference->id;
@@ -149,14 +174,13 @@ class MyNamespaceController extends Controller
                 $nowAction = ImportUsageLog::ACTION_APPEND;
             }
 
-
             $log->action = $nowAction;
             $log->user_id = Auth::user()->id;
             $log->note = $note;
             $log->save();
             $action_log_id = $log->id;
 
-            if ($overwrite) {
+            if ($overwrite) { // 目前已經沒有overwrite 但暫時留著
                 foreach ($reference->usages()->get() as $usage) {
                     $edit_log = new ImportUsageLog();
                     $edit_log->reference_usage_id = $usage->id;
@@ -170,12 +194,44 @@ class MyNamespaceController extends Controller
                 $reference->usages()->delete();
             }
 
-            $groupLast = $latestUsage ? $latestUsage->group + 1 : 0;
+            // $groupLast = $latestUsage ? $latestUsage->group + 1 : 0;
+            $groupLast = $globalMaxGroup + 1;
             $groupUsages = $importUsages->groupBy('namespace_id');
+
             foreach ($groupUsages as $groupUsage) {
 
-
                 foreach ($groupUsage as $usage) {
+
+                    // 取得本次匯入分組中的有效名 ID
+                    $acceptedTaxonNameId = $importUsages->where('status', 'accepted')
+                                                        ->where('group', $usage->group)
+                                                        ->first()?->taxon_name_id;
+
+                    // --- 2. 判定重複：若重複則跳過並記錄旗標 ---
+                    $currentKey = "{$usage->taxon_name_id}|{$usage->status}|{$acceptedTaxonNameId}|{$usage->is_title}";
+                    if (isset($lookup[$currentKey])) {
+                        $hasDuplicate = true;
+                        continue; // 僅跳過此筆，繼續下一筆
+                    }
+
+                    // --- 3. 處理 Group 與 Order ---
+                    if ($acceptedTaxonNameId && isset($groupMap[$acceptedTaxonNameId])) {
+                        // 併入既有 Group
+                        $targetGroup = $groupMap[$acceptedTaxonNameId]['group'];
+                        $groupMap[$acceptedTaxonNameId]['max_order']++;
+                        $targetOrder = $groupMap[$acceptedTaxonNameId]['max_order'];
+                    } else {
+                        // 建立新 Group
+                        $targetGroup = $usage->group + $groupLast;
+                        $targetOrder = $usage->order;
+
+                        if ($acceptedTaxonNameId) {
+                            $groupMap[$acceptedTaxonNameId] = [
+                                'group' => $targetGroup,
+                                'max_order' => $targetOrder
+                            ];
+                        }
+                    }
 
                     $acceptedTaxonName = $importUsages->where('status', '=', 'accepted')->where('group', $usage->group)->first();
                     $referenceUsage = new ReferenceUsage();
@@ -189,12 +245,12 @@ class MyNamespaceController extends Controller
                     $referenceUsage->properties = $usage->properties;
                     $referenceUsage->per_usages = $usage->per_usages;
                     $referenceUsage->taxon_name_id = (int) $usage->taxon_name_id;
-                    $referenceUsage->group = $usage->group + $groupLast;
-                    $referenceUsage->order = $usage->order;
-
+                    $referenceUsage->group = $targetGroup;
+                    $referenceUsage->order = $targetOrder;
+                    // $referenceUsage->group = $usage->group + $groupLast;
+                    // $referenceUsage->order = $usage->order;
 
                     foreach($usage->per_usages as $per_usage){
-
 
                         if (Reference::where('id',$per_usage['reference_id'])->where('is_publish',false)->count() >0){
 
@@ -254,6 +310,9 @@ class MyNamespaceController extends Controller
                     $referenceUsage->is_indent = (bool) $usage->is_indent;
                     $reference->usages()->save($referenceUsage);
 
+                    // 更新 lookup 防止同一批次內出現重複
+                    $lookup[$currentKey] = true;
+
                     $edit_log = new ImportUsageLog();
                     $edit_log->reference_usage_id = $referenceUsage->id;
                     $edit_log->reference_id = $referenceId;
@@ -265,15 +324,23 @@ class MyNamespaceController extends Controller
     
                 }
 
-                $groupLast = $usage->group + $groupLast;
+                // $groupLast = $usage->group + $groupLast;
+                $groupLast = $groupLast + ($groupUsage->max('group') ?? 0) + 1;
             }
 
 
             DB::commit();
 
-            return response()->json([
-                'usages' => $reference->usages
-            ]);
+
+            // --- 5. 回傳結果 ---
+            $response = ['usages' => $reference->usages->fresh()];
+            
+            if ($hasDuplicate) {
+                $response['message'] = '已有相同學名使用存在，無法匯入所有學名使用。若需要更新已建立學名使用內容，請使用「編輯異名表」更新內容。';
+            }
+
+            return response()->json($response);
+
         } catch (\Exception $e) {
             DB::rollback();
             dd($e->getMessage());

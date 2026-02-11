@@ -26,7 +26,9 @@
                 <!-- <button class="button" v-on:click="() => onSubmit(true)">
                     {{ $t('common.overwrite') }}
                 </button> -->
-                <button class="button" v-on:click="() => onSubmit(false)">
+                <button class="button" 
+                        :class="{ 'is-loading': isLoading }"
+                        v-on:click="() => onSubmit(false)">
                     {{ $t('common.add') }}
                 </button>
             </div>
@@ -34,6 +36,9 @@
     </div>
 </template>
 <script>
+// import { openNotify } from '../resources/js/utils';
+import { openNotify } from '../../utils';
+
 export default {
     props: {
         referenceId: {
@@ -46,6 +51,7 @@ export default {
             namespaces: [],
             namespaceIds: [],
             note: '',
+            isLoading: false
         };
     },
     mounted() {
@@ -59,12 +65,33 @@ export default {
             this.$store.commit('closeModal');
         },
         onSubmit(overwrite = false) {
+            // 如果正在載入中，則不執行
+            if (this.isLoading) return;
+
+            this.isLoading = true; // 2. 開始執行，設為 true
+
             this.axios.post(`/namespaces/import/${this.referenceId}`, {
                 ids: this.namespaceIds,
                 overwrite,
                 note: this.note,
-            }).then(() => {
-                location.reload();
+                fromReferencePage: true,
+            }).then((response) => {
+                // 檢查是否有部分重複的提示訊息
+                if (response.data && response.data.message) {
+                    // openNotify(response.data.message, 'is-danger');
+                    openNotify(this.$t('validation.usage.hasReferenceUsageExists'), 'is-danger');
+
+                    // // 延遲重新整理，讓使用者看清楚訊息
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    location.reload();
+                }
+            }).catch((error) => {
+                this.isLoading = false;
+                console.error(error);
+                openNotify('匯入失敗', 'is-danger');
             });
         },
     },
