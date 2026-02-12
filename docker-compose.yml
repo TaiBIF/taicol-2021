@@ -1,0 +1,46 @@
+services:
+  # 開發核心：直接跑 Artisan Serve
+  app:
+    image: php:8.2-cli-alpine # 開發用 cli 版本即可，更輕量
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    container_name: taicol-nametool-dev-app
+    volumes:
+      - .:/var/www/html
+    working_dir: /var/www/html
+    ports:
+      - "8000:8000" # 將容器的 8000 對應到你電腦的 8000
+    command: php artisan serve --host=0.0.0.0 --port=8000
+    # environment:
+    #   - DB_HOST=host.docker.internal # 假設你資料庫跑在本地宿主機
+    #   - REDIS_HOST=redis
+    depends_on:
+      - redis
+    networks:
+      - taicol-db 
+  redis:
+    image: redis:alpine
+    container_name: taicol-nametool-dev-redis
+    ports:
+      - "6379:6379"
+
+  # Worker：本地端測試 Queue 是否正常
+  worker:
+    image: php:8.2-cli-alpine
+    build:
+      context: ./docker/php
+      dockerfile: Dockerfile
+    container_name: taicol-nametool-dev-worker
+    volumes:
+      - .:/var/www/html
+    working_dir: /var/www/html
+    command: php artisan queue:work
+    depends_on:
+      - redis
+
+networks:
+  # 定義外部網路連結
+  taicol-db:
+    external: true
+    name: taicol-web-2022-1_default

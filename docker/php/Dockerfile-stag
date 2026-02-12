@@ -1,0 +1,7 @@
+FROM php:8.2-fpm-alpine
+
+# 安裝必要擴展
+RUN apk add --no-cache libzip-dev zip unzip git $PHPIZE_DEPS \
+    && docker-php-ext-install pdo_mysql bcmath zip
+
+WORKDIR /var/www/html
