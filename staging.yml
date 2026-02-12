@@ -7,7 +7,9 @@ networks:
 
 services:
   nametool_app:
-    build: ./docker/php/Dockerfile-stag
+    build: 
+      context: .
+      dockerfile: docker/php/Dockerfile-stag
     container_name: taicol-nametool-stag-app
     restart: always
     volumes:
@@ -56,7 +58,9 @@ services:
           memory: 128M
 
   worker:
-    build: ./docker/php/Dockerfile-stag
+    build: 
+      context: .
+      dockerfile: docker/php/Dockerfile-stag
     container_name: taicol-nametool-stag-worker
     command: php /var/www/html/artisan queue:work --max-memory=128
     volumes:
