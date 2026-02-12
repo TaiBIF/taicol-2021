@@ -62,7 +62,7 @@ services:
       context: .
       dockerfile: docker/php/Dockerfile-stag
     container_name: taicol-nametool-stag-worker
-    command: php /var/www/html/artisan queue:work --max-memory=128
+    command: php /var/www/html/artisan queue:work
     volumes:
       - .:/var/www/html
     networks:
