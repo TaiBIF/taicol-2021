@@ -124,12 +124,8 @@ class TaxonNameRequest extends FormRequest
             'is_approved_list' => 'nullable|boolean',
 
             'usage.show_page' => [
-                Rule::requiredIf(function () {
-                    $usage = $this->get('usage');
-                    return isset($usage['reference_id']);
-                }),
-                'integer',
-                'nullable'
+                'nullable',
+                'regex:/^[0-9a-zA-Z\-–,]+$/',
             ],
         ];
     }
@@ -147,6 +143,7 @@ class TaxonNameRequest extends FormRequest
         return [
             'min' => 'taxonName.min',
             'integer' => 'taxonName.integer',
+            'usage.show_page.regex' => 'taxonName.show_page.regex',
             'not_in' => 'taxonName.not_in',
             'required' => 'taxonName.required',
             'required_if' => 'taxonName.required_if',

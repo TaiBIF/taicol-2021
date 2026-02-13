@@ -181,7 +181,7 @@ class ReferenceUsageController extends Controller
             'type_specimens.*.collector_ids' => 'array|exists:persons,id',
             'type_specimens.*.isotypes.*.herbarium' => 'required',
             'per_usages.*.reference_id' => 'required',
-            'per_usages.*.show_page' => 'alpha_num|nullable',
+            'per_usages.*.show_page' => ['nullable', 'regex:/^[0-9a-zA-Z\-–,]+$/'],
             'properties.is_in_taiwan' => $status === 'accepted' ? 'required' : '',
             'properties.common_names.*.name' => 'required',
             'properties.common_names.*.language' => 'required',
@@ -199,7 +199,7 @@ class ReferenceUsageController extends Controller
             'required_if' => 'usage.required',
             'required_without' => 'usage.required',
             'integer' => 'usage.integer',
-            'alpha_num' => 'usage.alpha_num',
+            'per_usages.*.show_page.regex' => 'usage.show_page.regex',
         ]);
 
         $reference = Reference::find($id);
@@ -831,7 +831,6 @@ class ReferenceUsageController extends Controller
 
         // 預設包含栽培豢養 & 不僅限台灣物種
         $url = env('TAICOL_ROOT') . "/get_autocomplete_taxon_by_solr?from=nametool&with_cultured=on&keyword=" . urlencode($keyword);
-
         $curl = curl_init();
         curl_setopt($curl, CURLOPT_URL, $url);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);

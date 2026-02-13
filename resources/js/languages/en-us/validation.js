@@ -8,10 +8,9 @@ export default {
     'reference.required': 'Required',
     'reference.required_if': 'Required',
     'reference.integer': '須為數字',
-    'reference.alpha_num': '須為數字或英文字母',
     'reference.properties.volume.regex': 'Only allow numbers and letters',
     'reference.properties.chapter.regex': 'Only allow number and letters',
-    'reference.properties.pages_range.regex': 'Only allow number, – and ,',
+    'reference.properties.pages_range.regex': 'Only allow number, letters, – and ,',
     'reference.regex': 'Format does not match',
     'reference.image': 'Format does not match (jpg, jpeg, png)',
     'reference.authors.exists': 'Author not found',
@@ -20,6 +19,7 @@ export default {
     // taxonName
     'taxonName.min': 'Required',
     'taxonName.integer': 'Must be a number',
+    'taxonName.show_page.regex': 'Only allow number and letters',
     'taxonName.not_in': 'Required',
     'taxonName.required': 'Required',
     'taxonName.required_if': 'Required',
@@ -46,6 +46,7 @@ export default {
     'usage.required_if': 'Required',
     'usage.required_without': 'Required',
     'usage.integer': 'Must be a number',
+    'usage.show_page.regex': 'Only allow number and letters',
 
     // user
     'user.required': 'Required',

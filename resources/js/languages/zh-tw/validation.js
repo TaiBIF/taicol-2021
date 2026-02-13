@@ -8,10 +8,9 @@ export default {
     'reference.required': '必填',
     'reference.required_if': '必填',
     'reference.integer': '須為數字',
-    'reference.alpha_num': '須為數字或英文字母',
     'reference.properties.volume.regex': '只允許「數字」、「英文」',
     'reference.properties.chapter.regex': '只允許「數字」、「英文」',
-    'reference.properties.pages_range.regex': '只允許「數字」、「–」、「,」',
+    'reference.properties.pages_range.regex': '只允許「數字」、「英文」、「–」、「,」',
     'reference.regex': '格式不符',
     'reference.image': '格式不符 (jpg, jpeg, png)',
     'reference.authors.exists': '作者不存在',
@@ -20,6 +19,7 @@ export default {
     // taxonName
     'taxonName.min': '必填',
     'taxonName.integer': '須為數字',
+    'taxonName.show_page.regex': '須為數字或英文字母',
     'taxonName.not_in': '必填',
     'taxonName.required': '必填',
     'taxonName.required_if': '必填',
@@ -46,7 +46,7 @@ export default {
     'usage.required_if': '必填',
     'usage.required_without': '必填',
     'usage.integer': '須為數字',
-    'usage.alpha_num': '須為數字或英文字母',
+    'usage.show_page.regex': '須為數字或英文字母',
 
     // user
     'user.required': '必填',

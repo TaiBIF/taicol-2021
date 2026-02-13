@@ -212,7 +212,7 @@ class MyNamespaceUsageController extends Controller
             'type_specimens.*.collector_ids' => 'array|exists:persons,id',
             'type_specimens.*.isotypes.*.herbarium' => 'required',
             'per_usages.*.reference_id' => 'required',
-            'per_usages.*.show_page' => 'alpha_num|nullable',
+            'per_usages.*.show_page' => ['nullable', 'regex:/^[0-9a-zA-Z\-–,]+$/'],
             'per_usages.*.pro_parte_text' => 'required_if:per_usages.*.pro_parte_type,excl. ＿＿,quoad ＿＿',
             'properties.is_in_taiwan' => $status === 'accepted' ? 'required' : '',
             'properties.common_names.*.name' => 'required',
@@ -225,7 +225,7 @@ class MyNamespaceUsageController extends Controller
             'required_if' => 'usage.required',
             'required_without' => 'usage.required',
             'integer' => 'usage.integer',
-            'alpha_num' => 'usage.alpha_num',
+            'per_usages.*.show_page.regex' => 'usage.show_page.regex',
         ]);
 
         $namespace = MyNamespace::find($namespaceId);

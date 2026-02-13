@@ -26,7 +26,7 @@
             <div class="columns">
                 <div class="column is-4">
                     <div class="field">
-                        <label :class="{'is-marked': !!reference}" class="label">
+                        <label class="label">
                             {{ $t('reference.showPage') }}
                         </label>
                         <general-input v-model="usage.showPage" :errors="errors['usageShowPage']"/>
