@@ -45,6 +45,8 @@
     </div>
 </template>
 <script>
+import Sortable from 'sortablejs';
+
 export default {
     props: {
         keyId: {
@@ -126,6 +128,9 @@ export default {
         value(value) {
             this.localValue = value;
         },
+        multiple() {
+            this.initSortable();
+        },
     },
     data() {
         return {
@@ -137,7 +142,44 @@ export default {
             keyword: '',
         };
     },
+    mounted() {
+        this.initSortable();
+    },
+    beforeDestroy() {
+        if (this._sortable) {
+            this._sortable.destroy();
+            this._sortable = null;
+        }
+    },
     methods: {
+        initSortable() {
+            if (!this.multiple) return;
+            this.$nextTick(() => {
+                const el = this.$refs.mySelect?.$el?.querySelector('.vs__selected-options');
+                if (!el || this._sortable) return;
+                this._sortable = Sortable.create(el, {
+                    draggable: '.vs__selected',
+                    filter: 'input',
+                    preventOnFilter: false,
+                    animation: 150,
+                    onEnd: (evt) => {
+                        if (evt.oldIndex === evt.newIndex) return;
+                        const arr = [...this.localValue];
+                        const [moved] = arr.splice(evt.oldIndex, 1);
+                        arr.splice(evt.newIndex, 0, moved);
+                        this.localValue = arr;
+                        this.updateValue(arr);
+                    },
+                });
+
+                // 阻止點擊已選項目時觸發下拉選單
+                el.addEventListener('mousedown', (e) => {
+                    if (e.target.closest('.vs__selected')) {
+                        e.stopPropagation();
+                    }
+                }, true);
+            });
+        },
         onKeydown(text) {
             const app = this;
             clearTimeout(this.typingTimer);
@@ -164,5 +206,13 @@ export default {
 <style lang="scss">
 .vs--disabled .vs__dropdown-toggle, .vs--disabled .vs__clear, .vs--disabled .vs__search, .vs--disabled .vs__selected, .vs--disabled .vs__open-indicator {
     background-color: #f8f8f887;
+}
+
+.vs__selected-options .vs__selected {
+    cursor: grab;
+
+    &.sortable-ghost {
+        opacity: 0.4;
+    }
 }
 </style>
