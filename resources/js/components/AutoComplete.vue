@@ -18,8 +18,17 @@
             v-on:option:selecting="onSelecting"
             v-on:search:blur="onBlur"
         >
-            <template v-slot:selected-option="option">
+            <!-- <template v-slot:selected-option="option">
                 <div :title="option.name">
+                    <i v-if="option.type === 'person'" class="fas fa-user"></i>
+                    {{ option.name }}
+                </div>
+            </template> -->
+            <template v-slot:selected-option="option">
+                <div 
+                    @dblclick.stop="editTag(option)"
+                    class="selected-tag-item"
+                >
                     <i v-if="option.type === 'person'" class="fas fa-user"></i>
                     {{ option.name }}
                 </div>
@@ -88,6 +97,24 @@ export default {
         };
     },
     methods: {
+        editTag(option) {
+            // 1. 找出目前的索引並移除，避免重複
+            const index = this.keywords.findIndex(k => k.name === option.name);
+            if (index !== -1) {
+                this.keywords.splice(index, 1);
+            }
+
+            // 2. 將該標籤的文字放回搜尋框
+            this.$refs.select.search = option.name;
+
+            // 3. 強制聚焦並打開下拉選單
+            this.$nextTick(() => {
+                const select = this.$refs.select;
+                select.$refs.search.focus();
+                // 確保選單打開，讓使用者知道現在是編輯模式
+                select.open = true; 
+            });
+        },
         onCreatedOption(newOption) {
             let option = newOption;
             if (typeof newOption === 'string') {
@@ -209,6 +236,15 @@ export default {
                 }
             }
         }
+    }
+}
+
+.selected-tag-item {
+    cursor: edit; /* 提示可以編輯 */
+    user-select: none;
+    &:hover {
+        background-color: rgba(0,0,0,0.05);
+        border-radius: 4px;
     }
 }
 </style>
