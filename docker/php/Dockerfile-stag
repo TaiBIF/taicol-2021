@@ -23,23 +23,4 @@ RUN docker-php-ext-configure gd --with-jpeg --with-webp \
         intl \
         gd
 
-# 3. 修正 PHP-FPM 監聽設定 (解決 504 Gateway Timeout)
-# 強制將監聽地址從 127.0.0.1 改為 0.0.0.0
-RUN sed -i 's/listen = 127.0.0.1:9000/listen = 9000/' /usr/local/etc/php-fpm.d/www.conf
-
-# 4. 設定工作目錄
 WORKDIR /var/www/html
-
-# 5. 複製專案檔案 (測試站通常會將程式碼打包進鏡像)
-COPY . .
-
-# 6. 自動修正權限 (解決 500 Internal Server Error)
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
-    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
-
-# 7. 清理 Alpine 快取以減小鏡像體積
-RUN rm -rf /var/cache/apk/*
-
-EXPOSE 9000
-
-CMD ["php-fpm"]
