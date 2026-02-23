@@ -3,9 +3,12 @@ networks:
     external: true
   traefik-nametool:
     external: true
-
+  # 新增專屬內部網路，比照 API 專案讓 Nginx 與 App 溝通更穩定
+  nametool-internal:
+    driver: bridge
 
 services:
+  # 1. 重新命名 service 為 app (比照 API 專案風格)
   nametool_app:
     build: 
       context: .
@@ -15,16 +18,17 @@ services:
     volumes:
       - .:/var/www/html
     networks:
-      - gateway
-      - traefik-nametool
+      - gateway           # 連線外部資料庫用
+      - nametool-internal # Nginx 找 App 走這條路
     deploy:
       resources:
         limits:
-          memory: 400M  # 給予適中的上限
+          memory: 400M
         reservations:
-          memory: 128M  # 保證它最少有 128M 可用
+          memory: 128M
 
-  nametool_web:
+  # 2. 重新命名 service 為 nginx-nametool (比照 nginx-api 風格)
+  nginx-nametool:
     image: nginx:alpine
     container_name: taicol-nametool-stag-web
     restart: always
@@ -32,25 +36,26 @@ services:
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
       - .:/var/www/html
     networks:
-      - gateway
-      - traefik-nametool
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.taicol-web.rule=Host(`staging.taicol.tw`)"
-      - "traefik.http.routers.taicol-web.entrypoints=websecure"
-      - "traefik.http.routers.taicol-web.tls.certresolver=myresolver"
+      - traefik-nametool  # Traefik 進來的地方
+      - nametool-internal # 轉發給 App 的路徑
     deploy:
       resources:
         limits:
           memory: 64M
+    labels:
+      - "traefik.enable=true"
+      # 重要：Router 名稱必須唯一，避免與其他專案的 taicol-web 衝突
+      - "traefik.http.routers.nginx-nametool.rule=Host(`staging.taicol.tw`)"
+      - "traefik.http.routers.nginx-nametool.entrypoints=websecure"
+      - "traefik.http.routers.nginx-nametool.tls.certresolver=myresolver"
+      # 指定 Traefik 應使用的網路，防止 504
+      - "traefik.docker.network=traefik-nametool"
 
   redis:
     image: redis:alpine
     container_name: taicol-nametool-stag-redis
     networks:
-      - gateway
-      - traefik-nametool
-    # 當記憶體滿了，自動刪除舊的快取（LRU 演算法）
+      - nametool-internal # Redis 只需要在內部被 App/Worker 看到
     command: redis-server --maxmemory 100mb --maxmemory-policy allkeys-lru
     deploy:
       resources:
@@ -66,8 +71,8 @@ services:
     volumes:
       - .:/var/www/html
     networks:
-      - gateway
-      - traefik-nametool
+      - gateway           # 如果 Worker 需要寫入外部 DB
+      - nametool-internal # 連線 Redis 用
     depends_on:
       - redis
     deploy:
