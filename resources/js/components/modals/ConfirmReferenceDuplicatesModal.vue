@@ -5,9 +5,9 @@
                 <p class="is-danger">您輸入的內容於資料庫中已有以下類似的資料，請先確認是否相同以避免重複建立：</p>
                 <div v-for="item in duplicates" :key="item.id">
                     <router-link target="_blank" :to="{name: 'reference-page', params: {id: item.id}}" class="my-link">
-                        {{ item.title }}
+                        <b class="text-base">{{ item.title }}</b>
                         <br> 
-                        <span class="text-sm text-gray">{{ item.subtitle }}</span>
+                        <span class="my-subtitle">{{ item.subtitle }}</span>
                     </router-link>
                 </div>
             </div>
@@ -45,3 +45,13 @@ export default {
     }
 };
 </script>
+<style lang="scss" scoped>
+.my-link {
+    margin: 5px 0;
+}
+
+.my-subtitle {
+    color: darkgray;
+    font-size: 13px;
+}
+</style>

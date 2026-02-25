@@ -274,7 +274,6 @@ class ReferenceService
      * @return \Illuminate\Database\Eloquent\Collection
      */
 
-
     public function getPotentialDuplicates(array $data)
     {
         $currentId   = $this->reference->id ?? null;
@@ -294,21 +293,28 @@ class ReferenceService
             $query = Reference::query();
             if ($currentId) $query->where('id', '!=', $currentId);
 
-            $query->where(function ($q) use ($bookId, $volume, $pagesRange, $year, $authors) {
+            $query->where(function ($q) use ($bookId, $volume, $pagesRange, $year, $authors, $type) {
+                
                 // Rule 1: 位置重複
-                $q->orWhere(function ($sub) use ($bookId, $volume, $pagesRange) {
+                $q->orWhere(function ($sub) use ($bookId, $volume, $pagesRange, $type) {
                     $sub->where('book_id', $bookId);
+                    
+                    // 比對 Volume (包含空值)
                     $sub->where(function ($w) use ($volume) {
                         $w->where('properties->volume', $volume);
                         if ($volume === '') $w->orWhereNull('properties->volume');
                     });
-                    $sub->where(function ($w) use ($pagesRange) {
-                        $w->where('properties->pages_range', $pagesRange);
-                        if ($pagesRange === '') $w->orWhereNull('properties->pages_range');
-                    });
+                    
+                    // [關鍵] 只有 Type 1, 2 才比對頁碼，Type 3 (書籍) 忽略頁碼
+                    if ($type != 3) {
+                        $sub->where(function ($w) use ($pagesRange) {
+                            $w->where('properties->pages_range', $pagesRange);
+                            if ($pagesRange === '') $w->orWhereNull('properties->pages_range');
+                        });
+                    }
                 });
 
-                // Rule 2: 著作重複
+                // Rule 2: 著作重複 (同書、同年、同作者群)
                 $q->orWhere(function ($sub) use ($bookId, $year, $authors) {
                     $sub->where('book_id', $bookId)
                         ->where('publish_year', $year)
@@ -328,91 +334,103 @@ class ReferenceService
 
         // =========================================================
         // [第二階段] 模糊比對 (PHP) - 計算分數 (0~99)
+        // 專注處理 Type 1 (期刊文章) 的標題錯字與中英並列題名
         // =========================================================
         $fuzzyDuplicates = collect([]);
         $shouldCheckFuzzy = false;
         $inputTitle = '';
 
+        // 依照您的需求，模糊比對目前只針對 Type 1 (期刊文章) 執行
         if ($type == 1 && !empty($data['article_title'])) {
             $shouldCheckFuzzy = true;
             $inputTitle = $data['article_title'];
-        // } elseif ($type == 3 && empty($bookId) && !empty($data['book_title'])) {
-        //     $shouldCheckFuzzy = true;
-        //     $inputTitle = $data['book_title'];
         }
 
         if ($shouldCheckFuzzy) {
 
-            // 1. 正規化 (注意：這裡長度改用 strlen 計算 Bytes，與 similar_text 統一單位)
+            // 1. 正規化 (清理雜訊)
             $cleanInput = $this->normalizeString($inputTitle);
-            $byteLenInput = strlen($cleanInput); // 用 byte 長度
+            $byteLenInput = strlen($cleanInput); // Byte 長度 (配合 similar_text)
 
-            // 防呆：byte 長度至少要 10 (約 3 個中文字或 10 個英文字)
-            if ($byteLenInput >= 10) {
+            // 防呆：清理雜訊後，至少要有 5 Bytes (約2個中文字或5個英文字) 才比對
+            if ($byteLenInput >= 5) {
 
-                $query = Reference::query()
-                    ->select('id','title')
-                    ->where('type', $type);
-
+                // 2. 撈取候選名單 (只撈同類型，不限年份以抓出售錯年份的資料)
+                $query = Reference::query()->where('type', $type);
                 if ($currentId) $query->where('id', '!=', $currentId);
                 
                 $candidates = $query->get();
 
+                // 3. 核心演算法
                 $fuzzyDuplicates = $candidates->map(function ($item) use ($cleanInput, $byteLenInput) {
-
-                $dbTitleRaw = $item->title ?? '';
+                    
+                    $dbTitleRaw = ($item->type == 1) 
+                        ? ($item->properties['articleTitle'] ?? $item->title ?? '') 
+                        : ($item->title ?? '');
 
                     $cleanDb = $this->normalizeString($dbTitleRaw);
-                    $byteLenDb = strlen($cleanDb); // 用 byte 長度
+                    $byteLenDb = strlen($cleanDb); 
                     
-                    if ($byteLenDb < 10) return null;
+                    if ($byteLenDb < 5) return null;
 
-                    // A. 計算長度倍數 (判斷是否為並列題名)
                     $maxLen = max($byteLenInput, $byteLenDb);
-                    $minLen = min($byteLenInput, $byteLenDb); // 分母
-                    $lengthRatio = $maxLen / $minLen;
+                    $minLen = min($byteLenInput, $byteLenDb);
 
-                    // B. 字元包含率 (bytes)
-                    $matchingBytes = 0;
-                    similar_text($cleanInput, $cleanDb, $matchingBytes); 
-                    
-                    $overlapRatio = ($matchingBytes / $minLen) * 100;
+                    if ($minLen == 0) return null;
 
-                    if ($overlapRatio < 80) return null; // 第一關淘汰
+                    // A. 取得相同位元組數 (similar_text 回傳值)
+                    $matchingBytes = similar_text($cleanInput, $cleanDb); 
 
-                    // C. LCS 連續性檢查 (改用 mb_ 函式處理中文字)
+                    // B. 計算兩種包含率
+                    $overlapRatioMin = ($matchingBytes / $minLen) * 100; // 針對較短字串 (判斷並列)
+                    $overlapRatioMax = ($matchingBytes / $maxLen) * 100; // 針對較長字串 (判斷錯字)
+
+                    // C. 計算連續性 (LCS，使用 Char 長度)
                     $lcsLengthChars = $this->getMultibyteLCSLength($cleanInput, $cleanDb);
-                    
-                    // 這裡要把 byte 長度轉回 char 長度來算比例，因為 LCS 是算 char
-                    // 但為了簡單與效能，我們可以估算：LCS 越長越好
-                    // 我們用 byte 來算 LCS 的比例 (近似值)
-                    // 注意：getMultibyteLCSLength 回傳的是 Char 數，轉成 Byte 數大約 * 3 (中文) 或 * 1 (英文)
-                    // 這邊為了精準，我們把分母轉成 Char 數
                     $charLenInput = mb_strlen($cleanInput);
                     $charLenDb = mb_strlen($cleanDb);
                     $minCharLen = min($charLenInput, $charLenDb);
 
                     if ($minCharLen == 0) return null;
-
                     $lcsRatio = ($lcsLengthChars / $minCharLen) * 100;
 
-                    // D. 門檻決策 & 評分
                     $passed = false;
-                    
-                    // 如果長度差很多 (倍數 > 2.5)，要求高連續性 (75%)
-                    if ($lengthRatio > 2.5) {
-                         $passed = ($lcsRatio >= 75);
-                    } else {
-                         // 長度差不多，允許錯字，連續性低標 40%
-                         $passed = ($lcsRatio >= 40);
+                    $score = 0;
+
+                    // =========================================================
+                    // 雙重假設檢定 (完美分離並列題名與錯字)
+                    // =========================================================
+
+                    // 假設 1：這是「並列題名 / 子字串包含」嗎？
+                    // 條件：短字串的包含率極高 (>= 90%)
+                    if ($overlapRatioMin >= 90) {
+                        
+                        // 防禦機制：如果短標題非常短 (< 10 字元，例如 "hyphar" 或 "黑熊")
+                        // 必須「100% 完整連續」出現，防止短短的拉丁字根誤判成包含關係。
+                        if ($minCharLen < 10) {
+                            if ($lcsRatio == 100) {
+                                $passed = true;
+                                $score = 100;
+                            }
+                        } else {
+                            // 若標題夠長，容許稍微斷開或打錯字
+                            if ($lcsRatio >= 80) {
+                                $passed = true;
+                                $score = ($overlapRatioMin * 0.4) + ($lcsRatio * 0.6);
+                            }
+                        }
+                    }
+
+                    // 假設 2：這是「錯字 / 漏字」嗎？ (如果假設 1 失敗)
+                    // 條件：互相包含率都很高 (看 Max)，並允許 LCS 稍微斷開
+                    if (!$passed) {
+                        if ($overlapRatioMax >= 80 && $lcsRatio >= 40) {
+                            $passed = true;
+                            $score = ($overlapRatioMax * 0.4) + ($lcsRatio * 0.6);
+                        }
                     }
 
                     if ($passed) {
-                        // 計算最終分數：綜合 Overlap 和 LCS
-                        // 加權：LCS 連續性更重要 (權重 0.6)，包含率次之 (0.4)
-                        $score = ($overlapRatio * 0.4) + ($lcsRatio * 0.6);
-                        
-                        // 寫入屬性以便稍後排序
                         $item->match_score = round($score, 1); 
                         $item->match_reason = 'Fuzzy Match';
                         return $item;
@@ -425,42 +443,71 @@ class ReferenceService
         }
 
         // =========================================================
-        // 合併與排序 (Sorting) - 這是您想要的功能
+        // [第三階段] 合併與排序 (Sorting)
         // =========================================================
         return $directDuplicates->merge($fuzzyDuplicates)
             ->unique('id')
-            ->sortByDesc('match_score') // 依照分數由高到低排序
+            ->sortByDesc('match_score') // 依照分數由高到低排序，最像的在最上面
             ->map(function ($item) {
                 return [
                     'id' => $item->id,
-                    // 'match_score' => $item->match_score ?? 0, // 回傳分數給前端參考
                     'publish_year' => $item->publish_year,
                     'title' => $item->title,
                     'subtitle' => $item->subtitle,
+                    // 'match_score' => $item->match_score ?? 0, // 開發除錯時可打開這行
                 ];
             })
             ->values();
     }
 
     /**
-     * [修正版] 清理字串：移除中文無意義連接詞
+     * [國際化完美版] 清理字串：支援中、英、日、法、德、俄等多國語言
      */
     private function normalizeString($str)
     {
-        // 1. 轉小寫
+        // 1. 轉小寫 (mb_strtolower 支援將 É 轉為 é 等多國語言轉換)
         $str = mb_strtolower($str);
+
+        // 2. 英文停用詞庫
+        $engStopWords = [
+            'of', 'the', 'and', 'from', 'in', 'on', 'with', 'to', 'for', 'an', 'a',
+            'taiwan', 'formosa', 'china', 'japan',
+            'species', 'genus', 'flora', 'sp', 'genera', 'fishes', 'plants', 'coleoptera', 'lepidoptera',
+            'new', 'newly', 'two', 'three', 'notes', 'studies', 'study', 'description', 'descriptions', 
+            'revision', 'taxonomic', 'systematic', 'science', 'journal', 'bulletin', 'vol', 
+            'record', 'records', 'natural', 'review', 'museum', 'zoological', 'zootaxa', 'taiwania',
+            'et', 'de', 'der', 'nov'
+        ];
         
-        // 2. 移除常見中文雜訊字 (之, 的, 暨, 等, 關於, 研究)
-        // 這一步對於 "臺灣之昆蟲" vs "臺灣昆蟲" 的比對非常關鍵
-        $str = str_replace(['之', '的', '暨', '等', '關於', '研究', '報告'], '', $str);
+        $pattern = '/\b(' . implode('|', $engStopWords) . ')\b/u';
+        $str = preg_replace($pattern, '', $str);
 
-        // 3. 只保留英數字與中文字 (移除標點符號)
-        return preg_replace('/[^a-z0-9\x{4e00}-\x{9fa5}]/u', '', $str);
+        // 3. 亞洲語系 (繁體、簡體、日文) 停用詞庫
+        $asianStopWords = [
+            // 長詞先濾 (加入簡體對應)
+            '新紀錄種', '新记录种', '一新種', '一新种', '真菌學', '真菌学', '學會會刊', '学会会刊', '博物館', '博物馆', '多樣性', '多样性', '臺灣產', '台湾产', 
+            '新紀錄', '新记录',
+            
+            // 雙字詞 (加入簡體對應)
+            '臺灣', '台灣', '中華', '中华', '中國', '中国', '國立', '国立', 
+            '植物', '昆蟲', '昆虫', '真菌', '貝類', '贝类', '魚類', '鱼类',
+            '研究', '紀錄', '纪录', '記錄', '记录', '分類', '分类', '調查', '调查', '學會', '学会', '會刊', '会刊', '學報', '学报', '季刊', '博物', '新種', '新种',
+            
+            // 單字 (包含日文助詞與簡繁體單字)
+            '之', '的', '及', '與', '与', '產', '产', '科', '類', '类', '種', '种', '目', '屬', '属', '物', '蟲', '虫', '學', '学', '誌', '志', '錄', '录',
+            'の', 'に', 'と', 'や'
+        ];
+        
+        $str = str_replace($asianStopWords, '', $str);
+
+        // 4. 終極標點符號過濾器
+        // \p{L} 代表「任何語言的文字」，\p{N} 代表「任何數字」
+        // 這樣寫可以完美保留法文 é、德文 ö、俄文 Д、日文、中文，並將所有的空格、標點符號(無論全半形)全部刪除！
+        return preg_replace('/[^\p{L}\p{N}]/u', '', $str);
     }
-
+    
     /**
-     * [修正版] LCS 計算：支援 UTF-8 Multibyte (解決中文亂碼問題)
-     * 回傳：最長連續相同的「字元數 (Chars)」
+     * [LCS 計算] 支援 UTF-8 Multibyte (解決中文亂碼與連續性計算問題)
      */
     private function getMultibyteLCSLength($str1, $str2)
     {
@@ -472,13 +519,12 @@ class ReferenceService
         $long = ($len1 < $len2) ? $str2 : $str1;
         $shortLen = mb_strlen($short);
 
-        // 快速檢查包含
+        // 快速檢查：若完整包含，直接回傳最大長度
         if (mb_strpos($long, $short) !== false) return $shortLen;
 
-        // 滑動視窗 (Multibyte Safe)
+        // 滑動視窗尋找最長連續字串 (Multibyte Safe)
         for ($len = $shortLen; $len > 0; $len--) {
             for ($start = 0; $start <= $shortLen - $len; $start++) {
-                // 關鍵修正：使用 mb_substr 避免切斷中文字
                 $sub = mb_substr($short, $start, $len);
                 if (mb_strpos($long, $sub) !== false) {
                     return $len;
@@ -487,89 +533,6 @@ class ReferenceService
         }
         return 0;
     }
-
-
-
-    // public function getPotentialDuplicates(array $data)
-    // {
-    //     $query = Reference::query();
-
-    //     // 1. 排除自己 (如果是編輯模式)
-    //     if (isset($this->reference->id)) {
-    //         $query->where('id', '!=', $this->reference->id);
-    //     }
-
-    //     // 2. 套用 5 大比對規則
-    //     $query->where(function ($q) use ($data) {
-            
-    //         // 規則 1: 期刊文章 (Type=1)
-    //         if (isset($data['type']) && $data['type'] == 1 && !empty($data['article_title'])) {
-    //             $q->orWhere(function ($sub) use ($data) {
-    //                 $sub->where('type', 1)
-    //                     ->where('title', 'like', '%' . $data['article_title'] . '%');
-    //                 if (!empty($data['publish_year'])) {
-    //                      $sub->where('publish_year', $data['publish_year']);
-    //                 }
-    //             });
-    //         }
-
-    //         // 規則 2: 書本 (Type=3) 
-    //         // 比對: title (主欄位) + properties->volume 部冊號
-    //         // TODO 這邊還有問題 可能是volume沒有寫入的時候會沒辦法正常判斷
-
-    //         if (isset($data['type']) && $data['type'] == 3 && !empty($data['book_title'])) {
-    //             $q->orWhere(function ($sub) use ($data) {
-    //                 $sub->where('type', 3)
-    //                     ->where('properties->book_title', $data['book_title']) // 書名通常存在主標題 title
-    //                     ->where('properties->volume', $data['volume'] ?? '');
-    //             });
-    //         }
-
-    //         // TODO 這邊還有問題 可能是volume & pages_range沒有寫入的時候會沒辦法正常判斷
-    //         // 規則 3: 書籍文章 (Type=2)
-    //         // 比對: properties->bookTitle (JSON) + volume + pagesRange
-    //         if (isset($data['type']) && $data['type'] == 2 && !empty($data['book_title'])) {
-    //             $q->orWhere(function ($sub) use ($data) {
-    //                 $sub->where('type', 2)
-    //                     // 書籍文章的 "書名" 通常存在 properties->bookTitle，主 title 是文章名
-    //                     ->where('properties->book_title', $data['book_title']) 
-    //                     ->where('properties->volume', $data['volume'] ?? '')
-    //                     ->where('properties->pages_range', $data['pages_range'] ?? '');
-    //             });
-    //         }
-
-    //         // 規則 4: 作者 + 年代 + book_id
-    //         if (!empty($data['authors']) && !empty($data['publish_year']) && !empty($data['book_id'])) {
-    //             $q->orWhere(function ($sub) use ($data) {
-    //                 $sub->where('publish_year', $data['publish_year'])
-    //                     ->where('book_id', $data['book_id'])
-    //                     ->whereHas('authors', function ($authorQuery) use ($data) {
-    //                         $authorQuery->whereIn('persons.id', $data['authors']);
-    //                     }, '=', count($data['authors']));
-    //             });
-    //         }
-
-    //         // 規則 5: book_id + volume + pages_range
-    //         // 比對: book_id + properties->volume + properties->pagesRange
-    //         if (!empty($data['book_id']) && !empty($data['pages_range'])) {
-    //             $q->orWhere(function ($sub) use ($data) {
-    //                 $sub->where('book_id', $data['book_id'])
-    //                     ->where('properties->volume', $data['volume'] ?? '')
-    //                     ->where('properties->pages_range', $data['pages_range']);
-    //             });
-    //         }
-    //     });
-
-    //     // 3. 執行查詢並整理回傳格式
-    //     return $query->get()->map(function ($item) {
-    //         return [
-    //             'id' => $item->id,
-    //             'subtitle' => $item->subtitle,
-    //             'publish_year' => $item->publish_year,
-    //             'title' => $item->title,
-    //         ];
-    //     });
-    // }
 
     public function create(array $data): Model
     {

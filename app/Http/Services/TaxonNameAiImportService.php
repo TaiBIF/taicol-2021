@@ -87,7 +87,6 @@ class TaxonNameAiImportService
         $service = new TaxonNameService(new TaxonName());
 
         foreach ($this->scientificNamesData['scientific_names'] as $arrayIndex => $scientificName) {
-            // $originalIndex = $scientificName['index'] ?? $arrayIndex;
             
             $nomenclature = $scientificName['nomenclature'] ?? null;
             $rankString = $scientificName['rank'] ?? null;

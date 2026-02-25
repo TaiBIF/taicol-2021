@@ -412,6 +412,7 @@ class ReferenceController extends Controller
 
     public function fetchDoi(Request $request)
     {
+        // 1. 驗證請求
         $request->validate([
             'doi' => 'required'
         ], ['required' => '必填']);
@@ -419,84 +420,84 @@ class ReferenceController extends Controller
         $doi = $request->get('doi');
         $url = "https://api.crossref.org/works/$doi";
 
-        $curl = curl_init();
-        curl_setopt($curl, CURLOPT_URL, $url);
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($curl, CURLOPT_TIMEOUT, 120);
-        $result = curl_exec($curl);
+        // 2. 使用 Laravel Http Client 取代原生的 cURL (程式碼更簡潔、好讀)
+        $response = Http::timeout(120)->get($url);
 
-        $jsonResult = json_decode($result);
-
-        if ($jsonResult == null) {
+        // 如果找不到資源或解析失敗
+        if ($response->notFound() || $response->object() === null) {
             return response([
                 'message' => 'resourceNotFound',
             ])->setStatusCode(404);
         }
 
+        $jsonResult = $response->object();
+
+        // 檢查 API 狀態
         if ($jsonResult->status !== 'ok') {
-            throw new \Exception();
+            throw new \Exception('API 請求失敗或狀態異常');
         }
 
+        // 3. 類型映射與檢查
         $typeMapping = [
             'journal-article' => Reference::TYPE_JOURNAL,
-            'book-chapter' => Reference::TYPE_BOOK_ARTICLE,
-            'book' => Reference::TYPE_BOOK,
+            'book-chapter'    => Reference::TYPE_BOOK_ARTICLE,
+            'book'            => Reference::TYPE_BOOK,
         ];
 
         $data = $jsonResult->message;
 
         if (!isset($typeMapping[$data->type])) {
-            return response()
-                ->json([
-                    'message' => '不匯入資料'
-                ])
-                ->setStatusCode(409);
+            return response()->json([
+                'message' => '不匯入資料'
+            ])->setStatusCode(409);
         }
 
         $type = $typeMapping[$data->type];
-        $authors = $data->author;
-        $publishYears = $data->published->{'date-parts'};
+        $authors = $data->author ?? [];
+        $publishYears = $data->published->{'date-parts'} ?? [];
         $publishYear = $publishYears[0][0] ?? '';
         $authorPossible = [];
 
+        // 4. 作者比對邏輯 (去符號容錯 + 長度排序)
         foreach ($authors as $key => $author) {
-            $givenName = str_replace(['.', ' '], '', $author->given);
-            $person = Person::whereRaw('CONCAT(first_name, middle_name) like ?', ["%$givenName%"])
-                ->where('last_name', 'like', "%$author->family%")
-                ->first();
+            $given = $author->given ?? '';
+            $family = $author->family ?? '';
+
+            $person = Person::matchFuzzyName($given, $family)->first();
             $authorPossible[$key] = $person ? PersonCollection::collection([$person])[0] : null;
         }
 
-        $articleTitle = $data->title[0];
-        $bookTitle = implode(';', $data->{'container-title'});
+        // 5. 整理其他書籍/期刊資訊
+        $articleTitle = $data->title[0] ?? '';
+        $bookTitle = isset($data->{'container-title'}) ? implode(';', $data->{'container-title'}) : '';
 
         $book = Book::where('title', $bookTitle)->first();
         $bookAbbr = $book->title_abbreviation ?? '';
+        
         $volume = $data->volume ?? '';
         $issue = $data->issue ?? '';
-        $page = str_replace('-', '–', $data->page ?? '');
-        $DOI = $data->DOI;
-        $URL = $data->URL;
+        $page = str_replace('-', '–', $data->page ?? ''); // 將短橫線轉為 en dash
+        $DOI = $data->DOI ?? $doi;
+        $URL = $data->URL ?? '';
         $language = $data->language ?? '';
 
+        // 6. 回傳整理好的資料
         return response()->json([
-            'type' => $type,
-            'authors' => $authors,
-            'authors_possible' => $authorPossible,
-            'publish_year' => $publishYear,
-            'articleTitle' => $articleTitle,
-            'book_title' => $bookTitle,
+            'type'                    => $type,
+            'authors'                 => $authors,
+            'authors_possible'        => $authorPossible,
+            'publish_year'            => $publishYear,
+            'articleTitle'            => $articleTitle,
+            'book_title'              => $bookTitle,
             'book_title_abbreviation' => $bookAbbr,
-            'volume' => $volume,
-            'issue' => $issue,
-            'page' => $page,
-            'doi' => $DOI,
-            'url' => $URL,
-            'language' => $language,
+            'volume'                  => $volume,
+            'issue'                   => $issue,
+            'page'                    => $page,
+            'doi'                     => $DOI,
+            'url'                     => $URL,
+            'language'                => $language,
         ]);
     }
-
-
 
     public function savePDF($file)
     {
@@ -684,18 +685,23 @@ class ReferenceController extends Controller
         $authorPossible = [];
 
         foreach ($authors as $key => $author) {
-            $givenName = isset($author['given']) ? 
-                ucwords(strtolower(str_replace(['.', ' '], '', $author['given'])), '-') : '';
-            $familyName = isset($author['family']) ? 
-                ucwords(strtolower($author['family']), '-') : '';
-            
-            $authors[$key]['given'] = $givenName;
-            $authors[$key]['family'] = $familyName;
+            // 取得原始輸入值
+            $rawGiven = $author['given'] ?? '';
+            $rawFamily = $author['family'] ?? '';
 
-            if ($givenName && $familyName) {
-                $person = Person::whereRaw('CONCAT(first_name, middle_name) like ?', ["%$givenName%"])
-                    ->where('last_name', 'like', "%$familyName%")
-                    ->first();
+            // 1. 處理要回傳給前端的資料格式 (保留你原本的邏輯)
+            $displayGiven = $rawGiven ? 
+                ucwords(strtolower(str_replace(['.', ' '], '', $rawGiven)), '-') : '';
+            $displayFamily = $rawFamily ? 
+                ucwords(strtolower($rawFamily), '-') : '';
+            
+            $authors[$key]['given'] = $displayGiven;
+            $authors[$key]['family'] = $displayFamily;
+
+            // 2. 進行資料庫比對
+            if ($rawGiven && $rawFamily) {
+                // 這裡會自動套用 Person::scopeMatchFuzzyName() 的邏輯
+                $person = Person::matchFuzzyName($rawGiven, $rawFamily)->first();
                 $authorPossible[$key] = $person ? PersonCollection::collection([$person])[0] : null;
             } else {
                 $authorPossible[$key] = null;
