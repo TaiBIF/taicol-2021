@@ -500,10 +500,9 @@ class ReferenceUsageController extends Controller
                         
                         if ($hasTaxonUsageExists){
                             return response()->json([
-                                'message' => '本筆學名使用已被收錄，請以「編輯」代替「刪除再新增」，如本筆學名使用是錯誤匯入，請回報管理員處理。'
+                                'message' => '本筆學名使用已被收錄，請以「編輯」代替「刪除再新增」'
                             ], 409);
                         }
-
 
                         $currentUsage->delete();
                         $edit_log = new ImportUsageLog();

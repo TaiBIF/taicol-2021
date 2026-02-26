@@ -60,18 +60,21 @@ class SearchController extends Controller
      */
     public function index(Request $request)
     {
-
         $type = $request->get('type', '');
         $keyword = trim(strtolower($request->get('keyword', '')));
-        $keyword = preg_replace('/[+\-><\(\)~*\"@]/', ' ', $keyword);
+        
+        // --- 核心改動 1: 準備 Person 專用的去標點關鍵字陣列 ---
+        $personClean = preg_replace('/[^a-zA-Z0-9\x{4e00}-\x{9fa5}]/u', ' ', $keyword);
+        $personWords = array_filter(explode(' ', $personClean));
+        // --------------------------------------------------
 
-        // $query = AllModel::where('title', 'like', "%$keyword%");
+        $keyword = preg_replace('/[+\-><\(\)~*\"@]/', ' ', $keyword);
 
         if ($type == 'taxon-names') {
 
             $replace_words = [' subgen. ', ' sect. ', ' subsect. ', ' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
-            $keyword = preg_replace('/[+\-><\(\)~*\"\'@]/', '', $keyword);
-            $keyword_wo_rank = str_replace($replace_words, ' ', $keyword);
+            $keyword_raw = preg_replace('/[+\-><\(\)~*\"\'@]/', '', $keyword);
+            $keyword_wo_rank = str_replace($replace_words, ' ', $keyword_raw);
 
             $queryA = TaxonName::selectRaw("'taxon_name' as n, id, name as title, search_name as search_title")
                 ->where('deleted_at', null)
@@ -82,47 +85,49 @@ class SearchController extends Controller
                     ->orWhereRaw("MATCH(`name`) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"]);
                 });
                 
-
+            // --- 核心改動 2: 修改 queryB 的 Person 搜尋邏輯 ---
             $queryB = Person::selectRaw("'person' as n, id, concat(last_name,', ',first_name,' ',middle_name) as title, concat(last_name,', ',first_name,' ',middle_name) as search_title")
-                ->whereRaw("MATCH(last_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"])
-                ->orWhereRaw("MATCH(first_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"])
-                ->orWhereRaw("MATCH(middle_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"]);
+                ->where(function($query) use ($personWords) {
+                    foreach ($personWords as $word) {
+                        $query->where('search_raw', 'like', '%' . $word . '%');
+                    }
+                });
+            // ----------------------------------------------
 
             $query = $queryA->union($queryB)
                             ->orderByRaw("CASE WHEN LOWER(`title`) = '{$keyword}' OR LOWER(`search_title`) = '{$keyword_wo_rank}'  THEN 0 WHEN LOWER(`title`) LIKE '{$keyword}%' OR LOWER(`search_title`) LIKE '{$keyword_wo_rank}%' THEN 1 WHEN LOWER(`title`) LIKE '% {$keyword}' OR LOWER(`search_title`) LIKE '% {$keyword_wo_rank}' THEN 2 ELSE 3 END");
 
         } else if ($type === 'references') {
-            // $query->whereIn('n', ['person', 'reference']);
-
 
             $queryA = Reference::selectRaw("'reference' as n, id, title")
                 ->where('deleted_at',null)
                 ->where('is_publish',1)
                 ->WhereRaw("MATCH(title) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"]);
 
+            // --- 核心改動 3: 修改 References 分類下的 Person 搜尋 ---
             $queryB = Person::selectRaw("'person' as n, id, concat(last_name,', ',first_name,' ',middle_name) as title")
                 ->where('deleted_at',null)
-                ->where(function($query) use ($keyword){
-                    $query
-                    ->whereRaw("MATCH(last_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"])
-                    ->orWhereRaw("MATCH(first_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"])
-                    ->orWhereRaw("MATCH(middle_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"]);
+                ->where(function($query) use ($personWords) {
+                    foreach ($personWords as $word) {
+                        $query->where('search_raw', 'like', '%' . $word . '%');
+                    }
                 });
+            // ----------------------------------------------------
 
             $query = $queryA->union($queryB);
 
 
         } else if ($type === 'persons') {
-            // $query->whereIn('n', ['person']);
 
+            // --- 核心改動 4: 修改單獨 Persons 分類下的搜尋 ---
             $query = Person::selectRaw("'person' as n, id, concat(last_name,', ',first_name,' ',middle_name) as title")
             ->where('deleted_at',null)
-            ->where(function($query) use ($keyword){
-                $query
-                ->whereRaw("MATCH(last_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"])
-                ->orWhereRaw("MATCH(first_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"])
-                ->orWhereRaw("MATCH(middle_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"]);
+            ->where(function($query) use ($personWords) {
+                foreach ($personWords as $word) {
+                    $query->where('search_raw', 'like', '%' . $word . '%');
+                }
             });
+            // ---------------------------------------------
 
         } else {
             return response()->json([
@@ -420,6 +425,7 @@ class SearchController extends Controller
 
     public function person(Request $request)
     {
+        // 人名搜尋頁的搜尋        
         $perPage = $request->get('perPage', 30);
         $perPage = $perPage > 30 ? 30 : $perPage;
 

@@ -30,18 +30,37 @@ class PersonController extends Controller
      */
     public function index(Request $request)
     {
-        $keyword = $request->get('keyword');
-        $persons = Person::where('abbreviation_name', 'like', sprintf('%%%s%%', $keyword))
-            ->orWhere('original_full_name', 'like', sprintf('%%%s%%', $keyword))
-            ->orWhere('other_names', 'like', sprintf('%%%s%%', $keyword))
-            ->orWhereRaw('CONCAT(last_name, \' \', first_name, \' \', middle_name) like ? ', ['%' . $keyword . '%'])
-            ->limit(10)
-            ->get();
+        // vue下拉選單人名搜尋
+        $keyword = $request->get('keyword'); 
 
-        return response(
-            PersonCollection::collection($persons->load('country'))
-        );
+        // 將輸入處理成跟資料庫一致的格式（去標點、拆分）
+        $cleanKeyword = strtolower(preg_replace('/[^a-zA-Z0-9\x{4e00}-\x{9fa5}]/u', ' ', $keyword));
+        $words = array_filter(explode(' ', $cleanKeyword));
+
+        $query = Person::query();
+
+        if (!empty($words)) {
+            foreach ($words as $word) {
+                $query->where('search_raw', 'like', '%' . $word . '%');
+            }
+        }
+
+        return response(PersonCollection::collection($query->with('country')->limit(10)->get()));
     }
+    // public function index(Request $request)
+    // {
+    //     $keyword = $request->get('keyword');
+    //     $persons = Person::where('abbreviation_name', 'like', sprintf('%%%s%%', $keyword))
+    //         ->orWhere('original_full_name', 'like', sprintf('%%%s%%', $keyword))
+    //         ->orWhere('other_names', 'like', sprintf('%%%s%%', $keyword))
+    //         ->orWhereRaw('CONCAT(last_name, \' \', first_name, \' \', middle_name) like ? ', ['%' . $keyword . '%'])
+    //         ->limit(10)
+    //         ->get();
+
+    //     return response(
+    //         PersonCollection::collection($persons->load('country'))
+    //     );
+    // }
 
     public function show(Request $request, $id)
     {

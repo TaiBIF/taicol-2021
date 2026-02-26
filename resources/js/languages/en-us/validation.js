@@ -38,7 +38,7 @@ export default {
     // 'usage.wrongRank': 'Please select the correct rank',
     'usage.wrongParent': 'Please select the correct parent',
     'usage.firstMustBeAccepted': 'First card should be accepted.',
-    'usage.hasTaxonUsageExists': 'This usage has been referenced. Please use "Edit" instead of "Delete and Re-add". If this was imported in error, please contact the administrator.',
+    'usage.hasTaxonUsageExists': 'This usage has been referenced. Please use "Edit" instead of "Delete and Re-add".',
     'usage.hasReferenceUsageExists': 'Some usages could not be imported because identical records already exist. To update existing usages, please use "Edit Checklist" to make changes.',
     'usage.min': 'Required',
     'usage.not_in': 'Required',

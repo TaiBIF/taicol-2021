@@ -3,6 +3,7 @@
         <v-select
             ref="select"
             v-model="keywords"
+            :filter="options => options"
             :class="{'is-large': !isSmall}"
             :close-on-select="false"
             :create-option="onCreatedOption"
