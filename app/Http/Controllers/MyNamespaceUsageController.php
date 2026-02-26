@@ -987,6 +987,15 @@ class MyNamespaceUsageController extends Controller
         $fileUri = $jobLog->file_uri;
         $usageJson = json_decode(file_get_contents(public_path('usage_results/' . $fileUri . '.json')), true);
 
+        if (is_array($usageJson)) {
+            foreach ($usageJson as $key => &$item) {
+                if (!array_key_exists('index', $item)) {
+                    $item['index'] = $key +1;
+                }
+            }
+            unset($item);
+        }
+
         $service = new UsageAiImportService();
         $processedData = $service->processScientificNames($usageJson);
         $unmatchedCount = $service->countUnmatchedScientificNames($processedData);
@@ -1053,6 +1062,15 @@ class MyNamespaceUsageController extends Controller
             $fileUri = $jobLog->file_uri;
             // $fileUri = 'files/uyhkzl8dq049';
             $usageJson = json_decode(file_get_contents(public_path('usage_results/' . $fileUri . '.json')), true);
+
+            if (is_array($usageJson)) {
+                foreach ($usageJson as $key => &$item) {
+                    if (!array_key_exists('index', $item)) {
+                        $item['index'] = $key +1;
+                    }
+                }
+                unset($item);
+            }
             
             // 3. 計算要跳過的 usage index
             $skipIndexes = $this->calculateSkipIndexes($usageJson['scientific_names'], $skipNames);

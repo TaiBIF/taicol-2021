@@ -86,6 +86,15 @@ class ProcessAiUsageRequest implements ShouldQueue
 
                     $usageJson = json_decode(file_get_contents(public_path('usage_results/' . $result['file_uri'] . '.json')), true);
 
+                    if (is_array($usageJson)) {
+                        foreach ($usageJson as $key => &$item) {
+                            if (!array_key_exists('index', $item)) {
+                                $item['index'] = $key +1;
+                            }
+                        }
+                        unset($item);
+                    }
+                    
                     // 取得回傳判斷對應學名id
                     // 處理科學名稱，添加taxon_name_id
                     $service = new UsageAiImportService();
