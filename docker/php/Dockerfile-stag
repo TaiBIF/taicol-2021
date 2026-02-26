@@ -1,7 +1,7 @@
 # 使用 FPM 版本以支援 Nginx 連線
 FROM php:8.2-fpm-alpine
 
-# 1. 安裝系統依賴 (包含修復 IntlChar 報錯所需的 icu-dev)
+# 1. 安裝系統依賴
 RUN apk add --no-cache \
     icu-dev \
     libzip-dev \
@@ -14,7 +14,7 @@ RUN apk add --no-cache \
     zlib-dev \
     $PHPIZE_DEPS
 
-# 2. 安裝 PHP 核心擴展 (包含 intl 與 Excel 所需的 gd)
+# 2. 安裝 PHP 核心擴展
 RUN docker-php-ext-configure gd --with-jpeg --with-webp \
     && docker-php-ext-install \
         pdo_mysql \
@@ -23,4 +23,31 @@ RUN docker-php-ext-configure gd --with-jpeg --with-webp \
         intl \
         gd
 
+# 設定工作目錄
 WORKDIR /var/www/html
+
+# --- 權限自動化處理開始 ---
+
+# 3. 預先建立 Laravel 需要的資料夾 (避免掛載時目錄不存在)
+# 包含 storage 以及你在 filesystems.php 定義的 public 子目錄
+RUN mkdir -p storage/app/public \
+    storage/framework/cache/data \
+    storage/framework/sessions \
+    storage/framework/views \
+    storage/logs \
+    bootstrap/cache \
+    public/images \
+    public/pdfs/references
+
+# 4. 將所有權限交給 www-data (Alpine FPM 預設使用者)
+# 這樣 PHP 程式就有權力寫入檔案，而不需要開到 777
+RUN chown -R www-data:www-data /var/www/html
+
+# 5. 設定目錄權限為 775，檔案為 664 (符合安全規範的寫入權限)
+RUN find /var/www/html -type d -exec chmod 775 {} \; \
+    && find /var/www/html -type f -exec chmod 664 {} \;
+
+# --- 權限自動化處理結束 ---
+
+# 預設啟動命令
+CMD ["php-fpm"]
