@@ -26,28 +26,23 @@ RUN docker-php-ext-configure gd --with-jpeg --with-webp \
 # 設定工作目錄
 WORKDIR /var/www/html
 
-# --- 權限自動化處理開始 ---
-
-# 3. 預先建立 Laravel 需要的資料夾 (避免掛載時目錄不存在)
-# 包含 storage 以及你在 filesystems.php 定義的 public 子目錄
+# 1. 只建立並調整「需要寫入權限」的目錄
 RUN mkdir -p storage/app/public \
     storage/framework/cache/data \
     storage/framework/sessions \
     storage/framework/views \
     storage/logs \
     bootstrap/cache \
-    public/images \
-    public/pdfs/references
+    public/images/references \
+    public/pdfs/references \
+    public/usage_results
 
-# 4. 將所有權限交給 www-data (Alpine FPM 預設使用者)
-# 這樣 PHP 程式就有權力寫入檔案，而不需要開到 777
-RUN chown -R www-data:www-data /var/www/html
+# 2. 精準調整擁有者：只針對 storage 和上傳目錄
+RUN chown -R www-data:www-data storage bootstrap/cache public/images public/pdfs public/usage_results
 
-# 5. 設定目錄權限為 775，檔案為 664 (符合安全規範的寫入權限)
-RUN find /var/www/html -type d -exec chmod 775 {} \; \
-    && find /var/www/html -type f -exec chmod 664 {} \;
-
-# --- 權限自動化處理結束 ---
-
+# 3. 設定權限：目錄 775, 檔案 664，確保組群內可寫入
+RUN find storage bootstrap/cache public/images public/pdfs public/usage_results -type d -exec chmod 775 {} \; \
+    && find storage bootstrap/cache public/images public/pdfs public/usage_results -type f -exec chmod 664 {} \;
+    
 # 預設啟動命令
 CMD ["php-fpm"]
