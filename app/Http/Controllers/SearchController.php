@@ -61,50 +61,55 @@ class SearchController extends Controller
     public function index(Request $request)
     {
         $type = $request->get('type', '');
-        $keyword = trim(strtolower($request->get('keyword', '')));
+        $keyword = trim($request->get('keyword', ''));
         
-        // --- 核心改動 1: 準備 Person 專用的去標點關鍵字陣列 ---
-        $personClean = preg_replace('/[^a-zA-Z0-9\x{4e00}-\x{9fa5}]/u', ' ', $keyword);
+        // --- 1. 準備 Person 專用的去標點關鍵字 (保留特殊字母如 Ô, ö, é) ---
+        $keyword_lower = mb_strtolower($keyword, 'UTF-8');
+        // 只過濾標點符號 \p{P} 和符號 \p{S}
+        $personClean = preg_replace('/[\p{P}\p{S}]/u', ' ', $keyword_lower);
         $personWords = array_filter(explode(' ', $personClean));
-        // --------------------------------------------------
+                // 為了安全在 SQL 中使用關鍵字
+        $safeKeyword = addslashes($keyword_lower);
 
-        $keyword = preg_replace('/[+\-><\(\)~*\"@]/', ' ', $keyword);
+        // --- 2. 準備 TaxonName/Reference 專用的 MATCH AGAINST 關鍵字 ---
+        $keyword_for_match = preg_replace('/[+\-><\(\)~*\"@]/', ' ', $keyword_lower);
 
         if ($type == 'taxon-names') {
 
             $replace_words = [' subgen. ', ' sect. ', ' subsect. ', ' subsp. ',' nothosubsp.',' var. ',' subvar. ',' nothovar. ',' fo. ',' subf. ',' f.sp. ',' race ',' strip ',' m. ',' ab. ',' × '];
-            $keyword_raw = preg_replace('/[+\-><\(\)~*\"\'@]/', '', $keyword);
+            $keyword_raw = preg_replace('/[+\-><\(\)~*\"\'@]/', '', $keyword_lower);
             $keyword_wo_rank = str_replace($replace_words, ' ', $keyword_raw);
 
             $queryA = TaxonName::selectRaw("'taxon_name' as n, id, name as title, search_name as search_title")
                 ->where('deleted_at', null)
                 ->where('is_publish', 1)
-                ->where(function($query) use ($keyword, $keyword_wo_rank){
+                ->where(function($query) use ($keyword_for_match, $keyword_wo_rank){
                     $query
                     ->whereRaw("MATCH(search_name) AGAINST (? IN BOOLEAN MODE)", ["*$keyword_wo_rank*"])
-                    ->orWhereRaw("MATCH(`name`) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"]);
+                    ->orWhereRaw("MATCH(`name`) AGAINST (? IN BOOLEAN MODE)", ["*$keyword_for_match*"]);
                 });
                 
-            // --- 核心改動 2: 修改 queryB 的 Person 搜尋邏輯 ---
-            $queryB = Person::selectRaw("'person' as n, id, concat(last_name,', ',first_name,' ',middle_name) as title, concat(last_name,', ',first_name,' ',middle_name) as search_title")
+            $queryB = Person::selectRaw("'person' as n, id, concat(last_name,', ',first_name,' ',middle_name) as title, search_raw as search_title")
                 ->where(function($query) use ($personWords) {
                     foreach ($personWords as $word) {
                         $query->where('search_raw', 'like', '%' . $word . '%');
                     }
                 });
-            // ----------------------------------------------
 
             $query = $queryA->union($queryB)
-                            ->orderByRaw("CASE WHEN LOWER(`title`) = '{$keyword}' OR LOWER(`search_title`) = '{$keyword_wo_rank}'  THEN 0 WHEN LOWER(`title`) LIKE '{$keyword}%' OR LOWER(`search_title`) LIKE '{$keyword_wo_rank}%' THEN 1 WHEN LOWER(`title`) LIKE '% {$keyword}' OR LOWER(`search_title`) LIKE '% {$keyword_wo_rank}' THEN 2 ELSE 3 END");
+                            ->orderByRaw("CASE 
+                                WHEN LOWER(`title`) = '{$safeKeyword}' THEN 0 
+                                WHEN LOWER(`title`) LIKE '{$safeKeyword}%' THEN 1 
+                                WHEN LOWER(`title`) LIKE '% {$safeKeyword}' THEN 2 
+                                ELSE 3 END");
 
         } else if ($type === 'references') {
 
-            $queryA = Reference::selectRaw("'reference' as n, id, title")
+            $queryA = Reference::selectRaw("'reference' as n, id, title as title")
                 ->where('deleted_at',null)
                 ->where('is_publish',1)
-                ->WhereRaw("MATCH(title) AGAINST (? IN BOOLEAN MODE)", ["*$keyword*"]);
+                ->WhereRaw("MATCH(title) AGAINST (? IN BOOLEAN MODE)", ["*$keyword_for_match*"]);
 
-            // --- 核心改動 3: 修改 References 分類下的 Person 搜尋 ---
             $queryB = Person::selectRaw("'person' as n, id, concat(last_name,', ',first_name,' ',middle_name) as title")
                 ->where('deleted_at',null)
                 ->where(function($query) use ($personWords) {
@@ -112,87 +117,86 @@ class SearchController extends Controller
                         $query->where('search_raw', 'like', '%' . $word . '%');
                     }
                 });
-            // ----------------------------------------------------
 
-            $query = $queryA->union($queryB);
-
+            // 加上排序，確保搜尋人名時人名排前面
+            $query = $queryA->union($queryB)
+                            ->orderByRaw("CASE 
+                                WHEN LOWER(`title`) = '{$safeKeyword}' THEN 0 
+                                WHEN LOWER(`title`) LIKE '{$safeKeyword}%' THEN 1 
+                                ELSE 2 END");
 
         } else if ($type === 'persons') {
 
-            // --- 核心改動 4: 修改單獨 Persons 分類下的搜尋 ---
             $query = Person::selectRaw("'person' as n, id, concat(last_name,', ',first_name,' ',middle_name) as title")
-            ->where('deleted_at',null)
-            ->where(function($query) use ($personWords) {
-                foreach ($personWords as $word) {
-                    $query->where('search_raw', 'like', '%' . $word . '%');
-                }
-            });
-            // ---------------------------------------------
+                ->where('deleted_at',null)
+                ->where(function($query) use ($personWords) {
+                    foreach ($personWords as $word) {
+                        $query->where('search_raw', 'like', '%' . $word . '%');
+                    }
+                })
+                ->orderByRaw("CASE 
+                    WHEN LOWER(last_name) = '{$safeKeyword}' OR LOWER(first_name) = '{$safeKeyword}' THEN 0
+                    WHEN last_name LIKE '{$safeKeyword}%' OR first_name LIKE '{$safeKeyword}%' THEN 1
+                    ELSE 2 END")
+                ->orderBy('last_name', 'asc');
 
         } else {
-            return response()->json([
-                'data' => [],
-            ]);
+            return response()->json(['data' => []]);
         }
 
-        $modelGroup = $query->limit(6)->get()->groupBy('n');
+        // 執行查詢
+        $modelGroup = $query->limit(10)->get()->groupBy('n');
 
         $all = [];
         foreach ($modelGroup as $n => $models) {
-
             if ($n === 'person') {
                 $persons = PersonCollection::collection(Person::whereIn('id', $models->pluck('id'))->get()->load('country'))->keyBy('id');
                 foreach ($models as $model) {
-                    $data['type'] = $model->n;
-                    $data['data'] = $persons[$model->id]->jsonSerialize();
-                    $data['title'] = $data['data']['full_name'];
-                    $all[] = $data;
+                    if (isset($persons[$model->id])) {
+                        $item['type'] = 'person';
+                        $item['data'] = $persons[$model->id]->jsonSerialize();
+                        $item['title'] = $item['data']['full_name'];
+                        $all[] = $item;
+                    }
                 }
             }
 
             if ($n === 'taxon_name') {
                 $taxonNames = TaxonNameListCollection::collection(
                     TaxonName::select('taxon_names.*')
-                    ->with([
-                        'authors.country', 'exAuthors.country', 'reference',
-                        'nomenclature',
-                        'rank',
-                        'originalTaxonName.authors',
-                        'originalTaxonName.exAuthors',
-                        'hybridParents',
-                    ])
-                        ->leftJoin('ranks', 'taxon_names.rank_id', 'ranks.id')
-                        ->whereIn('taxon_names.id', $models->pluck('id'))
-                        ->get()
+                    ->with(['authors.country', 'exAuthors.country', 'reference', 'nomenclature', 'rank', 'originalTaxonName.authors', 'originalTaxonName.exAuthors', 'hybridParents'])
+                    ->leftJoin('ranks', 'taxon_names.rank_id', 'ranks.id')
+                    ->whereIn('taxon_names.id', $models->pluck('id'))
+                    ->get()
                 )->keyBy('id');
 
                 foreach ($models as $model) {
-                    $data['type'] = $model->n;
-                    $data['data'] = $taxonNames[$model->id];
-                    $data['title'] = $taxonNames[$model->id]->name;
-                    $all[] = $data;
+                    if (isset($taxonNames[$model->id])) {
+                        $item['type'] = 'taxon-name';
+                        $item['data'] = $taxonNames[$model->id];
+                        $item['title'] = $taxonNames[$model->id]->name;
+                        $all[] = $item;
+                    }
                 }
             }
 
             if ($n === 'reference') {
                 $references = ReferenceCollection::collection(
-                    Reference::with(['authors'])
-                        ->whereIn('id', $models->pluck('id'))
-                        ->get()
+                    Reference::with(['authors'])->whereIn('id', $models->pluck('id'))->get()
                 )->keyBy('id');
 
                 foreach ($models as $model) {
-                    $data['type'] = $model->n;
-                    $data['data'] = $references[$model->id];
-                    $data['title'] = $references[$model->id]->title;
-                    $all[] = $data;
+                    if (isset($references[$model->id])) {
+                        $item['type'] = 'reference';
+                        $item['data'] = $references[$model->id];
+                        $item['title'] = $references[$model->id]->title;
+                        $all[] = $item;
+                    }
                 }
             }
         }
 
-        return response()->json([
-            'data' => $all,
-        ]);
+        return response()->json(['data' => $all]);
     }
 
     /**

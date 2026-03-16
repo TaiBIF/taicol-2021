@@ -30,20 +30,40 @@ class PersonController extends Controller
      */
     public function index(Request $request)
     {
-        // vue下拉選單人名搜尋
-        $keyword = $request->get('keyword'); 
+        // 1. 取得關鍵字並轉小寫
+        $keyword = trim($request->get('keyword', ''));
+        $keyword_lower = mb_strtolower($keyword, 'UTF-8');
 
-        // 將輸入處理成跟資料庫一致的格式（去標點、拆分）
-        $cleanKeyword = strtolower(preg_replace('/[^a-zA-Z0-9\x{4e00}-\x{9fa5}]/u', ' ', $keyword));
+        // 2. 處理關鍵字邏輯：與 Model 的 generateSearchRaw 邏輯對應
+        // 只過濾掉標點符號與特殊符號，保留所有語言的字母與數字
+        $cleanKeyword = preg_replace('/[\p{P}\p{S}]/u', ' ', $keyword_lower);
         $words = array_filter(explode(' ', $cleanKeyword));
+
+        // 3. 建立連字版搜尋關鍵字 (針對英文人名連寫的支援)
+        $tightKeyword = preg_replace('/[\p{P}\p{S}\s]/u', '', $keyword_lower);
 
         $query = Person::query();
 
         if (!empty($words)) {
-            foreach ($words as $word) {
-                $query->where('search_raw', 'like', '%' . $word . '%');
-            }
+            $query->where(function($q) use ($words, $tightKeyword) {
+                // 原本的 AND 邏輯：所有拆開的單字都必須包含在 search_raw 裡
+                foreach ($words as $word) {
+                    $q->where('search_raw', 'like', '%' . $word . '%');
+                }
+                // 額外 OR 一個連字版：如果使用者搜尋 "Sz-Yi"，這裡會搜 "szyi"
+                if (!empty($tightKeyword) && !in_array($tightKeyword, $words)) {
+                    $q->orWhere('search_raw', 'like', '%' . $tightKeyword . '%');
+                }
+            });
         }
+
+        // 4. 加入權重排序：讓完全匹配或字首匹配的排前面
+        $safeKeyword = addslashes($keyword_lower);
+        $query->orderByRaw("CASE 
+            WHEN LOWER(last_name) = '{$safeKeyword}' OR LOWER(first_name) = '{$safeKeyword}' THEN 0
+            WHEN last_name LIKE '{$safeKeyword}%' OR first_name LIKE '{$safeKeyword}%' THEN 1
+            ELSE 2 END")
+        ->orderBy('last_name', 'asc');
 
         return response(PersonCollection::collection($query->with('country')->limit(10)->get()));
     }

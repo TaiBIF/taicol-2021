@@ -228,7 +228,8 @@ class ReferenceController extends Controller
             $service->saveBook(
                 $properties['book_title'],
                 $properties['book_title_abbreviation'] ?? '',
-                $request->get('is_publish')
+                // $request->get('is_publish')
+                in_array($type, [1, 2]) ? 1 : $request->get('is_publish')
             );
 
             $service->saveCoverImage($request->get('image'), $request->get('cover_path'));
@@ -341,7 +342,8 @@ class ReferenceController extends Controller
             $service->saveBook(
                 $properties['book_title'],
                 $properties['book_title_abbreviation'] ?? '',
-                $request->get('is_publish')
+                // $request->get('is_publish')
+                in_array($type, [1, 2]) ? 1 : $request->get('is_publish')
             );
 
             // upload image

@@ -174,10 +174,24 @@ export default {
         },
         onTyping: debounce(function (keyword) {
             const app = this;
-            if (keyword.length <= 2) {
+
+            // 1. 判斷是否包含中文字
+            const hasChinese = /[\u4e00-\u9fa5]/.test(keyword);
+            
+            // 2. 設定門檻：有中文 1 字就搜，純英文則需 2 字以上才搜
+            // (即：中文長度 > 0 或 英文長度 > 2)
+            const threshold = hasChinese ? 0 : 2;
+
+            if (keyword.length <= threshold) {
                 app.options = [];
+                this.isSearching = false;
                 return;
             }
+
+            // if (keyword.length <= 2) {
+            //     app.options = [];
+            //     return;
+            // }
 
             this.isSearching = true;
             this.axios.get('/search', {

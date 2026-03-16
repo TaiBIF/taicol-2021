@@ -74,7 +74,7 @@ class TaxonNameSelectCollection extends JsonResource
                 return TaxonNameSelectCollection::collection([$p])[0];
             }),
             'usage' => $this->reference ? [
-                'show_page' => $this->properties['usage']['show_page'],
+                'show_page' => $this->properties['usage']['show_page'] ?? '',
                 'figure' => $this->properties['usage']['figure'] ?? '',
                 'name_in_reference' => $this->properties['usage']['name_in_reference'] ?? '',
             ] : [],

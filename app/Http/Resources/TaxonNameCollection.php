@@ -74,7 +74,7 @@ class TaxonNameCollection extends JsonResource
             'nomenclature' => $this->nomenclature,
             'reference' => ReferenceCollection::collection([$this->reference])->first(),
             'usage' => $this->reference ? [
-                'show_page' => $this->properties['usage']['show_page'],
+                'show_page' => $this->properties['usage']['show_page'] ?? '',
                 'figure' => $this->properties['usage']['figure'] ?? '',
                 'name_in_reference' => $this->properties['usage']['name_in_reference'] ?? '',
             ] : [],
