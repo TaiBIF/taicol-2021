@@ -236,7 +236,9 @@ export default defineComponent({
 
         // 處理作者選擇
         const onAuthorSelect = (authorIndex: number, selectedPersons: any[]) => {
-            selectedAuthors.value[authorIndex] = selectedPersons;
+            selectedAuthors.value[authorIndex] = Array.isArray(selectedPersons) 
+                ? selectedPersons[0] 
+                : selectedPersons;
         };
 
         // 整合最終的作者清單
@@ -245,7 +247,6 @@ export default defineComponent({
             
             // 按照原始作者順序處理
             result.value?.authors?.forEach((originalAuthor, index) => {
-
                 // 1. 優先使用下拉選單選擇的人名
                 if (selectedAuthors.value[index]) {
                     finalAuthors.push(selectedAuthors.value[index]);
