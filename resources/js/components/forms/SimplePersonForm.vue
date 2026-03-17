@@ -189,7 +189,10 @@ export default defineComponent({
             type: Object,
             required: false,
         },
-
+        onLoadingChange: {
+            type: Function as PropType<(loading: boolean) => void>,
+            required: false,
+        },
     },
     setup(props, context) {
         const axios: any = inject('axios');
@@ -217,6 +220,7 @@ export default defineComponent({
         }));
 
         const onSubmit = () => {
+            props.onLoadingChange?.(true);
             axios({
                 method: isEdit.value ? 'PUT' : 'POST',
                 url: isEdit.value ? `/persons/${formData.value.id}` : '/persons',
@@ -224,7 +228,6 @@ export default defineComponent({
             })
                 .then(({ data }) => {
                     props.onAfterSubmit(data);
-                    openNotify(app.$t('common.saveSuccess'));
                 })
                 .catch(({ errors: errorMessages, status }) => {
                     if (status === 409) {
@@ -232,6 +235,9 @@ export default defineComponent({
                     } else {
                         errors.value = errorMessages;
                     }
+                })
+                .finally(() => {
+                    props.onLoadingChange?.(false);
                 });
         };
 

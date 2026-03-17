@@ -28,18 +28,39 @@ class EditLogController extends Controller
 
         if ($log_type == 'usage'){
 
-            $logs = ImportUsageLog::with(['user:id,name','taxonName:id,name'])
+            $query = ImportUsageLog::with(['user:id,name','taxonName:id,name'])
                     ->select('columns','import_usage_logs.created_at','action','user_id','reference_usages.status','import_usage_logs.taxon_name_id')
                     ->Leftjoin('reference_usages', 'reference_usage_id', '=', 'reference_usages.id')
                     ->where('import_usage_logs.reference_id','=',$log_id)
-                    ->where('import_usage_logs.action_log_id', '=', NULL)
-                    ->where('reference_usages.deleted_at', '=', NULL)
-                    ->orderBy('created_at')
+                    ->where('import_usage_logs.action_log_id', '=', NULL);
+
+            // action=5 (刪除) 時不限制 deleted_at
+            $query->where(function($q) {
+                $q->where('action', 5)
+                ->orWhere('reference_usages.deleted_at', '=', NULL);
+            });
+
+            $logs = $query->orderBy('created_at')
                     ->limit(5)
                     ->offset($offset)
                     ->get(); 
                     
             $logs = UsageLogCollection::collection($logs);
+            
+        // if ($log_type == 'usage'){
+
+        //     $logs = ImportUsageLog::with(['user:id,name','taxonName:id,name'])
+        //             ->select('columns','import_usage_logs.created_at','action','user_id','reference_usages.status','import_usage_logs.taxon_name_id')
+        //             ->Leftjoin('reference_usages', 'reference_usage_id', '=', 'reference_usages.id')
+        //             ->where('import_usage_logs.reference_id','=',$log_id)
+        //             ->where('import_usage_logs.action_log_id', '=', NULL)
+        //             ->where('reference_usages.deleted_at', '=', NULL)
+        //             ->orderBy('created_at')
+        //             ->limit(5)
+        //             ->offset($offset)
+        //             ->get(); 
+                    
+        //     $logs = UsageLogCollection::collection($logs);
 
         } else if ($log_type=='commonname'){
 

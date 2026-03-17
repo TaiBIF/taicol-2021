@@ -28,45 +28,57 @@ class PersonController extends Controller
      * @param Request $request
      * @return \Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory|\Illuminate\Http\Response
      */
+
+    /**
+     * 下拉式人名選單
+     */
     public function index(Request $request)
     {
-        // 1. 取得關鍵字並轉小寫
         $keyword = trim($request->get('keyword', ''));
         $keyword_lower = mb_strtolower($keyword, 'UTF-8');
 
-        // 2. 處理關鍵字邏輯：與 Model 的 generateSearchRaw 邏輯對應
-        // 只過濾掉標點符號與特殊符號，保留所有語言的字母與數字
         $cleanKeyword = preg_replace('/[\p{P}\p{S}]/u', ' ', $keyword_lower);
         $words = array_filter(explode(' ', $cleanKeyword));
 
-        // 3. 建立連字版搜尋關鍵字 (針對英文人名連寫的支援)
         $tightKeyword = preg_replace('/[\p{P}\p{S}\s]/u', '', $keyword_lower);
+
+        $abbrNormalized = preg_replace('/\.\s+/', '.', $keyword_lower);
+        $abbrNormalized = preg_replace('/[+\-><\(\)~*\"@]/', '', $abbrNormalized);
+        $safeAbbrNormalized = addslashes($abbrNormalized);
+        $abbrAlpha = preg_replace('/[^a-z]/u', '', $abbrNormalized);
 
         $query = Person::query();
 
         if (!empty($words)) {
-            $query->where(function($q) use ($words, $tightKeyword) {
-                // 原本的 AND 邏輯：所有拆開的單字都必須包含在 search_raw 裡
-                foreach ($words as $word) {
-                    $q->where('search_raw', 'like', '%' . $word . '%');
-                }
-                // 額外 OR 一個連字版：如果使用者搜尋 "Sz-Yi"，這裡會搜 "szyi"
+            $query->where(function($q) use ($words, $tightKeyword, $abbrNormalized, $abbrAlpha) {
+                $q->where(function($inner) use ($words) {
+                    foreach ($words as $word) {
+                        $inner->where('search_raw', 'like', '%' . $word . '%');
+                    }
+                });
                 if (!empty($tightKeyword) && !in_array($tightKeyword, $words)) {
                     $q->orWhere('search_raw', 'like', '%' . $tightKeyword . '%');
+                }
+                if (strlen($abbrAlpha) >= 1) {
+                    $q->orWhereRaw("LOWER(REPLACE(abbreviation_name, ' ', '')) LIKE ?", ['%' . $abbrNormalized . '%'])
+                      ->orWhereRaw("LOWER(REGEXP_REPLACE(abbreviation_name, '[^a-zA-Z]', '')) LIKE ?", ['%' . $abbrAlpha . '%']);
                 }
             });
         }
 
-        // 4. 加入權重排序：讓完全匹配或字首匹配的排前面
         $safeKeyword = addslashes($keyword_lower);
         $query->orderByRaw("CASE 
-            WHEN LOWER(last_name) = '{$safeKeyword}' OR LOWER(first_name) = '{$safeKeyword}' THEN 0
-            WHEN last_name LIKE '{$safeKeyword}%' OR first_name LIKE '{$safeKeyword}%' THEN 1
-            ELSE 2 END")
+            WHEN LOWER(REPLACE(abbreviation_name, ' ', '')) = '{$safeAbbrNormalized}' THEN 0
+            WHEN LOWER(REPLACE(abbreviation_name, ' ', '')) LIKE '%{$safeAbbrNormalized}%' THEN 1
+            WHEN LOWER(abbreviation_name) LIKE '{$safeAbbrNormalized}%' THEN 2
+            WHEN LOWER(last_name) = '{$safeKeyword}' OR LOWER(first_name) = '{$safeKeyword}' THEN 3
+            WHEN LOWER(last_name) LIKE '{$safeKeyword}%' OR LOWER(first_name) LIKE '{$safeKeyword}%' THEN 4
+            ELSE 5 END")
         ->orderBy('last_name', 'asc');
 
         return response(PersonCollection::collection($query->with('country')->limit(10)->get()));
     }
+
     // public function index(Request $request)
     // {
     //     $keyword = $request->get('keyword');

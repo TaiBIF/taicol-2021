@@ -9,14 +9,18 @@
         <div class="layer-content box">
             <person-form ref="form"
                          :presetName="presetName"
-                         :on-after-submit="onAfterFormSubmit"/>
+                         :on-after-submit="onAfterFormSubmit"
+                         :on-loading-change="(v) => isLoading = v"
+                         />
         </div>
         <div class="layer-footer">
-            <button class="button"
+            <button :class="{'is-loading': isLoading}"
+                    class="button"
                     v-on:click="close"
                     v-text="$t('common.close')">
             </button>
-            <button class="button"
+            <button :class="{'is-loading': isLoading}"
+                    class="button"
                     v-on:click="submit"
                     v-text="$t('common.submit')">
             </button>
@@ -29,6 +33,11 @@ import PersonForm from '../forms/SimplePersonForm.vue';
 export default {
     components: {
         PersonForm,
+    },
+    data() {
+        return {
+            isLoading: false,
+        };
     },
     props: {
         onAfterSubmit: {

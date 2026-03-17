@@ -180,19 +180,19 @@ class MyNamespaceController extends Controller
             $log->save();
             $action_log_id = $log->id;
 
-            if ($overwrite) { // 目前已經沒有overwrite 但暫時留著
-                foreach ($reference->usages()->get() as $usage) {
-                    $edit_log = new ImportUsageLog();
-                    $edit_log->reference_usage_id = $usage->id;
-                    $edit_log->reference_id = $referenceId;
-                    $edit_log->taxon_name_id = $usage->taxon_name_id;
-                    $edit_log->action = ImportUsageLog::ACTION_USAGE_DELETE;
-                    $edit_log->action_log_id = $action_log_id;
-                    $edit_log->user_id = $request->user()->id;
-                    $edit_log->save();
-                }
-                $reference->usages()->delete();
-            }
+            // if ($overwrite) { // 目前已經沒有overwrite 但暫時留著
+            //     foreach ($reference->usages()->get() as $usage) {
+            //         $edit_log = new ImportUsageLog();
+            //         $edit_log->reference_usage_id = $usage->id;
+            //         $edit_log->reference_id = $referenceId;
+            //         $edit_log->taxon_name_id = $usage->taxon_name_id;
+            //         $edit_log->action = ImportUsageLog::ACTION_USAGE_DELETE;
+            //         $edit_log->action_log_id = $action_log_id;
+            //         $edit_log->user_id = $request->user()->id;
+            //         $edit_log->save();
+            //     }
+            //     $reference->usages()->delete();
+            // }
 
             // $groupLast = $latestUsage ? $latestUsage->group + 1 : 0;
             $groupLast = $globalMaxGroup + 1;

@@ -6,14 +6,19 @@
                     <p v-if="!person" class="ml-3 font-bold text-3xl inline">{{ $t('person.create') }}</p>
                     <p v-else class="ml-3 font-bold text-3xl inline" v-text="$t('person.edit')"/>
                 </div>
-                <simple-person-form ref="form" :on-after-submit="onAfterSubmit" :presetData="person"/>
+                <simple-person-form ref="form" 
+                                    :on-after-submit="onAfterSubmit" 
+                                    :on-loading-change="(v) => isLoading = v"
+                                    :presetData="person"/>
             </div>
             <div class="form-footer">
                 <div class="buttons is-right">
-                    <button class="button m-0"
+                    <button :class="{'is-loading': isLoading}"
+                            class="button m-0"
                             v-on:click="goBack()"
                             v-text="$t('common.goBack')"/>
-                    <button class="button"
+                    <button :class="{'is-loading': isLoading}"
+                            class="button"
                             v-on:click="onSubmit(true)"
                             v-text="$t('common.save')"/>
                 </div>
@@ -30,6 +35,7 @@ export default {
     data() {
         return {
             person: null,
+            isLoading: false,
         };
     },
     methods: {
