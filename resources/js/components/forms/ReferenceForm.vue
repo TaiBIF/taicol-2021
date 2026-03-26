@@ -576,6 +576,7 @@ export default {
                                 this.submit(isPublish, true); 
                             }
                         },
+                        zIndex: 2100, 
                     });
 
                 } else {

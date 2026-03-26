@@ -115,7 +115,7 @@ export default {
                 this.close();
             }
 
-            this.close();
+            // this.close();
         },
     },
     watch: {

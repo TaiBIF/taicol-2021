@@ -1,5 +1,7 @@
 <template>
-    <div :class="{'is-active': $store.state.modal.isActive}" class="modal">
+        <div :class="{'is-active': $store.state.modal.isActive}" 
+            class="modal"
+            :style="$store.state.modal.zIndex ? { zIndex: $store.state.modal.zIndex } : {}">
         <div class="modal-background"></div>
         <div class="modal-content">
             <div class="shadow-md bg-white min-h-6 relative">

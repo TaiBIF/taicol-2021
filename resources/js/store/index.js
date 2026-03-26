@@ -26,14 +26,16 @@ const store = new Vuex.Store({
             isActive: false,
             title: '',
             props: {},
+            zIndex: null,
         },
     },
     actions: {},
     mutations: {
-        openModal(state, { component, props }) {
+        openModal(state, { component, props, zIndex }) {
             state.modal.isActive = true;
             state.modal.component = component;
             state.modal.props = props;
+            state.modal.zIndex = zIndex || null;
             document.documentElement.style.overflowY = 'hidden';
         },
         closeModal(state) {
