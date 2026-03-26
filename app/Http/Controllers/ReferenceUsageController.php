@@ -7,6 +7,7 @@ use App\Http\Resources\PersonCollection;
 use App\Http\Resources\TaxonNameCollection;
 use App\Http\Resources\UsageCollection;
 use App\Http\Resources\TmpUsageCollection;
+use App\Http\Resources\TaxonNameSimpleSubResource;
 use App\Person;
 use App\Rank;
 use App\Reference;
@@ -87,18 +88,18 @@ class ReferenceUsageController extends Controller
             ->where('id', '!=', $usage->id)
             ->first();
 
-        $acceptedUsage = null;
-        if ($accepted) {
-            $acceptedUsage = $accepted->taxonName;
-            $speciesLayer = isset($acceptedUsage->properties['species_layers']) ? $acceptedUsage->properties['species_layers'] : [];
-            $acceptedUsage->species = $accepted->taxonName->properties['species_id'] ? TaxonName::find($accepted->taxonName->properties['species_id']) : null;
-            $acceptedUsage->species_layers = collect($speciesLayer)->map(function ($s) {
-                return [
-                    'rank' => Rank::where('abbreviation', ($s['rank_abbreviation']))->first(),
-                    'latin_name' => $s['latin_name']
-                ];
-            });
-        }
+        // $acceptedUsage = null;
+        // if ($accepted) {
+        //     $acceptedUsage = $accepted->taxonName;
+        //     $speciesLayer = isset($acceptedUsage->properties['species_layers']) ? $acceptedUsage->properties['species_layers'] : [];
+        //     $acceptedUsage->species = $accepted->taxonName->properties['species_id'] ? TaxonName::find($accepted->taxonName->properties['species_id']) : null;
+        //     $acceptedUsage->species_layers = collect($speciesLayer)->map(function ($s) {
+        //         return [
+        //             'rank' => Rank::where('abbreviation', ($s['rank_abbreviation']))->first(),
+        //             'latin_name' => $s['latin_name']
+        //         ];
+        //     });
+        // }
 
         $typeName = $typeName = ($usage->properties['type_name'] ?? '') ? TaxonNameCollection::collection([
             TaxonName::with([
@@ -132,7 +133,8 @@ class ReferenceUsageController extends Controller
                 }) ?? [],
             'name_remark' => $usage->name_remark,
             'custom_name_remark' => $usage->custom_name_remark,
-            'accepted_usage' => $acceptedUsage,
+            // 'accepted_usage' => $acceptedUsage,
+            'accepted_usage' => $accepted ? new TaxonNameSimpleSubResource($accepted->taxonName) : null,
         ]);
     }
 
