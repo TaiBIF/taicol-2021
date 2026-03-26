@@ -74,7 +74,7 @@ export default {
                 ids: this.namespaceIds,
                 overwrite,
                 note: this.note,
-                fromReferencePage: true,
+                fromReferencePage: true, // 是否從文獻頁面「匯入異名表」
             }).then((response) => {
                 // 檢查是否有部分重複的提示訊息
                 if (response.data && response.data.message) {

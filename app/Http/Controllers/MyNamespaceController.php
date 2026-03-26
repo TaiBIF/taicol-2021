@@ -105,8 +105,9 @@ class MyNamespaceController extends Controller
     public function import(Request $request, $referenceId) // 異名表匯入
     {
 
-
-        if (!$request->get('from_reference_page')){
+        // 從「匯入綁定文獻」匯入的
+        $fromBindReference = !$request->get('from_reference_page');
+        if ($fromBindReference){
 
             $hasUsageExists = ReferenceUsage::where('reference_id', $referenceId)
                 ->whereNull('deleted_at')
@@ -129,6 +130,13 @@ class MyNamespaceController extends Controller
             ->get();
 
         $reference = Reference::with('usages')->find($referenceId);
+        // 把匯入的文獻存起來
+        if ($fromBindReference){
+            $namespace = MyNamespace::find($namespaceIds[0]);
+            $namespace->reference_id = $referenceId;
+            $namespace->save();
+        }
+        
 
         // --- 1. 預載入：減少資料庫查詢次數 ---
         $existingUsages = ReferenceUsage::where('reference_id', $referenceId)
