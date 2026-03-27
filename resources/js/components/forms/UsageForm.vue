@@ -437,7 +437,9 @@ export default {
         },
         onAddPublishReference() {
 
-            let alreadyUsageRef = this.perUsages.map((i) => i.target.id);
+            // let alreadyUsageRef = this.perUsages.map((i) => i.target.id);
+            let alreadyUsageRef = this.perUsages.map((i) => i.target?.id).filter(Boolean);
+
 
             if (!alreadyUsageRef.includes(this.taxonName.reference.id)){
 
@@ -459,7 +461,9 @@ export default {
         },
         onInsertCitationOfThisName(){
 
-            let alreadyUsageRef = this.perUsages.map((i) => i.target.id);
+            // let alreadyUsageRef = this.perUsages.map((i) => i.target.id);
+            let alreadyUsageRef = this.perUsages.map((i) => i.target?.id).filter(Boolean);
+
 
             this.axios.get(`/taxon-names/${this.taxonName?.id}/per_usages`, {
             }).then(({ data: { data } }) => {
@@ -636,6 +640,10 @@ export default {
 
 .per-usage-container {
     margin-bottom: 1rem;
+}
+
+.per-usage-container .box {
+    cursor: pointer;
 }
 
 .left-line {
