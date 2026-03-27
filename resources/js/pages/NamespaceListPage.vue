@@ -5,7 +5,7 @@
                     v-on:click="isShowAddColumn = !isShowAddColumn">
                 <i class="fas fa-plus"></i>&nbsp;{{ $t('namespace.create') }}
             </button>
-            <button class="button items-end flex justify-center items-center"
+            <button v-if="showStaging()" class="button items-end flex justify-center items-center"
                     v-on:click="() => onFetchAIReference(true)">
                 <i class="fas fa-plus"></i>&nbsp;{{ $t('reference.aiImport') }}
             </button>
@@ -169,6 +169,13 @@ export default {
         this.$store.commit('breadcrumb/CLEAR_ITEMS');
     },
     methods: {
+        showStaging(){
+            if (!location.hostname.includes('nametool')){
+                return true
+            } else {
+                return false
+            }
+        },
         onFetchAIReference() {
             this.$store.commit('openModal', {
                 component: () => import('../components/modals/AiReferenceModal.vue'),
