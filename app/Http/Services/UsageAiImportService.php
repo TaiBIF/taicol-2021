@@ -192,7 +192,7 @@ class UsageAiImportService
                     $this->throwError($index, 'alien_type 錯誤');
                 }
 
-                if ($index === 0 && ($isIndent === true || $status === 'not-accepted') && $group === 0) {
+                if ($index === 0 && ($isIndent === 1 || $status === 'not-accepted') && $group === 0) {
                     $this->throwError($index, '第一筆不能是無效名或縮排');
                 }
 
@@ -330,7 +330,7 @@ class UsageAiImportService
         $commonNamesStrings = explode('|', $commonNameString);
 
         foreach ($commonNamesStrings as $commonNamesString) {
-            $isMatch = preg_match('/(.*)\((.*),(.*)\)/', $commonNamesString, $matches);
+            $isMatch = preg_match('/(.*)\(([^,\)]+)(?:,([^)]*))?\)/', $commonNamesString, $matches);
             
             if ($isMatch) {
                 $name = $matches[1];
@@ -339,7 +339,7 @@ class UsageAiImportService
                 }
 
                 $commonNames[] = [
-                    'area' => $matches[3] ?? '',
+                    'area' => isset($matches[3]) ? $matches[3] : null,
                     'name' => trim(str_replace("\x00", "", $name)),
                     'language' => $this->languageMapping[$matches[2]] ?? 'others',
                 ];
@@ -348,7 +348,7 @@ class UsageAiImportService
 
         return $commonNames;
     }
-
+    
     private function processUsageReferences(?string $usageReferences, int $index): array
     {
         if (!$usageReferences) {

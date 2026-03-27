@@ -989,14 +989,23 @@ class MyNamespaceUsageController extends Controller
         $fileUri = $jobLog->file_uri;
         $usageJson = json_decode(file_get_contents(public_path('usage_results/' . $fileUri . '.json')), true);
 
-        if (is_array($usageJson)) {
-            foreach ($usageJson as $key => &$item) {
+        if (is_array($usageJson) && isset($usageJson['scientific_names'])) {
+            foreach ($usageJson['scientific_names'] as $key => &$item) {
                 if (!array_key_exists('index', $item)) {
-                    $item['index'] = $key +1;
+                    $item['index'] = (int)$key + 1;
                 }
             }
             unset($item);
         }
+
+        // if (is_array($usageJson)) {
+        //     foreach ($usageJson as $key => &$item) {
+        //         if (!array_key_exists('index', $item)) {
+        //             $item['index'] = $key +1;
+        //         }
+        //     }
+        //     unset($item);
+        // }
 
         $service = new UsageAiImportService();
         $processedData = $service->processScientificNames($usageJson);
@@ -1065,14 +1074,23 @@ class MyNamespaceUsageController extends Controller
             // $fileUri = 'files/uyhkzl8dq049';
             $usageJson = json_decode(file_get_contents(public_path('usage_results/' . $fileUri . '.json')), true);
 
-            if (is_array($usageJson)) {
-                foreach ($usageJson as $key => &$item) {
+            if (is_array($usageJson) && isset($usageJson['scientific_names'])) {
+                foreach ($usageJson['scientific_names'] as $key => &$item) {
                     if (!array_key_exists('index', $item)) {
-                        $item['index'] = $key +1;
+                        $item['index'] = (int)$key + 1;
                     }
                 }
                 unset($item);
             }
+
+            // if (is_array($usageJson)) {
+            //     foreach ($usageJson as $key => &$item) {
+            //         if (!array_key_exists('index', $item)) {
+            //             $item['index'] = $key +1;
+            //         }
+            //     }
+            //     unset($item);
+            // }
             
             // 3. 計算要跳過的 usage index
             $skipIndexes = $this->calculateSkipIndexes($usageJson['scientific_names'], $skipNames);
