@@ -804,7 +804,7 @@ class ReferenceUsageController extends Controller
         $curl = curl_init();
         curl_setopt($curl, CURLOPT_URL, $url);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($curl, CURLOPT_TIMEOUT, 120);
+        curl_setopt($curl, CURLOPT_TIMEOUT, 300);
         $result = curl_exec($curl);
 
         $jsonResult = json_decode($result, true);
