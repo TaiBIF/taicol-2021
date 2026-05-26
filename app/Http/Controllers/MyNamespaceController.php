@@ -127,6 +127,8 @@ class MyNamespaceController extends Controller
 
         $importUsages = MyNamespaceUsage::whereIn('namespace_id', $namespaceIds)
             ->orderBy('namespace_id')
+            ->orderBy('group')
+            ->orderBy('order')
             ->get();
 
         $reference = Reference::with('usages')->find($referenceId);
@@ -165,10 +167,6 @@ class MyNamespaceController extends Controller
         try {
             DB::beginTransaction();
 
-            // $latestUsage = ReferenceUsage::select('group')->where('reference_id', $referenceId)
-            //     ->orderBy('group', 'desc')
-            //     ->first();
-
             $log = new ImportUsageLog();
             $log->reference_id = $reference->id;
 
@@ -188,21 +186,6 @@ class MyNamespaceController extends Controller
             $log->save();
             $action_log_id = $log->id;
 
-            // if ($overwrite) { // 目前已經沒有overwrite 但暫時留著
-            //     foreach ($reference->usages()->get() as $usage) {
-            //         $edit_log = new ImportUsageLog();
-            //         $edit_log->reference_usage_id = $usage->id;
-            //         $edit_log->reference_id = $referenceId;
-            //         $edit_log->taxon_name_id = $usage->taxon_name_id;
-            //         $edit_log->action = ImportUsageLog::ACTION_USAGE_DELETE;
-            //         $edit_log->action_log_id = $action_log_id;
-            //         $edit_log->user_id = $request->user()->id;
-            //         $edit_log->save();
-            //     }
-            //     $reference->usages()->delete();
-            // }
-
-            // $groupLast = $latestUsage ? $latestUsage->group + 1 : 0;
             $groupLast = $globalMaxGroup + 1;
             $groupUsages = $importUsages->groupBy('namespace_id');
 
@@ -255,8 +238,6 @@ class MyNamespaceController extends Controller
                     $referenceUsage->taxon_name_id = (int) $usage->taxon_name_id;
                     $referenceUsage->group = $targetGroup;
                     $referenceUsage->order = $targetOrder;
-                    // $referenceUsage->group = $usage->group + $groupLast;
-                    // $referenceUsage->order = $usage->order;
 
                     foreach($usage->per_usages as $per_usage){
 
@@ -332,7 +313,6 @@ class MyNamespaceController extends Controller
     
                 }
 
-                // $groupLast = $usage->group + $groupLast;
                 $groupLast = $groupLast + ($groupUsage->max('group') ?? 0) + 1;
             }
 

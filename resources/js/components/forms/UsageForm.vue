@@ -643,7 +643,11 @@ export default {
 }
 
 .per-usage-container .box {
-    cursor: pointer;
+    cursor: grab;
+}
+
+.per-usage-container .box:active {
+    cursor: grabbing;
 }
 
 .left-line {

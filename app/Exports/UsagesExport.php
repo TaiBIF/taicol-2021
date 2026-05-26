@@ -74,7 +74,8 @@ class UsagesExport implements FromArray, WithHeadings
             ->map(function ($usage) use ($service) {
 
             $taxonName = $usage->taxonName;
-            $parentTaxonName = $usage->parent ? $usage->parent->taxonName : null;
+
+            $parentTaxonName = $usage->parent_taxon_name_id ? TaxonName::find([$usage->parent_taxon_name_id])[0] : null;
             
             $perUsages = empty($usage->per_usages)
                 ? []
@@ -97,14 +98,12 @@ class UsagesExport implements FromArray, WithHeadings
                     ;
                 })->toArray();
 
-
             $additionalFields = array();
             if (!empty($usage->properties['additional_fields'])){
                 foreach ($usage->properties['additional_fields'] as $item) {
                     $additionalFields[$item['field_name']] = $item['field_value'];
                 }
             }
-
 
             $customFields = []; // 儲存 custom_field1 ~ 5
             if (!empty($usage->properties['custom_fields'])){
