@@ -148,7 +148,7 @@
                         </li>
                         <li v-for="reference in references">
                             <label class="label ref p-1 px-4 my-1 hover:bg-gray-200 cursor-pointer">
-                                <input v-model="referenceIds" checked :value="reference.id" type="checkbox"/>
+                                <input v-model="referenceIds" :value="reference.id" type="checkbox"/>
                                 &nbsp;&nbsp;
                                 <span v-text="reference.title"></span>
                                 <span class="help has-text-grey-light" v-text="reference.subtitle"></span>
@@ -261,7 +261,12 @@ export default {
                 if (!this.referenceIds.includes(selectedReference.id)) {
                     this.references = [...this.references, selectedReference]
                     this.referenceIds =  [...this.referenceIds, selectedReference.id]
-                    this.references = this.references.sort((a, b) => a.publishYear - b.publishYear);
+
+                    this.references = this.references.sort((a, b) => {
+                        if (a.id === 0) return -1;  // backbone 永遠在最前
+                        if (b.id === 0) return 1;
+                        return b.publishYear - a.publishYear;  // DESC
+                    });
             }
         },
         onAddRelatedReferences(){
@@ -286,14 +291,17 @@ export default {
                         const existingIds = new Set(this.references.map(ref => ref.id))
                         const newData = data.filter(ref => !existingIds.has(ref.id))
                         this.references = [...this.references, ...newData]
-                        this.referenceIds =  [...this.referenceIds, ...newData.map((d)=>d.id)]
 
                         if (hasBackbone==true && !this.referenceIds.includes(0)){
                             this.references = [{'id': 0, 'title': 'TaiCOL Backbone'},...this.references]
-                            this.referenceIds =  [0, ...this.referenceIds]
                         }
 
-                        this.references = this.references.sort((a, b) => a.publishYear - b.publishYear);
+                        this.references = this.references.sort((a, b) => {
+                        if (a.id === 0) return -1;  // backbone 永遠在最前
+                        if (b.id === 0) return 1;
+                        return b.publishYear - a.publishYear;  // DESC
+                        });
+
                         this.taxonIds = taxonIds;
                         this.isLoading = false;
                         this.isReferenceAdded = true;

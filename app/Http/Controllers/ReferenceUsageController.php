@@ -860,7 +860,6 @@ class ReferenceUsageController extends Controller
 
         if ( $method == 1)
             $url = "https://api.taicol.tw/get_taxon_by_higher?only_in_taiwan=" . $onlyInTaiwan . '&exclude_cultured=' . $excludeCultured . '&higher_taxa=' . $higherTaxa ;
-            // $url = "http://127.0.0.1:8005/get_taxon_by_higher?only_in_taiwan=" . $onlyInTaiwan . '&exclude_cultured=' . $excludeCultured . '&higher_taxa=' . $higherTaxa ;
 
         // method == 3 > Region 串接 TBIA API
 
@@ -884,7 +883,8 @@ class ReferenceUsageController extends Controller
                     ->whereIn('taxon_id', $jsonResult)
                     ->where('is_deleted', 0);
             })
-            ->where('is_publish', 1)->get();
+            ->where('is_publish', 1)
+            ->get();
 
             $hasBackbone = $references->contains(function ($item) {
                 return $item->type === Reference::TYPE_BACKBONE || $item->type === Reference::TYPE_SUPER_BACKBONE;
