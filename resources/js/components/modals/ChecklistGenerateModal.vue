@@ -12,8 +12,12 @@
                     <general-input v-model="title" :disabled="isLoading" />
                 </div>
             </div>
-
-            <label v-if="!isLoading" class="label mt-[1rem]" v-text="$t('classification.checklistPreview')"/>
+            <div v-if="!isLoading" class="flex items-center justify-between mt-[1rem] mb-[1rem]">
+                <label class="label mb-0" v-text="$t('classification.checklistPreview')"/>
+                <button class="button is-small" @click="isSimple = !isSimple">
+                    {{ isSimple ? $t('namespace.listDetail') : $t('namespace.listSimple') }}
+                </button>
+            </div>
             <div v-if="!isLoading" class="box has-background-light h-full">
                 <template v-for="(usages, index) in usageGroups">
                     <template v-for="(usage, index) in usages">
@@ -31,7 +35,7 @@
                                 <usage-preview
                                     ref="nameRemark"
                                     :indications="getIndications(usage.properties.indications)"
-                                    :is-simple="true"
+                                    :is-simple="isSimple"
                                     :per-usages="usage.perUsages"
                                     :status="usage.status"
                                     :taxon-name="usage.taxonName"
@@ -82,12 +86,16 @@ export default {
             usageGroups: [],
             isLoading: true,
             tmpChecklistId: null,
-            isUsageLoading: true
+            isUsageLoading: true,
+            isSimple: true,
         };
     },
     mounted() {
         
         this.axios.post('/selected-usages', {
+                classificationView: this.form.classificationView,
+                completeness: this.form.completeness,
+                usageReferences: this.form.usageReferences,
                 references: this.form.referenceIds,
                 onlyInTaiwan: this.form.onlyInTaiwan,
                 excludeCultured: this.form.excludeCultured,
@@ -104,11 +112,11 @@ export default {
                 } else if (message) {
                 
                     openNotify(message, 'is-danger');
-                    // this.closeModal();
+                    this.closeModal();
 
                 } else {
                     openNotify('無對應學名使用，請重新設置篩選條件', 'is-danger');
-                    // this.closeModal();
+                    this.closeModal();
                 }
                 this.isLoading = false;
 
@@ -161,6 +169,9 @@ export default {
                 tmpChecklistId: this.tmpChecklistId,
                 title: this.title,
                 // 下面是為了存edit log的資訊
+                classificationView: this.form.classificationView,
+                usageReferences: this.form.usageReferences,
+                completeness: this.form.completeness,
                 references: this.form.referenceIds,
                 onlyInTaiwan: this.form.onlyInTaiwan,
                 excludeCultured: this.form.excludeCultured,
@@ -182,11 +193,7 @@ export default {
                 this.isUsageLoading = false;
 
             })
-
-
-    },
-
-
+        },
         async loadUsages(tmp_checklist_id) {
             try {
                 this.isUsageLoading = true;
@@ -232,8 +239,6 @@ export default {
                 console.error("load reference:", error);
             }
         },
-
-
     },
     components: {
         GeneralInput,

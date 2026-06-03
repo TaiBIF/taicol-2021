@@ -1,6 +1,9 @@
 export default {
     filterTaxon: '篩選分類群',
     filterMethod: '篩選方式',
+    classificationView: '分類觀',
+    customView: '自訂分類觀',
+    taicolView: 'TaiCOL分類觀',
     generateChecklist: '產生名錄',
     importToMyChecklist: '匯入我的名錄',
     checklistTitle: '名錄標題',
@@ -15,5 +18,15 @@ export default {
     rankInfo: '最高可選擇階層到科',
     referenceInfo: '僅能納入具有學名使用的文獻',
     info: '本功能用於文獻發表前，讓使用者快速整理、建立自己的分類觀，包含彙整資料庫中已有之相關分類群、相關文獻的學名使用，也可透過外部API以地區篩選分類群等，使用者可選擇納入或不納入非存在於臺灣的分類群，也可選擇要納入哪些文獻分類觀等，本工具會依照納入的文獻優先性決定學名有效、無效等，產出名錄後匯入到「我的名錄」供使用者後續編輯。',
-    selectAll: '全選'
+    selectAll: '全選',
+    synonymySettings: '異名表設定',
+    usageReferences: '學名引用文獻',
+    allUsageReference: '所有引用文獻',
+    originalAndIncludedUsageReference: '發表文獻與納入文獻',
+    originalUsageReference: '僅發表文獻',
+    noUsageReference: '不要文獻',
+    completeness: '異名表完整度',
+    fullSynonymy: '完整異名表',
+    conciseSynonymy: '精簡異名表',
+    noSynonymy: '不要異名表',
 };

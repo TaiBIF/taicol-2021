@@ -571,11 +571,9 @@ class MyNamespaceUsageController extends Controller
             'title' => 'required',
         ]);
 
-
         # 從 tmp_checklist_usages抓資料
 
         DB::beginTransaction();
-
 
         try {
             $namespace = new MyNamespace();
@@ -593,24 +591,24 @@ class MyNamespaceUsageController extends Controller
 
             $filter_method = new \stdClass();
 
+            $filter_method->view = $request->get('classification_view');
+            $filter_method->usage_references = $request->get('usage_references');
+            $filter_method->completeness = $request->get('completeness');
+
             if ($request->get('method') === 1) {
 
                 $filter_method->type = "higher_taxa";
                 $filter_method->taxon_id = $request->get('taxon_ids');
 
-
             } else if  ($request->get('method') === 2) {
 
-
                 $filter_method->type = "reference";
-
 
             } else if  ($request->get('method') === 3) {
 
                 $filter_method->type = "region";
                 $filter_method->county = $request->get('county');
                 $filter_method->municipality = $request->get('municipality');
-
 
             }
 
@@ -700,8 +698,6 @@ class MyNamespaceUsageController extends Controller
                 'data' =>  $namespace->id,
             ]);
 
-
-
         } catch (\Exception $e) {
             Log::info($e);
 
@@ -711,9 +707,7 @@ class MyNamespaceUsageController extends Controller
                 'data' =>  null,
             ]);
 
-
         }
-
 
     }
 

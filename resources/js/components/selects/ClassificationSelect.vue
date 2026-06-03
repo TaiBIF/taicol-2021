@@ -20,7 +20,8 @@
     </t-select>
 </template>
 <script>
-    import Select from '../Select';
+    import { computed } from '@vue/composition-api';
+import Select from '../Select';
     import methods from './map/filterMethod';
 
     export default {
@@ -37,6 +38,10 @@
             disabled: {
                 type: Boolean,
                 default: false,
+            },
+            classificationView: {
+                type: String,
+                default: 'custom',
             }
         },
         watch: {
@@ -45,12 +50,20 @@
             },
         },
         data() {
-            const options = methods;
+            // const options = methods;
 
             return {
                 localValue: this.value,
-                options,
+                // options,
             }
+        },
+        computed: {
+            options() {
+                if (this.classificationView === 'custom') {
+                    return methods.filter(m => m.id !== 3);
+                }
+                return methods.filter(m => m.id !== 2);
+            },
         },
         methods: {
             onUpdateValue(object) {

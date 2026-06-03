@@ -18,6 +18,7 @@ use App\Country;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use App\Http\Utils\CommonNameArray;
 use App\Http\Resources\ReferenceCollection;
 
@@ -919,6 +920,9 @@ class ReferenceUsageController extends Controller
         $onlyInTaiwan = $request->post('only_in_taiwan');
         $excludeCultured = $request->post('exclude_cultured');
         $taxonIds = $request->post('taxon_ids');
+        $classificationView = $request->post('classification_view');
+        $completeness = $request->post('completeness');
+        $usageReferences = $request->post('usage_references');
 
         // 如果是使用較高分類群納入 不應該加這個參數才對 不然會只有回傳高階層的那個taxon
 
@@ -936,16 +940,13 @@ class ReferenceUsageController extends Controller
                 }
             );
 
-
             $result = array_values($result);
-
 
             // 如果有選擇backbone的話 要把backbone加上去
             if ($hasBackbone == true){
                 $backbones = Reference::whereIn('type', [Reference::TYPE_BACKBONE, Reference::TYPE_SUPER_BACKBONE])->pluck('id')->toArray();
                 array_push($result, ...$backbones);
             }
-
 
             // 1 & 2 取得taxonIDs之後也要搜尋reference_usages表
             // method == 3 -> 搜尋reference_usages表
@@ -973,7 +974,6 @@ class ReferenceUsageController extends Controller
                             })->orWhere('ranks.order', '<', $speciesOrder);
                         });
 
-
                 }
 
                 if ($excludeCultured=='yes')
@@ -988,7 +988,7 @@ class ReferenceUsageController extends Controller
 
                 // 取得taxon_id對應的taxon_name_id
 
-                $usageQuery->whereIn('reference_usages.taxon_name_id', function ($query) use ($taxonIds, $excludeCultured) {
+                $usageQuery->whereIn('reference_usages.taxon_name_id', function ($query) use ($taxonIds, $excludeCultured, $onlyInTaiwan) {
                     $query->select('taxon_name_id')
                         ->from('api_taxon_usages')
                         ->join('api_taxon', 'api_taxon_usages.taxon_id', '=', 'api_taxon.taxon_id')
@@ -1000,10 +1000,14 @@ class ReferenceUsageController extends Controller
                         $query->where('api_taxon.is_cultured', 0);
                     }
                     
+                    // 只限台灣
+                    if ($onlyInTaiwan == 'yes') {
+                        $query->where('api_taxon.is_in_taiwan', 1);
+                    }
+
                     $query->distinct();
                 });
 
-        
             }
 
             $usages = $usageQuery->get();
@@ -1027,34 +1031,22 @@ class ReferenceUsageController extends Controller
                     'only_in_taiwan' => $onlyInTaiwan,
                     'exclude_cultured' => $excludeCultured,
                     'usages' => $usages,
-                    'references' => $references
+                    'references' => $references,
+                    'classification_view' => $classificationView,
+                    'completeness' => $completeness,
+                    'usage_references' => $usageReferences,
                 ];
 
-
-                // 初始化 cURL
-                $ch = curl_init($usage_url);
-                
-                // 設定 options
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_POST, true);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
-                curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                    'Content-Type: application/json'
-                ]);
-                
-                // 執行 cURL 並取得回應
-                $response = curl_exec($ch);
-                
-                // 關閉 cURL
-                curl_close($ch);
-                
-                // 解析 JSON 回傳
-                $resp = json_decode($response, true);
+                // 當 classificationView 為 taicol 時，額外傳送 taxon_ids
+                if ($classificationView == 'taicol') {
+                    $postData['taxon_ids'] = $taxonIds;
+                }
 
                 // 從這邊取得tmp_checklist_id 回傳給前端
                 // 前端再根據之前寫過的load usages 顯示出usage
 
-                $tmp_checklist_id = $resp['tmp_checklist_id'];
+                $resp = Http::asJson()->post($usage_url, $postData)->json() ?? [];
+                $tmp_checklist_id = $resp['tmp_checklist_id'] ?? null;
             }
         }
 

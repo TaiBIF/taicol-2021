@@ -6,7 +6,7 @@
                 <div class="py-3 flex items-center">
                     <p class="ml-3 font-bold text-3xl inline">{{ $t('header.collectionMenu.buildClassification') }}</p>
                 </div>
-                <classification-form ref="form" @update:isReferenceSelected="isReferenceSelected = $event"/>
+                <classification-form ref="form" @update:canGenerate="canGenerate = $event"/>
             </div>
             <div class="form-footer">
                 <div class="flex justify-content-between">
@@ -20,8 +20,8 @@
                     <button class="button m-0"
                             v-on:click="goBack()"
                             v-text="$t('common.goBack')"/>
-                    <button class="button m-0" :disabled="!isReferenceSelected"
-                            v-on:click="onOpenImportMadal()"
+                    <button class="button m-0" :disabled="!canGenerate"
+                            v-on:click="onGenerate()"
                             v-text="$t('classification.generateChecklist')"/>
                 </div>
                 </div>
@@ -42,7 +42,7 @@ export default {
         return {
             formStatus: this.$c.PAGE_IS_LOADING,
             presetData: null,
-            isReferenceSelected: false
+            canGenerate: false
         };
     },
     methods: {
@@ -52,8 +52,16 @@ export default {
         goBack(){
             window.history.back();
         },
+        async onGenerate() {
+            const form = this.$refs.form;
+            // TaiCOL view: 按下後才載入文獻，成功才送出
+            if (form.classificationView === 'taicol') {
+                const ok = await form.onAddRelatedReferences();
+                if (!ok) return;
+            }
+            this.onOpenImportMadal();
+        },
         onOpenImportMadal() {
-
             this.$store.commit('openModal', {
                 component: () => import('../components/modals/ChecklistGenerateModal.vue'),
                 props: {
