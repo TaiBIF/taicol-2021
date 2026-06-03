@@ -33,7 +33,7 @@ export default {
     },   
     methods: {
         onClose(){
-            this.$store.commit('closeModal');
+            this.$store.commit('layer/CLOSE');
         },
         // [新增] 觸發強制存檔並關閉 Modal
         handleForceSave() {

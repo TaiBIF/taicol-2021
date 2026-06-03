@@ -560,25 +560,18 @@ export default {
                             },
                         },
                     });
-                } else if (status === 409 &&  message === 'Reference possibly duplicates') {
 
-                    this.$store.commit('openModal', {
-                        // 建議建立一個新的 Modal 專門顯示重複清單
-                        component: () => import('../modals/ConfirmReferenceDuplicatesModal.vue'),
+                } else if (status === 409 && message === 'Reference possibly duplicates') {
+
+                    this.$store.commit('layer/ADD', {
+                        template: () => import('../modals/ConfirmReferenceDuplicatesModal.vue'),
                         props: {
-                            // 把後端回傳的重複陣列傳進去
-                            duplicates: data, 
-                            // [新增] 這裡定義當 Modal 按下 "Publish" 時要幹嘛
+                            duplicates: data,
                             onForceSave: () => {
-                                // 重新呼叫 submit，
-                                // 參數 1: 維持原本的 isPublish 狀態
-                                // 參數 2: 傳入 true，代表「我檢查過了，強制存檔」
-                                this.submit(isPublish, true); 
+                                this.submit(isPublish, true);
                             }
                         },
-                        zIndex: 2100, 
                     });
-
                 } else {
                     this.errors = errors;
                 }
