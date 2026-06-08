@@ -28,10 +28,6 @@ class PersonController extends Controller
      * @param Request $request
      * @return \Illuminate\Contracts\Foundation\Application|\Illuminate\Contracts\Routing\ResponseFactory|\Illuminate\Http\Response
      */
-
-    /**
-     * 下拉式人名選單
-     */
     public function index(Request $request)
     {
         $keyword = trim($request->get('keyword', ''));
@@ -78,21 +74,6 @@ class PersonController extends Controller
 
         return response(PersonCollection::collection($query->with('country')->limit(10)->get()));
     }
-
-    // public function index(Request $request)
-    // {
-    //     $keyword = $request->get('keyword');
-    //     $persons = Person::where('abbreviation_name', 'like', sprintf('%%%s%%', $keyword))
-    //         ->orWhere('original_full_name', 'like', sprintf('%%%s%%', $keyword))
-    //         ->orWhere('other_names', 'like', sprintf('%%%s%%', $keyword))
-    //         ->orWhereRaw('CONCAT(last_name, \' \', first_name, \' \', middle_name) like ? ', ['%' . $keyword . '%'])
-    //         ->limit(10)
-    //         ->get();
-
-    //     return response(
-    //         PersonCollection::collection($persons->load('country'))
-    //     );
-    // }
 
     public function show(Request $request, $id)
     {
@@ -189,6 +170,9 @@ class PersonController extends Controller
             return response([])->setStatusCode(404);
         }
 
+        // 在 saveAll 之前先保留更新前的狀態
+        $oldPerson = clone $person;
+
         $lastName = $request->get('last_name') ?? '';
         $firstName = $request->get('first_name') ?? '';
         $middleName = $request->get('middle_name') ?? '';
@@ -205,7 +189,9 @@ class PersonController extends Controller
         $person = $service->saveAll($request->all());
 
         $logService = new LogService();
-        $logService->writeUpdateLog(LogType::PERSON, $person);
+        $logService->writeUpdateLogWithComparison(LogType::PERSON, $person, $oldPerson, excludeColumns: [
+            'search_raw',
+        ]);
 
         $nameUpdateAPI = env('TAICOL_API_ROOT') . '/update/name?person_id=' . $id;
         $resp = file_get_contents($nameUpdateAPI);

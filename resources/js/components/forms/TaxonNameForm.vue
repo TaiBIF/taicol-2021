@@ -18,7 +18,8 @@
                     latinS1,
                     isHybrid,
                     authorsName: (!targetAuthors || !targetExAuthors || !targetOriginalTaxonName) ? authorsName : undefined,
-                    initialYear
+                    initialYear,
+                    isApprovedList
                 },
                 rank: targetRank,
                 hybridParents,
@@ -858,11 +859,16 @@ export default {
             }
         },
         targetRank(v) {
+            this.latinName = '';
             this.latinGenus = '';
             this.latinS1 = '';
+            this.species = null;
+            this.speciesLayers = [];
 
-            if (v.key === 'hybrid-formula') {
+            if (v?.key === 'hybrid-formula') {
                 this.isHybrid = true;
+            } else {
+                this.isHybrid = false;
             }
         },
         targetNomenclature: {

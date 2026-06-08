@@ -31,10 +31,6 @@ export default {
     computed: {
         finalName() {
 
-            // console.log(this.authors)
-            // console.log(this.exAuthors)
-            // console.log(this.originalTaxonName)
-
             if (this.authors.length == 0 && this.exAuthors.length == 0 && !this.originalTaxonName && !this.taxonName?.properties.initialYear){
                 if (this.taxonName?.properties.authorsName) {
                     return this.taxonName?.properties.authorsName;
