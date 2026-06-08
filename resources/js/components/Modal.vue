@@ -24,8 +24,7 @@ export default {
 </script>
 <style lang="scss" scoped>
 .modal {
-    // z-index: 101;
-    z-index: 2000;
+    z-index: 2002;
 
     .modal-content {
         max-width: 80vw;

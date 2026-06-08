@@ -6,7 +6,6 @@
             </p>
         </div>
         <div class="flex justify-end sticky bottom-0 p-4 bg-white border-t gap-2">
-            <!-- <button class="button" v-on:click="onLeave">{{ $t('common.later') }}</button> -->
             <button class="button is-success" v-on:click="onClose">{{ $t('common.continueEditing') }}</button>
         </div>
     </div>
@@ -19,15 +18,18 @@ import {
 export default defineComponent({
     name: 'confirm-draft-modal',
     props: {
-        onLeave: {
-            type: Function as PropType<(data) => void>,
-            required: true,
+        onContinueEditing: {
+            type: Function as PropType<() => void>,
+            default: null,
         },
     },
     setup(props, context) {
         const app: any = context.root;
 
         const onClose = () => {
+            if (props.onContinueEditing) {
+                props.onContinueEditing();   // 通知上層:繼續編輯
+            }
             app.$store.commit('closeModal');
         };
 

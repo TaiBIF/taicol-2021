@@ -11,6 +11,7 @@
                 ref="form"
                 :errors="errors"
                 :on-after-submit="onAfterFormSubmit"
+                :on-continue-editing="onContinueEditing"
                 :preset-data="presetData"/>
         </div>
         <div class="layer-footer">
@@ -93,6 +94,9 @@ export default {
         onSubmit(isPublish) {
             this.isLoading = true;
             this.$refs.form.submit(isPublish);
+        },
+        onContinueEditing() {
+            this.isLoading = false;
         },
     },
 };

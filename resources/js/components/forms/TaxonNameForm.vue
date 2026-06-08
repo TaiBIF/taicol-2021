@@ -565,6 +565,10 @@ export default {
             type: Function,
             required: true,
         },
+        onContinueEditing: {
+            type: Function,
+            default: null,
+        },
     },
     data() {
 
@@ -788,9 +792,7 @@ export default {
                 formattedAuthors: this.formattedAuthors,
                 formattedExAuthors: this.formattedExAuthors,
                 latinName: this.latinName,
-                // latinGenus: this.latinGenus,
                 latinGenus: this.latinGenus ? this.latinGenus : this.species?.properties.latinGenus,
-                // latinS1: this.latinS1,
                 latinS1: this.latinS1 ? this.latinS1 : this.species?.properties.latinS1,
                 nomenclatureId: this.targetNomenclature?.id || null,
                 rankId: this.targetRank?.id || null,
@@ -930,9 +932,7 @@ export default {
                     this.$store.commit('openModal', {
                         component: () => import('../modals/ConfirmDraftModal.vue'),
                         props: {
-                            onLeave: () => {
-                                this.$store.commit('closeModal');
-                            },
+                            onContinueEditing: this.onContinueEditing,
                         },
                     });
                 } else {
@@ -944,33 +944,6 @@ export default {
                 this.isSubmitting = false; // 無論成功或失敗都解鎖
             });
         }
-
-        // submit: debounce(function (isPublish) {
-        //     const isEdit = !!this.presetData?.id;
-        //     this.axios({
-        //         method: isEdit ? 'PUT' : 'POST',
-        //         url: isEdit ? `/taxon-names/${this.presetData.id}` : '/taxon-names',
-        //         data: { ...this.formData, 'isPublish': isPublish },
-        //     }).then(({ data }) => {
-        //         this.onAfterSubmit(data);
-        //         openNotify(this.$t('common.saveSuccess'));
-        //     }).catch(({ status, message, errors }) => {
-        //         if (status === 409 &&  message === 'TaxonName exist') {
-        //             openNotify('學名已存在', 'is-danger');
-        //         } else if (status === 409 &&  message === 'TaxonName draft exist') {
-        //             this.$store.commit('openModal', {
-        //                 component: () => import('../modals/ConfirmDraftModal.vue'),
-        //                 props: {
-        //                     onLeave: () => {
-        //                         this.$store.commit('closeModal');
-        //                     },
-        //                 },
-        //             });
-        //         } else {
-        //             this.errors = errors;
-        //         }
-        //     });
-        // }),
     },
     components: {
         GenomeCompositionSelect,
