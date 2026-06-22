@@ -563,8 +563,8 @@ export default {
 
                 } else if (status === 409 && message === 'Reference possibly duplicates') {
 
-                    this.$store.commit('layer/ADD', {
-                        template: () => import('../modals/ConfirmReferenceDuplicatesModal.vue'),
+                    this.$store.commit('openModal', {
+                        component: () => import('../modals/ConfirmReferenceDuplicatesModal.vue'),
                         props: {
                             duplicates: data,
                             onForceSave: () => {

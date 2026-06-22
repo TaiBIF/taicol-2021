@@ -1,10 +1,12 @@
 <template>
     <transition-group class="layer-holder" name="slide-out" tag="div">
         <template v-for="(layer, index) in layers">
-            <div :key="'overlay' + index" class="layer-overlay"></div>
+            <div :key="'overlay' + index" class="layer-overlay"
+                 :style="{ zIndex: layer.zIndex }"></div>
             <div :key="'layer' + index"
                  :class="{last: isLastLayer(index)}"
-                 class="layer">
+                 class="layer"
+                 :style="{ zIndex: layer.zIndex }">
                 <component :is="layer.template"
                            :on-after-submit="layer.events ? layer.events.onAfterSubmit : null"
                            :presetData="layer.default"

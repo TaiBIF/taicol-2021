@@ -1,14 +1,17 @@
 <template>
-        <div :class="{'is-active': $store.state.modal.isActive}" 
-            class="modal"
-            :style="$store.state.modal.zIndex ? { zIndex: $store.state.modal.zIndex } : {}">
-        <div class="modal-background"></div>
-        <div class="modal-content">
-            <div class="shadow-md bg-white min-h-6 relative">
-                <button aria-label="close" class="modal-close is-large sticky top-5 float-right"
-                        v-on:click="close"></button>
-                <p v-if="$store.state.modal.title" class="title" v-text="$store.state.modal.title"/>
-                <component :is="$store.state.modal.component" v-bind="$store.state.modal.props"/>
+    <div>
+        <div v-for="(modal, idx) in $store.state.modals"
+             :key="idx"
+             class="modal is-active"
+             :style="{ zIndex: modal.zIndex }">
+            <div class="modal-background"></div>
+            <div class="modal-content">
+                <div class="shadow-md bg-white min-h-6 relative">
+                    <button aria-label="close" class="modal-close is-large sticky top-5 float-right"
+                            v-on:click="close"></button>
+                    <p v-if="modal.title" class="title" v-text="modal.title"/>
+                    <component :is="modal.component" v-bind="modal.props"/>
+                </div>
             </div>
         </div>
     </div>
@@ -24,23 +27,14 @@ export default {
 </script>
 <style lang="scss" scoped>
 .modal {
-    z-index: 2002;
-
     .modal-content {
         max-width: 80vw;
         max-height: 80vh;
         width: auto;
-
-        .min-h-12 {
-            min-height: 60vh;
-        }
-
+        .min-h-12 { min-height: 60vh; }
         .modal-close {
             z-index: 10;
-
-            &:after, &:before {
-                background-color: $black;
-            }
+            &:after, &:before { background-color: $black; }
         }
     }
 }

@@ -5,6 +5,7 @@ import breadcrumb from './breadcrumb';
 import rank from './rank';
 import nomenclature from './nomenclauture';
 import layer from './layer';
+import { nextZ } from './overlay';
 
 Vue.use(Vuex);
 
@@ -21,30 +22,28 @@ const store = new Vuex.Store({
     state: {
         countries: [],
         lang: DEFAULT_LANGUAGE,
-        modal: {
-            component: null,
-            isActive: false,
-            title: '',
-            props: {},
-            zIndex: null,
-        },
+        modals: [],
     },
     actions: {},
     mutations: {
-        openModal(state, { component, props, zIndex }) {
-            state.modal.isActive = true;
-            state.modal.component = component;
-            state.modal.props = props;
-            state.modal.zIndex = zIndex || null;
+        // mutations:openModal/closeModal 改寫
+        openModal(state, { component, props, title }) {
+            state.modals.push({
+                component,
+                props: props || {},
+                title: title || '',
+                zIndex: nextZ(),
+            });
             document.documentElement.style.overflowY = 'hidden';
         },
         closeModal(state) {
-            state.modal.isActive = false;
-            document.documentElement.style.overflowY = 'auto';
+            state.modals.pop();
+            if (state.modals.length === 0) {
+                document.documentElement.style.overflowY = 'auto';
+            }
         },
         SET_LANG(state, lang) {
-            state.modal.lang = lang;
-            Vue.i18n.set(lang);
+            Vue.i18n.set(lang);  // 移除原本誤寫的 state.modal.lang = lang
         },
         setReferencePresetData(state, data) {
             state.referencePresetData = data;
