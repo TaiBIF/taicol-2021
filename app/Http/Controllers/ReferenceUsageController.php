@@ -1054,6 +1054,15 @@ class ReferenceUsageController extends Controller
 
                 $resp = Http::asJson()->post($usage_url, $postData)->json() ?? [];
                 $tmp_checklist_id = $resp['tmp_checklist_id'] ?? null;
+
+                // 即使 HTTP 200 但沒拿到 tmp_checklist_id 也視為錯誤
+                if ($tmp_checklist_id === null) {
+                    return response()->json([
+                        'data' => null,
+                        'message' => '發生錯誤',
+                    ]);
+                }
+
             }
         }
 

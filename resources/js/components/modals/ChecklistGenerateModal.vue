@@ -122,6 +122,7 @@ export default {
 
             }).catch(({ errors }) => {
                 console.log(errors);
+                openNotify('發生錯誤', 'is-danger');
                 this.isLoading = false;
             });
     },
