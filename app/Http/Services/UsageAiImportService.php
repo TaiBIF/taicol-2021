@@ -10,6 +10,7 @@ use App\Country;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Http\Utils\CommonNameArray;
+use App\Http\Services\ParentTaxonService;
 
 class UsageAiImportService
 {
@@ -49,9 +50,10 @@ class UsageAiImportService
         'ICVCN' => 4,
     ];
 
-    public function __construct()
+    public function __construct(
+        private ParentTaxonService $parentResolver,
+    )
     {
-        // $this->namespaceId = $namespaceId;
         $this->rankMapping = Rank::all()->keyBy('key');
     }
 
@@ -204,7 +206,7 @@ class UsageAiImportService
                 }
 
                 // 處理 parent taxon // 目前應該是沒有這個parent_taxon的欄位
-                $parentTaxonNameId = $this->processParentTaxon($taxonName->id);
+                $parentTaxonNameId = $this->parentResolver->resolveOne($taxonName->id);
 
                 // 處理 common names
                 $commonNames = $this->processCommonNames($scientificName['common_name'] ?? '');
@@ -255,69 +257,6 @@ class UsageAiImportService
         }
 
         return $count;
-    }
-
-    private function processParentTaxon(int $taxon_name_id)
-    {
-        // if (!$parentTaxonNameString) {
-        //     return null;
-        // }
-
-        // 優先採用usage
-
-        $parent = null;
-
-        $parent = DB::table('accepted_usages')
-            ->select('parent_taxon_name_id')
-            ->where('taxon_name_id', $taxon_name_id)
-            ->first();
-
-
-        $parent = $parent->parent_taxon_name_id ?? null;
-
-        $nowName = TaxonName::find($taxon_name_id);
-        $nomenclatureId = $nowName->nomenclature_id;
-
-        if (empty($parent) && $nomenclatureId != 4){
-
-            $speciesLayer = $nowName->properties['species_layers'];
-
-            if (count($speciesLayer) == 1) {
-                $parent = $nowName->properties['species_id'];
-            } else if (count($speciesLayer) == 2){
-                $parentTaxonNameString = $nowName->properties['latin_genus'] . ' '  . $nowName->properties['latin_s1'];
-                $parentTaxonNameString .= ' ' . $speciesLayer[0]['rank_abbreviation'] . ' ' . $speciesLayer[0]['latin_name'];
-        
-                $parent_query = TaxonName::where('name', $parentTaxonNameString)
-                                    ->where('nomenclature_id', $nomenclatureId);
-                if ($parent_query->count() > 0){
-                    $parent = $parent_query->first()->id;
-                }
-            
-            } else if ($nowName->rank_id == 34) {
-                // 種
-                $parentTaxonNameString = $nowName->properties['latin_genus'];
-
-                $parent_query = TaxonName::where('name', $parentTaxonNameString)
-                                    ->where('nomenclature_id', $nomenclatureId);
-                if ($parent_query->count() > 0){
-                    $parent = $parent_query->first()->id;
-                }
-
-            }
-        }
-
-
-        // $parentTaxonNames = TaxonName::query()->where('name', $parentTaxonNameString)->get();
-        
-        // if ($parentTaxonNames->count() === 1) {
-        //     return $parentTaxonNames->first();
-        // } else if ($parentTaxonNames->count() > 1) {
-        //     // 需要更多資訊來區分，這裡簡化處理
-        //     return $parentTaxonNames->first();
-        // }
-        
-        return $parent;
     }
 
     private function processCommonNames(string $commonNameString): array

@@ -105,7 +105,7 @@
                 <div class="column is-2">
                     <label class="label">
                     {{ $t('classification.higherTaxa') }}
-                    <tooltip>
+                    <!-- <tooltip>
                         <i class="fas fa-info-circle"></i>
                         <template v-slot:body>
                             <div class="fit-content">
@@ -114,7 +114,7 @@
                                 </template>
                             </div>
                         </template>
-                    </tooltip>
+                    </tooltip> -->
                     </label>
                 </div>
                 <div class="column is-6">

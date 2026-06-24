@@ -9,6 +9,9 @@ use App\Http\Resources\PersonCollection;
 use App\Http\Resources\TaxonNameCollection;
 use App\Http\Resources\UsageCollection;
 use App\Http\Services\UsageImportService;
+use App\Http\Services\ParentTaxonService;
+use App\Http\Services\UsageAiImportService;
+use App\Http\Services\TaxonNameAiImportService;
 use App\MyNamespace;
 use App\MyNamespaceUsage;
 use App\Person;
@@ -34,11 +37,13 @@ use App\ImportAiLog;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redis;
 use App\Jobs\ProcessAiUsageRequest;
-use App\Http\Services\UsageAiImportService;
-use App\Http\Services\TaxonNameAiImportService;
 
 class MyNamespaceUsageController extends Controller
 {
+
+    public function __construct(
+        private ParentTaxonService $parentService,
+    ) {}
 
     public function index(Request $request, $namespaceId)
     {
@@ -465,48 +470,12 @@ class MyNamespaceUsageController extends Controller
                     $currentUsage->properties = $usage['properties'] ?? [];
                     $currentUsage->per_usages = $usage['per_usages'] ?? [];
                     $currentUsage->taxon_name_id = (int) $usage['taxon_name_id'];
-                    
-                    // 自動帶入上階層 優先採用usage
-                    $parent = $usage['parent_taxon_name_id'] ?? DB::table('accepted_usages')
-                    ->select('parent_taxon_name_id')
-                    ->where('taxon_name_id', $currentUsage->taxon_name_id)
-                    ->first();
 
-                    $parent = $parent->parent_taxon_name_id ?? null;
-                    
-                    $nowName = TaxonName::find($currentUsage->taxon_name_id);
-                    $nomenclatureId = $nowName->nomenclature_id;
-
-                    if (empty($parent) && $nomenclatureId != 4){
-                    // 如果是種的話 自動帶入屬
-
-                        $speciesLayer = $nowName->properties['species_layers'];
-
-                        if (count($speciesLayer) == 1) {
-                            // 種下
-                            $parent = $nowName->properties['species_id'];
-                        } else if (count($speciesLayer) == 2){
-                            // 種下下
-                            $parentTaxonNameString = $nowName->properties['latin_genus'] . ' '  . $nowName->properties['latin_s1'];
-                            $parentTaxonNameString .= ' ' . $speciesLayer[0]['rank_abbreviation'] . ' ' . $speciesLayer[0]['latin_name'];
-                            $parent_query = TaxonName::where('name', $parentTaxonNameString)
-                                                ->where('nomenclature_id', $nomenclatureId);
-                            if ($parent_query->count() > 0){
-                                $parent = $parent_query->first()->id;
-                            }                        
-                        } else if ($nowName->rank_id == 34) {
-                            // 種
-                            $parentTaxonNameString = $nowName->properties['latin_genus'];
-                            $parent_query = TaxonName::where('name', $parentTaxonNameString)
-                                                ->where('nomenclature_id', $nomenclatureId);
-                            if ($parent_query->count() > 0){
-                                $parent = $parent_query->first()->id;
-                            }
-
-                        }
-                    }
-
-                    $currentUsage->parent_taxon_name_id = $parent;
+                    // 自動帶入上階層
+                    $currentUsage->parent_taxon_name_id = $this->parentService->resolveOne(
+                        $currentUsage->taxon_name_id,
+                        $usage['parent_taxon_name_id'] ?? null
+                    );
                 }
 
                 $currentUsage->group = $group;
@@ -619,74 +588,25 @@ class MyNamespaceUsageController extends Controller
 
             $usages = TmpNamespaceUsage::where('tmp_checklist_id', $tmpChecklistId)->get();
 
-            // === 預載入：消除 N+1 ===
-            $taxonNameIds = $usages->pluck('taxon_name_id')->map(fn($v) => (int) $v)->unique()->values();
 
-            // 一次撈 accepted_usages 的 parent 對應
-            $acceptedParents = DB::table('accepted_usages')
-                ->whereIn('taxon_name_id', $taxonNameIds)
-                ->pluck('parent_taxon_name_id', 'taxon_name_id');
+            // === 預先解析所有 parent ===
+            $taxonNameIds = $usages->pluck('taxon_name_id')->map(fn($v) => (int) $v)->unique()->values()->toArray();
 
-            // 一次撈 TaxonName
-            $taxonNames = TaxonName::whereIn('id', $taxonNameIds)->get()->keyBy('id');
-
-            // === 第一輪：決定 parent，蒐集需要透過 name 查詢的組合 ===
-            $resolvedParents = [];      // [index => parent_id]
-            $nameLookupNeeded = [];     // [index => ['name'=>..., 'nomenclature_id'=>...]]
-            $pendingNameLookups = [];   // [nomenclature_id => [name, name, ...]]
-
-            foreach ($usages as $index => $usage) {
-                $taxonNameId = (int) $usage['taxon_name_id'];
-                $parent = $usage['parent_taxon_name_id'] ?? ($acceptedParents[$taxonNameId] ?? null);
-
-                $nowName = $taxonNames[$taxonNameId] ?? null;
-
-                if (empty($parent) && $nowName && $nowName->nomenclature_id != 4) {
-                    $nomenclatureId = $nowName->nomenclature_id;
-                    $speciesLayer = $nowName->properties['species_layers'];
-
-                    if (count($speciesLayer) == 1) {
-                        // 種下
-                        $parent = $nowName->properties['species_id'];
-                    } else if (count($speciesLayer) == 2) {
-                        // 種下下
-                        $parentTaxonNameString = $nowName->properties['latin_genus'] . ' ' . $nowName->properties['latin_s1'];
-                        $parentTaxonNameString .= ' ' . $speciesLayer[0]['rank_abbreviation'] . ' ' . $speciesLayer[0]['latin_name'];
-                        $nameLookupNeeded[$index] = ['name' => $parentTaxonNameString, 'nomenclature_id' => $nomenclatureId];
-                        $pendingNameLookups[$nomenclatureId][] = $parentTaxonNameString;
-                    } else if ($nowName->rank_id == 34) {
-                        // 種
-                        $parentTaxonNameString = $nowName->properties['latin_genus'];
-                        $nameLookupNeeded[$index] = ['name' => $parentTaxonNameString, 'nomenclature_id' => $nomenclatureId];
-                        $pendingNameLookups[$nomenclatureId][] = $parentTaxonNameString;
-                    }
-                }
-
-                $resolvedParents[$index] = $parent;
-            }
-
-            // === 批次撈 name -> id 對應（同一 nomenclature 一次撈完）===
-            $nameToId = []; // ["{nomenclature_id}|{name}" => id]
-            foreach ($pendingNameLookups as $nomenclatureId => $names) {
-                $found = TaxonName::whereIn('name', array_values(array_unique($names)))
-                    ->where('nomenclature_id', $nomenclatureId)
-                    ->pluck('id', 'name');
-                foreach ($found as $name => $id) {
-                    $nameToId[$nomenclatureId . '|' . $name] = $id;
+            $userProvidedMap = [];
+            foreach ($usages as $usage) {
+                if (!empty($usage['parent_taxon_name_id'])) {
+                    $userProvidedMap[(int) $usage['taxon_name_id']] = (int) $usage['parent_taxon_name_id'];
                 }
             }
 
-            // === 第二輪：補上需要查 name 的 parent，組裝 insert rows ===
+            $parentMap = $this->parentService->resolveMany($taxonNameIds, $userProvidedMap);
+
+            // === 組裝 insert rows ===
             $now = now();
             $rows = [];
 
-            foreach ($usages as $index => $usage) {
-                $parent = $resolvedParents[$index];
-
-                if (empty($parent) && isset($nameLookupNeeded[$index])) {
-                    $key = $nameLookupNeeded[$index]['nomenclature_id'] . '|' . $nameLookupNeeded[$index]['name'];
-                    $parent = $nameToId[$key] ?? null;
-                }
+            foreach ($usages as $usage) {
+                $taxonNameId = (int) $usage['taxon_name_id'];
 
                 $properties = count($usage['properties']) > 0
                     ? json_encode($usage['properties'], JSON_UNESCAPED_UNICODE)
@@ -694,8 +614,8 @@ class MyNamespaceUsageController extends Controller
 
                 $rows[] = [
                     'namespace_id'         => $namespace->id,
-                    'taxon_name_id'        => (int) $usage['taxon_name_id'],
-                    'parent_taxon_name_id' => $parent,
+                    'taxon_name_id'        => $taxonNameId,
+                    'parent_taxon_name_id' => $parentMap[$taxonNameId] ?? null,
                     'status'               => $usage['status'],
                     'type_specimens'       => json_encode($usage['type_specimens'], JSON_UNESCAPED_UNICODE),
                     'properties'           => $properties,
@@ -721,7 +641,6 @@ class MyNamespaceUsageController extends Controller
             TmpNamespaceUsage::where('tmp_checklist_id', $tmpChecklistId)->delete();
 
             DB::commit();
-
 
             return response([
                 'data' =>  $namespace->id,

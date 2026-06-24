@@ -8,6 +8,9 @@ use App\Http\Resources\TaxonNameCollection;
 use App\Http\Resources\UsageCollection;
 use App\Http\Resources\TmpUsageCollection;
 use App\Http\Resources\TaxonNameSimpleSubResource;
+use App\Http\Resources\ReferenceCollection;
+use App\Http\Utils\CommonNameArray;
+use App\Http\Services\ParentTaxonService;
 use App\Person;
 use App\Rank;
 use App\Reference;
@@ -19,11 +22,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
-use App\Http\Utils\CommonNameArray;
-use App\Http\Resources\ReferenceCollection;
 
 class ReferenceUsageController extends Controller
 {
+
+    public function __construct(
+        private ParentTaxonService $parentService,
+    ) {}
 
     public function index(Request $request, $id)
     {
@@ -88,19 +93,6 @@ class ReferenceUsageController extends Controller
             ->where('group', $usage->group)
             ->where('id', '!=', $usage->id)
             ->first();
-
-        // $acceptedUsage = null;
-        // if ($accepted) {
-        //     $acceptedUsage = $accepted->taxonName;
-        //     $speciesLayer = isset($acceptedUsage->properties['species_layers']) ? $acceptedUsage->properties['species_layers'] : [];
-        //     $acceptedUsage->species = $accepted->taxonName->properties['species_id'] ? TaxonName::find($accepted->taxonName->properties['species_id']) : null;
-        //     $acceptedUsage->species_layers = collect($speciesLayer)->map(function ($s) {
-        //         return [
-        //             'rank' => Rank::where('abbreviation', ($s['rank_abbreviation']))->first(),
-        //             'latin_name' => $s['latin_name']
-        //         ];
-        //     });
-        // }
 
         $typeName = $typeName = ($usage->properties['type_name'] ?? '') ? TaxonNameCollection::collection([
             TaxonName::with([
@@ -489,10 +481,9 @@ class ReferenceUsageController extends Controller
                         $currentUsage->status = $usage['status'] ?? 'accepted';
                         $usage['properties']['indications'] = [];
                         $currentUsage->properties = $usage['properties'];
-                        $currentUsage->save();
+                        // $currentUsage->save();
                     }
 
-                    // TODO 這邊要判斷
                     if ($currentUsage && isset($usage['is_deleted']) && (bool) $usage['is_deleted']) {
 
                         // 先確認是否已存在api_taxon_usages
@@ -519,12 +510,10 @@ class ReferenceUsageController extends Controller
                     }
                 } else {
 
-
                     $nowAction = ImportUsageLog::ACTION_USAGE_ADD;
                     $currentUsage = new ReferenceUsage();
                     $currentUsage->reference_id = $id;
 
-                    // $currentUsage->parent_taxon_name_id = $usage['parent_taxon_name_id'] ?? null;
                     $currentUsage->is_for_publish = false;
                     $currentUsage->status = $usage['status'] ?? 'accepted';
                     $currentUsage->type_specimens = $usage['type_specimens'] ?? [];
@@ -534,46 +523,12 @@ class ReferenceUsageController extends Controller
                     $currentUsage->per_usages = $usage['per_usages'] ?? [];
                     $currentUsage->taxon_name_id = (int) $usage['taxon_name_id'];
 
-                    // 自動帶入上階層 優先採用usage
-                    $parent = $usage['parent_taxon_name_id'] ?? DB::table('accepted_usages')
-                    ->select('parent_taxon_name_id')
-                    ->where('taxon_name_id', $currentUsage->taxon_name_id)
-                    ->first();
+                    // 自動帶入上階層
+                    $currentUsage->parent_taxon_name_id = $this->parentService->resolveOne(
+                        $currentUsage->taxon_name_id,
+                        $usage['parent_taxon_name_id'] ?? null
+                    );
 
-                    $parent = $parent->parent_taxon_name_id ?? null;
-                    
-                    $nowName = TaxonName::find($currentUsage->taxon_name_id);
-                    $nomenclatureId = $nowName->nomenclature_id;
-
-                    if (empty($parent) && $nomenclatureId != 4){
-
-                        $speciesLayer = $nowName->properties['species_layers'];
-
-                        if (count($speciesLayer) == 1) {
-                            $parent = $nowName->properties['species_id'];
-                        } else if (count($speciesLayer) == 2){
-                            $parentTaxonNameString = $nowName->properties['latin_genus'] . ' '  . $nowName->properties['latin_s1'];
-                            $parentTaxonNameString .= ' ' . $speciesLayer[0]['rank_abbreviation'] . ' ' . $speciesLayer[0]['latin_name'];
-                    
-                            $parent_query = TaxonName::where('name', $parentTaxonNameString)
-                                                ->where('nomenclature_id', $nomenclatureId);
-                            if ($parent_query->count() > 0){
-                                $parent = $parent_query->first()->id;
-                            }                        
-                        } else if ($nowName->rank_id == 34) {
-                            // 種
-                            $parentTaxonNameString = $nowName->properties['latin_genus'];
-
-                            $parent_query = TaxonName::where('name', $parentTaxonNameString)
-                                                ->where('nomenclature_id', $nomenclatureId);
-                            if ($parent_query->count() > 0){
-                                $parent = $parent_query->first()->id;
-                            }
-
-                        }
-                    }
-
-                    $currentUsage->parent_taxon_name_id = $parent;
                     
                 }
 
@@ -692,7 +647,6 @@ class ReferenceUsageController extends Controller
 
         // 加上需要的欄位
 
-
         $usage['properties']['is_in_taiwan'] = null;
 
         $currentUsage = new ReferenceUsage();
@@ -711,46 +665,10 @@ class ReferenceUsageController extends Controller
         $currentUsage->type_specimens = [];
 
         // 自動帶入上階層 
-        $parent = DB::table('accepted_usages')
-        ->select('parent_taxon_name_id')
-        ->where('taxon_name_id', $currentUsage->taxon_name_id)
-        ->first();
+        $currentUsage->parent_taxon_name_id = $this->parentService->resolveOne(
+            $currentUsage->taxon_name_id
+        );
 
-        $parent = $parent->parent_taxon_name_id ?? null;
-
-        $nowName = TaxonName::find($currentUsage->taxon_name_id);
-        $nomenclatureId = $nowName->nomenclature_id;
-
-        if (empty($parent) && $nomenclatureId != 4){
-
-            $speciesLayer = $nowName->properties['species_layers'];
-
-            if (count($speciesLayer) == 1) {
-                $parent = $nowName->properties['species_id'];
-            } else if (count($speciesLayer) == 2){
-                $parentTaxonNameString = $nowName->properties['latin_genus'] . ' '  . $nowName->properties['latin_s1'];
-                $parentTaxonNameString .= ' ' . $speciesLayer[0]['rank_abbreviation'] . ' ' . $speciesLayer[0]['latin_name'];
-        
-                $parent_query = TaxonName::where('name', $parentTaxonNameString)
-                                    ->where('nomenclature_id', $nomenclatureId);
-                if ($parent_query->count() > 0){
-                    $parent = $parent_query->first()->id;
-                }
-            
-            } else if ($nowName->rank_id == 34) {
-                // 種
-                $parentTaxonNameString = $nowName->properties['latin_genus'];
-
-                $parent_query = TaxonName::where('name', $parentTaxonNameString)
-                                    ->where('nomenclature_id', $nomenclatureId);
-                if ($parent_query->count() > 0){
-                    $parent = $parent_query->first()->id;
-                }
-
-            }
-        }
-
-        $currentUsage->parent_taxon_name_id = $parent;
 
         $currentUsage->properties = $usage['properties'];
         $currentUsage->save();
