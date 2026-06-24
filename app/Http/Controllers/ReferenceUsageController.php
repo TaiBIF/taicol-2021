@@ -1012,13 +1012,20 @@ class ReferenceUsageController extends Controller
 
             $usages = $usageQuery->get();
 
-            if (count($usages) > 1000){
+            // 當 classificationView 為 taicol 時，用 taxon_ids 數量判斷；其他情況用 usages 數量
+            $isTaicol = $classificationView == 'taicol';
+            $count = $isTaicol ? count($taxonIds) : count($usages);
+
+            if ($count > 3000) {
+
+                $message = $isTaicol
+                    ? '篩選分類群超過3000筆Taxon ID的限制，請縮小分類群的範圍，如欲建立更多分類群，請分批建立。'
+                    : '篩選分類群超過3000筆學名使用的限制，請縮小分類群的範圍，如欲建立更多分類群，請分批建立。';
 
                 return response()->json([
                     'data' => $tmp_checklist_id,
-                    'message' => '篩選分類群超過1000筆學名使用的限制，請縮小分類群的範圍，如欲建立更多分類群，請分批建立。'
+                    'message' => $message,
                 ]);
-
             } else if (count($usages)>0){
  
                 // 彙整usage 並顯示簡易異名表 -> 串接TaiCOL API

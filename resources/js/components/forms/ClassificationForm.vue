@@ -61,7 +61,7 @@
                             <input type="radio" v-model="usageReferences" value="all" :disabled="isReferenceAdded">
                             {{ $t('classification.allUsageReference') }}
                         </label>
-                        <label class="mr-3">
+                        <label class="mr-3" v-if="this.classificationView !== 'taicol'">
                             <input type="radio" v-model="usageReferences" value="originalincluded" :disabled="isReferenceAdded">
                             {{ $t('classification.originalAndIncludedUsageReference') }}
                         </label>
@@ -84,7 +84,7 @@
                             <input type="radio" v-model="completeness" value="full" :disabled="isReferenceAdded">
                             {{ $t('classification.fullSynonymy') }}
                         </label>
-                        <label class="mr-3">
+                        <label class="mr-3" v-if="this.classificationView !== 'taicol'">
                             <input type="radio" v-model="completeness" value="concise" :disabled="isReferenceAdded">
                             {{ $t('classification.conciseSynonymy') }}
                         </label>

@@ -619,76 +619,105 @@ class MyNamespaceUsageController extends Controller
 
             $usages = TmpNamespaceUsage::where('tmp_checklist_id', $tmpChecklistId)->get();
 
-            // $group = 0;
+            // === 預載入：消除 N+1 ===
+            $taxonNameIds = $usages->pluck('taxon_name_id')->map(fn($v) => (int) $v)->unique()->values();
+
+            // 一次撈 accepted_usages 的 parent 對應
+            $acceptedParents = DB::table('accepted_usages')
+                ->whereIn('taxon_name_id', $taxonNameIds)
+                ->pluck('parent_taxon_name_id', 'taxon_name_id');
+
+            // 一次撈 TaxonName
+            $taxonNames = TaxonName::whereIn('id', $taxonNameIds)->get()->keyBy('id');
+
+            // === 第一輪：決定 parent，蒐集需要透過 name 查詢的組合 ===
+            $resolvedParents = [];      // [index => parent_id]
+            $nameLookupNeeded = [];     // [index => ['name'=>..., 'nomenclature_id'=>...]]
+            $pendingNameLookups = [];   // [nomenclature_id => [name, name, ...]]
+
             foreach ($usages as $index => $usage) {
+                $taxonNameId = (int) $usage['taxon_name_id'];
+                $parent = $usage['parent_taxon_name_id'] ?? ($acceptedParents[$taxonNameId] ?? null);
 
-                $currentUsage = new MyNamespaceUsage();
-                $currentUsage->namespace_id = $namespace->id;
-                $currentUsage->is_for_publish = false;
+                $nowName = $taxonNames[$taxonNameId] ?? null;
 
-                $currentUsage->status = $usage['status'];
-                $currentUsage->type_specimens = $usage['type_specimens'];
-                $currentUsage->properties = count($usage['properties']) > 0 ? $usage['properties'] : (object)  null ;                
-                $currentUsage->per_usages = $usage['per_usages'];
-                $currentUsage->name_remark = '';
-                $currentUsage->custom_name_remark = '';
-                $currentUsage->taxon_name_id = (int) $usage['taxon_name_id'];
-                
-                // 自動帶入上階層 優先採用usage
-                // TODO 這邊是不是只需要自動帶入status是接受的上階層就好
-                $parent = $usage['parent_taxon_name_id'] ?? DB::table('accepted_usages')
-                    ->where('taxon_name_id', $currentUsage->taxon_name_id)
-                    ->value('parent_taxon_name_id'); // 直接回傳欄位值或 null
-
-                
-                $nowName = TaxonName::find($currentUsage->taxon_name_id);
-                $nomenclatureId = $nowName->nomenclature_id;
-
-                if (empty($parent) && $nomenclatureId != 4){
-                // 如果是種的話 自動帶入屬
-
+                if (empty($parent) && $nowName && $nowName->nomenclature_id != 4) {
+                    $nomenclatureId = $nowName->nomenclature_id;
                     $speciesLayer = $nowName->properties['species_layers'];
 
                     if (count($speciesLayer) == 1) {
                         // 種下
                         $parent = $nowName->properties['species_id'];
-                    } else if (count($speciesLayer) == 2){
+                    } else if (count($speciesLayer) == 2) {
                         // 種下下
-                        $parentTaxonNameString = $nowName->properties['latin_genus'] . ' '  . $nowName->properties['latin_s1'];
+                        $parentTaxonNameString = $nowName->properties['latin_genus'] . ' ' . $nowName->properties['latin_s1'];
                         $parentTaxonNameString .= ' ' . $speciesLayer[0]['rank_abbreviation'] . ' ' . $speciesLayer[0]['latin_name'];
-                        $parent_query = TaxonName::where('name', $parentTaxonNameString)
-                                            ->where('nomenclature_id', $nomenclatureId);
-
-                        if ($parent_query->count() > 0){
-                            $parent = $parent_query->first()->id;
-                        }
-                    
+                        $nameLookupNeeded[$index] = ['name' => $parentTaxonNameString, 'nomenclature_id' => $nomenclatureId];
+                        $pendingNameLookups[$nomenclatureId][] = $parentTaxonNameString;
                     } else if ($nowName->rank_id == 34) {
                         // 種
                         $parentTaxonNameString = $nowName->properties['latin_genus'];
-                        $parent_query = TaxonName::where('name', $parentTaxonNameString)
-
-                                            ->where('nomenclature_id', $nomenclatureId);
-                        if ($parent_query->count() > 0){
-                            $parent = $parent_query->first()->id;
-                        }
-
+                        $nameLookupNeeded[$index] = ['name' => $parentTaxonNameString, 'nomenclature_id' => $nomenclatureId];
+                        $pendingNameLookups[$nomenclatureId][] = $parentTaxonNameString;
                     }
                 }
 
-                $currentUsage->parent_taxon_name_id = $parent;
+                $resolvedParents[$index] = $parent;
+            }
 
-                $currentUsage->group = $usage->group;
-                $currentUsage->order = $usage->order;
+            // === 批次撈 name -> id 對應（同一 nomenclature 一次撈完）===
+            $nameToId = []; // ["{nomenclature_id}|{name}" => id]
+            foreach ($pendingNameLookups as $nomenclatureId => $names) {
+                $found = TaxonName::whereIn('name', array_values(array_unique($names)))
+                    ->where('nomenclature_id', $nomenclatureId)
+                    ->pluck('id', 'name');
+                foreach ($found as $name => $id) {
+                    $nameToId[$nomenclatureId . '|' . $name] = $id;
+                }
+            }
 
-                $currentUsage->is_title = 0;
-                // 根據status給is_indent
-                $currentUsage->is_indent = $usage['status'] !== 'accepted' ? 1 : 0;
-                $currentUsage->save();
+            // === 第二輪：補上需要查 name 的 parent，組裝 insert rows ===
+            $now = now();
+            $rows = [];
+
+            foreach ($usages as $index => $usage) {
+                $parent = $resolvedParents[$index];
+
+                if (empty($parent) && isset($nameLookupNeeded[$index])) {
+                    $key = $nameLookupNeeded[$index]['nomenclature_id'] . '|' . $nameLookupNeeded[$index]['name'];
+                    $parent = $nameToId[$key] ?? null;
+                }
+
+                $properties = count($usage['properties']) > 0
+                    ? json_encode($usage['properties'], JSON_UNESCAPED_UNICODE)
+                    : '{}';
+
+                $rows[] = [
+                    'namespace_id'         => $namespace->id,
+                    'taxon_name_id'        => (int) $usage['taxon_name_id'],
+                    'parent_taxon_name_id' => $parent,
+                    'status'               => $usage['status'],
+                    'type_specimens'       => json_encode($usage['type_specimens'], JSON_UNESCAPED_UNICODE),
+                    'properties'           => $properties,
+                    'per_usages'           => json_encode($usage['per_usages'], JSON_UNESCAPED_UNICODE),
+                    'name_remark'          => '',
+                    'custom_name_remark'   => '',
+                    'group'                => $usage->group,
+                    'order'                => $usage->order,
+                    'is_title'             => 0,
+                    'is_indent'            => $usage['status'] !== 'accepted' ? 1 : 0,
+                    'is_for_publish'       => 0,
+                    'created_at'           => $now,
+                    'updated_at'           => $now,
+                ];
+            }
+
+            // === 批次寫入 ===
+            foreach (array_chunk($rows, 1000) as $chunk) {
+                MyNamespaceUsage::insert($chunk);
             }
 
             // 清空tmp_checklist_usage
-
             TmpNamespaceUsage::where('tmp_checklist_id', $tmpChecklistId)->delete();
 
             DB::commit();
