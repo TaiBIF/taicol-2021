@@ -789,7 +789,7 @@ export default {
         formData() {
             return {
                 id: this.presetData?.id || null,
-                name: this.$refs.preGenerateName.$el.innerText,
+                name: this.$refs.preGenerateName?.$el?.innerText || '',
                 formattedAuthors: this.formattedAuthors,
                 formattedExAuthors: this.formattedExAuthors,
                 latinName: this.latinName,

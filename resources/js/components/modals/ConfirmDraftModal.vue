@@ -23,13 +23,15 @@ export default defineComponent({
             default: null,
         },
     },
+    destroyed() { // 只要這個 Modal 被關閉/銷毀，一定會執行這裡
+        if (this.onContinueEditing) {
+            this.onContinueEditing(); 
+        }
+    },
     setup(props, context) {
         const app: any = context.root;
 
         const onClose = () => {
-            if (props.onContinueEditing) {
-                props.onContinueEditing();   // 通知上層:繼續編輯
-            }
             app.$store.commit('closeModal');
         };
 

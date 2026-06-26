@@ -72,8 +72,6 @@ export default {
         });
         },
         onAfterFormSubmit(data) {
-
-
             this.isLoading = false;
             // 如果是草稿的話 留在編輯頁面
             if (data.isPublish == false){

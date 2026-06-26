@@ -93,7 +93,14 @@ export default {
         },
         onSubmit(isPublish) {
             this.isLoading = true;
-            this.$refs.form.submit(isPublish);
+            const submitTask = this.$refs.form.submit(isPublish);
+
+            // 加上安全判斷，接住被 throw 出來的失敗 Promise
+            if (submitTask) {
+                submitTask.catch(() => {
+                    this.isLoading = false;
+                });
+            }
         },
         onContinueEditing() {
             this.isLoading = false;
