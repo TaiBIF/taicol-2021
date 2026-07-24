@@ -132,13 +132,18 @@ class MyNamespaceController extends Controller
             ->get();
 
         $reference = Reference::with('usages')->find($referenceId);
+
         // 把匯入的文獻存起來
         if ($fromBindReference){
             $namespace = MyNamespace::find($namespaceIds[0]);
             $namespace->reference_id = $referenceId;
             $namespace->save();
-        }
-        
+
+            // 僅儲存綁定，不執行學名使用匯入
+            if ($request->boolean('bind_only')) {
+                return response()->json(['bind_only' => true]);
+            }
+        }        
 
         // --- 1. 預載入：減少資料庫查詢次數 ---
         $existingUsages = ReferenceUsage::where('reference_id', $referenceId)

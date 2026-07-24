@@ -15,6 +15,8 @@
         <div class="flex justify-end sticky bottom-0 p-4 bg-white border-t gap-2">
             <button class="button" v-on:click="onClose">{{ $t('common.cancel') }}</button>
             <button class="button" :class="{ 'is-loading': isLoading }"
+                    v-on:click="onSubmit(true)">{{ $t('common.save') }}</button>
+            <button class="button" :class="{ 'is-loading': isLoading }"
                     v-on:click="onSubmit">{{ $t('reference.importNames') }}</button>
         </div>
     </div>
@@ -45,9 +47,7 @@ export default {
         onClose(){
             this.$store.commit('closeModal');
         },
-
-
-        onSubmit() {
+        onSubmit(bindOnly = false) {
 
             if (!this.selectedReference){
                 openNotify('請先選擇文獻','is-danger')
@@ -56,17 +56,23 @@ export default {
 
             this.isLoading = true;
 
-            // 先確認文獻是否已有usage
             this.axios.post(`/namespaces/import/${ this.selectedReference.id}`, {
                 ids: [this.$route.params.id],
                 overwrite: false,
+                bind_only: bindOnly,
             }).then((response) => {
                 if (response.data.data === true) {
                     openNotify('此文獻已有學名使用存在，不得匯入', 'is-danger');
                     this.isLoading = false;
                     return;
                 }
-                // 這邊不會有重複匯入的情況 因為一旦有學名使用就不得匯入
+
+                if (bindOnly) {
+                    openNotify('已儲存綁定文獻', 'is-success');
+                    this.$store.commit('closeModal');
+                    setTimeout(() => window.location.reload(), 800);
+                    return;
+                }
 
                 this.$router.push({ name: 'reference-page', params: { id: this.selectedReference.id } });
                 this.$store.commit('closeModal');
