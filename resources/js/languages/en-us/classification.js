@@ -15,8 +15,7 @@ export default {
     excludeCultured: 'Exclude Cultured',
     filterRegion: 'Filter Region',
     filterBioGroup: 'Filter Bio-Group',
-    // rankInfo: 'The highest selectable rank is family',
-    referenceInfo: 'Only references that contain scientific name usage can be included',
+    referenceInfo: 'Please select the references to be included for integrating taxonomic concepts. Integration will be prioritized based on the reference\'s metadata (publication year and reference type). Only references that contain scientific name usage can be included',
     info: 'This feature is designed to help users quickly organize and establish their own taxonomic viewpoint prior to publication. It supports the consolidation of relevant taxa already present in the database, as well as the usage of scientific names in related literature. Users may also retrieve taxa by region through external APIs. The tool allows users to choose whether to include taxa not found in Taiwan and to select which literature-based taxonomic perspectives to adopt. Based on the priority of the selected references, the system determines the validity or invalidity of scientific names. After the checklist is generated, it can be imported into "My Checklist" for further editing by the user.',
     selectAll: 'Select All',
     synonymySettings: 'Synonymy Settings',
@@ -27,6 +26,7 @@ export default {
     noUsageReference: 'None',
     completeness: 'Completeness',
     fullSynonymy: 'Full Synonymy',
-    conciseSynonymy: 'Concise Synonymy',
+    selectedSynonymy: 'Selected Synonymy',
+    selectedSynonymyInfo: 'Includes only the original combination and synonyms relevant to the included references',
     noSynonymy: 'No Synonymy',
 };

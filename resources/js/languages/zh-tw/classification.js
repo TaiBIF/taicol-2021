@@ -15,8 +15,7 @@ export default {
     excludeCultured: '排除栽培豢養',
     filterRegion: '篩選地區',
     filterBioGroup: '篩選生物類群',
-    // rankInfo: '最高可選擇階層到科',
-    referenceInfo: '僅能納入具有學名使用的文獻',
+    referenceInfo: '請選擇欲納入哪些文獻的分類觀，將依照納入的文獻優先性彙整分類觀。僅能納入具有學名使用的文獻',
     info: '本功能用於文獻發表前，讓使用者快速整理、建立自己的分類觀，包含彙整資料庫中已有之相關分類群、相關文獻的學名使用，也可透過外部API以地區篩選分類群等，使用者可選擇納入或不納入非存在於臺灣的分類群，也可選擇要納入哪些文獻分類觀等，本工具會依照納入的文獻優先性決定學名有效、無效等，產出名錄後匯入到「我的名錄」供使用者後續編輯。',
     selectAll: '全選',
     synonymySettings: '異名表設定',
@@ -27,6 +26,7 @@ export default {
     noUsageReference: '不要文獻',
     completeness: '異名表完整度',
     fullSynonymy: '完整異名表',
-    conciseSynonymy: '精簡異名表',
+    selectedSynonymy: '選擇性異名表',
+    selectedSynonymyInfo: '僅收錄原始組合名與納入文獻相關異名',
     noSynonymy: '不要異名表',
 };

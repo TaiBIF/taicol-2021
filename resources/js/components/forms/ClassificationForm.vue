@@ -85,8 +85,19 @@
                             {{ $t('classification.fullSynonymy') }}
                         </label>
                         <label class="mr-3" v-if="this.classificationView !== 'taicol'">
-                            <input type="radio" v-model="completeness" value="concise" :disabled="isReferenceAdded">
-                            {{ $t('classification.conciseSynonymy') }}
+                            <input type="radio" v-model="completeness" value="selected" :disabled="isReferenceAdded">
+                            {{ $t(`classification.selectedSynonymy`) }}
+                            <tooltip>
+                                <i class="fas fa-info-circle"></i>
+                                <template v-slot:body>
+                                    <div class="w-[200px]">
+                                        <template>
+                                        {{ $t(`classification.selectedSynonymyInfo`) }}
+                                        </template>
+                                    </div>
+                                </template>
+                            </tooltip>
+
                         </label>
                         <label>
                             <input type="radio" v-model="completeness" value="none" :disabled="isReferenceAdded">
@@ -177,7 +188,7 @@
                         <tooltip>
                             <i class="fas fa-info-circle"></i>
                             <template v-slot:body>
-                                <div class="w-[200px]">
+                                <div class="w-[300px]">
                                     <template>
                                     {{ $t(`classification.referenceInfo`) }}
                                     </template>
