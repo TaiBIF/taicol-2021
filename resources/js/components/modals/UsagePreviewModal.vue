@@ -11,7 +11,6 @@
                 </div>
             </div>
             <div v-if="!isLoading" class="flex items-center justify-end mt-[1rem] mb-[1rem]">
-                <!-- <label class="label mb-0" v-text="$t('classification.checklistPreview')"/> -->
                 <button class="button is-small" @click="isSimple = !isSimple">
                     {{ isSimple ? $t('namespace.listDetail') : $t('namespace.listSimple') }}
                 </button>

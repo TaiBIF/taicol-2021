@@ -211,7 +211,7 @@ export default {
                 this.title = `${data[1][0]['taxonName']['name']}-${this.user.name}-${nowDate}`;
                 if (groupCount > 100) {
                     for (let i = 100; i <= groupCount; i += 100) {
-                        await this.loadUsageWithDelay(i);
+                        await this.loadUsageWithDelay(tmp_checklist_id, i);
                     }
                 }
             } catch (error) {
