@@ -105,23 +105,37 @@ class MyNamespaceController extends Controller
     public function import(Request $request, $referenceId) // 異名表匯入
     {
 
+         $namespaceIds = $request->get('ids');
+
         // 從「匯入綁定文獻」匯入的
         $fromBindReference = !$request->get('from_reference_page');
         if ($fromBindReference){
 
-            $hasUsageExists = ReferenceUsage::where('reference_id', $referenceId)
-                ->whereNull('deleted_at')
-                ->exists();
+            // 非 bind_only 才檢查是否已有 usage，有的話直接擋下（不存綁定）
+            if (!$request->boolean('bind_only')) {
+                $hasUsageExists = ReferenceUsage::where('reference_id', $referenceId)
+                    ->whereNull('deleted_at')
+                    ->exists();
 
-            // 這邊會造成原本文獻頁的匯入異名表無法加入
-            if ($hasUsageExists){
-                return response([
-                    'data' =>  $hasUsageExists
-                ]);
+                // 這邊會造成原本文獻頁的匯入異名表無法加入
+                if ($hasUsageExists){
+                    return response([
+                        'data' =>  $hasUsageExists
+                    ]);
+                }
+            }
+
+            // 通過檢查（或 bind_only）才儲存綁定
+            $namespace = MyNamespace::find($namespaceIds[0]);
+            $namespace->reference_id = $referenceId;
+            $namespace->save();
+
+            // 僅儲存綁定，不執行學名使用匯入
+            if ($request->boolean('bind_only')) {
+                return response()->json(['bind_only' => true]);
             }
         }
 
-        $namespaceIds = $request->get('ids');
         $overwrite = $request->get('overwrite', false);
         $note = $request->get('note');
 
@@ -132,18 +146,6 @@ class MyNamespaceController extends Controller
             ->get();
 
         $reference = Reference::with('usages')->find($referenceId);
-
-        // 把匯入的文獻存起來
-        if ($fromBindReference){
-            $namespace = MyNamespace::find($namespaceIds[0]);
-            $namespace->reference_id = $referenceId;
-            $namespace->save();
-
-            // 僅儲存綁定，不執行學名使用匯入
-            if ($request->boolean('bind_only')) {
-                return response()->json(['bind_only' => true]);
-            }
-        }        
 
         // --- 1. 預載入：減少資料庫查詢次數 ---
         $existingUsages = ReferenceUsage::where('reference_id', $referenceId)
