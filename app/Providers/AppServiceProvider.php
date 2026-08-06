@@ -8,6 +8,7 @@ use App\ReferenceUsage;
 use App\TaxonName;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\URL;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -34,5 +35,9 @@ class AppServiceProvider extends ServiceProvider
             FavoriteItem::TYPE_TAXON_NAME => TaxonName::class,
             FavoriteItem::TYPE_REFERENCE => Reference::class,
         ]);
+
+        if (config('app.env') !== 'local') {
+            URL::forceScheme('https');
+        }
     }
 }
