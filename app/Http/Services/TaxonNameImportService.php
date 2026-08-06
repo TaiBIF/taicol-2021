@@ -262,48 +262,64 @@ class TaxonNameImportService
         $referenceId = (int) $this->cell($row, 'reference_id') ?: null;
 
         if (!$nomenclature) {
-            $this->throwError($row, 'nomenclature 錯誤');
+            $this->addError($row, 'nomenclature 錯誤');
         }
         if (!$rankString) {
-            $this->throwError($row, 'rank 未填寫');
+            $this->addError($row, 'rank 未填寫');
         }
         if (!$name) {
-            $this->throwError($row, 'name 未填寫');
+            $this->addError($row, 'name 未填寫');
         }
-        if (!isset($this->ranks[strtolower($rankString)])) {
-            $this->throwError($row, 'rank 錯誤');
+        $rankId = ($rankString && isset($this->ranks[strtolower($rankString)]))
+            ? $this->ranks[strtolower($rankString)]->id
+            : null;
+        if ($rankString && $rankId === null) {
+            $this->addError($row, 'rank 錯誤');
         }
 
+        // 作者解析（內部會累積錯誤）
         $authors = $this->resolveAuthorsByField($row, 'name_author');
         $this->resolveAuthorsByField($row, 'name_exauthor');
 
-        if ($service->hasTaxonNameExist($nomenclature, $this->ranks[strtolower($rankString)]->id, $name, $referenceId, $authors->pluck('id')->toArray(), true)) {
-            $this->throwError($row, '學名重複');
-        } else if ($service->hasTaxonNameExist($nomenclature, $this->ranks[strtolower($rankString)]->id, $name, $referenceId, $authors->pluck('id')->toArray(), false)) {
-            $this->throwError($row, '學名已存在於草稿');
+        // 學名重複檢查需 nomenclature / name / rank / 作者皆無誤，否則略過
+        if ($nomenclature && $name && $rankId !== null && !$this->hasRowError($row)) {
+            $authorIds = $authors->pluck('id')->toArray();
+            if ($service->hasTaxonNameExist($nomenclature, $rankId, $name, $referenceId, $authorIds, true)) {
+                $this->addError($row, '學名重複');
+            } else if ($service->hasTaxonNameExist($nomenclature, $rankId, $name, $referenceId, $authorIds, false)) {
+                $this->addError($row, '學名已存在於草稿');
+            }
         }
 
         $originNameString = trim((string) $this->cell($row, 'original_name'));
         if ($originNameString !== '') {
             $originalTaxonName = $this->findOriginalTaxonName($originNameString, $row);
             if (!$originalTaxonName) {
-                $this->throwError($row, "找不到 $originNameString");
+                $this->addError($row, "找不到 $originNameString");
+            } else {
+                $this->originalTaxonNameCache[$row] = $originalTaxonName;
             }
-            $this->originalTaxonNameCache[$row] = $originalTaxonName;
         }
 
         $kingdomNameString = trim((string) $this->cell($row, 'kingdom_name'));
         if ($kingdomNameString !== '' && !$this->findKingdomTaxonName($kingdomNameString, $row)) {
-            $this->throwError($row, "找不到 $kingdomNameString");
+            $this->addError($row, "找不到 $kingdomNameString");
         }
     }
 
-    private function throwError(int $row, string $message)
+    private function addError(int $row, string $message): void
     {
-        if (!isset($this->errorRows[$row - 1])) {
-            $this->errorRows[$row - 1] = ['message' => $message];
+        $key = $row - 1;
+        if (!isset($this->errorRows[$key])) {
+            $this->errorRows[$key] = ['messages' => []];
         }
-        throw new ImportRowException($message);
+        $this->errorRows[$key]['messages'][] = $message;
+        $this->errorRows[$key]['message'] = implode('；', $this->errorRows[$key]['messages']);
+    }
+
+    private function hasRowError(int $row): bool
+    {
+        return isset($this->errorRows[$row - 1]);
     }
 
     private function saveTaxonName(int $row)
@@ -448,7 +464,8 @@ class TaxonNameImportService
             $id = (int) trim($idStr);
             $person = $this->personIdMap->get($id);
             if (!$person) {
-                $this->throwError($row, "作者 id「{$id}」不存在");
+                $this->addError($row, "作者 id「{$id}」不存在");
+                continue;
             }
             $authors->push($person);
         }
@@ -460,7 +477,7 @@ class TaxonNameImportService
         $names = explode('|', $nameString);
 
         if (count($names) !== count(array_unique($names))) {
-            $this->throwError($row, "作者名重複填寫：「{$nameString}」");
+            $this->addError($row, "作者名重複填寫：「{$nameString}」");
         }
 
         $authors = collect();
@@ -468,11 +485,13 @@ class TaxonNameImportService
             $group = $this->personNameMap->get($name);
 
             if (!$group || $group->isEmpty()) {
-                $this->throwError($row, "找不到作者「{$name}」");
+                $this->addError($row, "找不到作者「{$name}」");
+                continue;
             }
             if ($group->count() > 1) {
                 $ids = $group->pluck('id')->implode(', ');
-                $this->throwError($row, "作者「{$name}」有多筆同名（id: {$ids}），請改用對應的 id 欄位指定");
+                $this->addError($row, "作者「{$name}」有多筆同名（id: {$ids}），請改用對應的 id 欄位指定");
+                continue;
             }
 
             $authors->push($group->first());

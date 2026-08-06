@@ -167,28 +167,28 @@ class UsageImportService
         $isIndent = (bool) $this->cell($row, 'is_indent');
         $isTitle = (bool) $this->cell($row, 'is_title');
 
-        // --- 基本欄位檢查（原 validateSheetRows）---
+        // --- 基本欄位檢查 ---
         if (!$nomenclature) {
-            $this->throwError($row, 'nomenclature 未填寫');
+            $this->addError($row, 'nomenclature 未填寫');
         }
         if (!$rank) {
-            $this->throwError($row, 'rank 未填寫');
+            $this->addError($row, 'rank 未填寫');
         }
         if (!$name) {
-            $this->throwError($row, 'name 未填寫');
+            $this->addError($row, 'name 未填寫');
         }
         if ($status && !in_array($status, $this->statusMapping)) {
-            $this->throwError($row, 'usage_status 錯誤');
+            $this->addError($row, 'usage_status 錯誤');
         }
         if ($alienType && !in_array($alienType, $this->alienTypeMapping)) {
-            $this->throwError($row, 'alien_type 錯誤');
+            $this->addError($row, 'alien_type 錯誤');
         }
         $commonNameFormatMatch = !!preg_match('/(.*)\((.*),(.*)\)/', (string) $commonNamesStrings, $cnMatch);
         if ($commonNamesStrings && !$commonNameFormatMatch) {
-            $this->throwError($row, 'common_name 錯誤');
+            $this->addError($row, 'common_name 錯誤');
         }
         if ($commonNamesStrings && $commonNameFormatMatch && !isset($this->languageMapping[$cnMatch[2]])) {
-            $this->throwError($row, 'common_name language 錯誤');
+            $this->addError($row, 'common_name language 錯誤');
         }
 
         // --- usage_references ---
@@ -196,7 +196,6 @@ class UsageImportService
         $usageReferences = $this->cell($row, 'usage_references');
         if (isset($usageReferences)) {
             foreach (explode('|', $usageReferences) as $usageReference) {
-                // str_getcsv 以逗號分隔並忽略雙引號內的逗號
                 $usageReference = str_getcsv($usageReference);
 
                 if (count($usageReference) == 4) {
@@ -217,7 +216,7 @@ class UsageImportService
 
                         $perUsages[] = $now_usage;
                     } else {
-                        $this->throwError($row, 'usage_references提供之文獻ID查無文獻');
+                        $this->addError($row, 'usage_references提供之文獻ID查無文獻');
                     }
                 }
             }
@@ -233,7 +232,7 @@ class UsageImportService
             $absent = array_values(array_diff($indications, $validIndications));
 
             if (count($absent) > 0) {
-                $this->throwError($row, '不合法的標註: ' . implode(',', $absent));
+                $this->addError($row, '不合法的標註: ' . implode(',', $absent));
             }
         } else {
             $checkedIndications = [];
@@ -267,46 +266,57 @@ class UsageImportService
                         'field_value' => $secondPart,
                     ];
                 } else {
-                    $this->throwError($row, '不正確的' . $cus . '格式');
+                    $this->addError($row, '不正確的' . $cus . '格式');
                 }
             }
         }
 
         // --- 第一筆限制 ---
         if ($row === 2 && ($isIndent === true || $status === 'not-accepted') && $this->baseGroup === 0) {
-            $this->throwError($row, '第一筆不能是無效名或縮排');
+            $this->addError($row, '第一筆不能是無效名或縮排');
+        }
+
+        // --- nomenclature / rank 對照（供解析 taxon 使用，兼作防呆）---
+        $nomenclatureId = ($nomenclature && isset($this->nomenclatures[$nomenclature]))
+            ? $this->nomenclatures[$nomenclature]->id : null;
+        $rankId = ($rank && isset($this->rankMap[$rank]))
+            ? $this->rankMap[$rank]->id : null;
+
+        if ($nomenclature && $nomenclatureId === null) {
+            $this->addError($row, 'nomenclature 查無對應命名法');
+        }
+        if ($rank && $rankId === null) {
+            $this->addError($row, 'rank 查無對應階層');
         }
 
         // --- 解析 taxon name ---
-        $taxonNames = TaxonName::query()->where('name', $name)->get();
+        $taxonName = null;
+        if ($name) {
+            $taxonNames = TaxonName::query()->where('name', $name)->get();
 
-        if ($taxonNames->count() > 1) {
-            $nomenclatureId = $this->nomenclatures[$nomenclature]->id;
-            $taxonNamesQuery = TaxonName::query()
-                ->where('nomenclature_id', $nomenclatureId)
-                ->where('rank_id', $this->rankMap[$rank]->id)
-                ->where('name', $name);
+            if ($taxonNames->count() > 1 && $nomenclatureId !== null && $rankId !== null) {
+                $taxonNamesQuery = TaxonName::query()
+                    ->where('nomenclature_id', $nomenclatureId)
+                    ->where('rank_id', $rankId)
+                    ->where('name', $name);
 
-            if ($authorsString) {
-                $taxonNamesQuery->where('formatted_authors', $authorsString);
+                if ($authorsString) {
+                    $taxonNamesQuery->where('formatted_authors', $authorsString);
+                }
+
+                $taxonNames = $taxonNamesQuery->get();
             }
 
-            $taxonNames = $taxonNamesQuery->get();
+            if ($taxonNames->count() > 1) {
+                $this->addError($row, '此 Taxon 有同名，請提供作者名輔助');
+            } else if ($taxonNames->count() === 1) {
+                $taxonName = $taxonNames->first();
+            } else {
+                $this->addError($row, '查無此 Taxon');
+            }
         }
 
-        if ($taxonNames->count() > 1) {
-            $this->throwError($row, '此 Taxon 有同名，請提供作者名輔助');
-        } else if ($taxonNames->count() === 1) {
-            $taxonName = $taxonNames->first();
-        } else {
-            $taxonName = null;
-        }
-
-        if (!$taxonName) {
-            $this->throwError($row, '查無此 Taxon');
-        }
-
-        // --- group / order 遞增（與原邏輯同位置）---
+        // --- group / order 遞增 ---
         if (!$isIndent) {
             $this->groupCursor++;
             $this->orderCursor = 0;
@@ -320,15 +330,17 @@ class UsageImportService
             $parentTaxonNames = TaxonName::query()->where('name', $parentTaxonNameString)->get();
 
             if ($parentTaxonNames->count() > 1) {
-                $nomenclatureId = $this->nomenclatures[$nomenclature]->id;
-                $parentTaxonName = TaxonName::query()
-                    ->where('nomenclature_id', $nomenclatureId)
-                    ->where('name', $parentTaxonNameString)
-                    ->first();
+                if ($nomenclatureId !== null) {
+                    $parentTaxonName = TaxonName::query()
+                        ->where('nomenclature_id', $nomenclatureId)
+                        ->where('name', $parentTaxonNameString)
+                        ->first();
+                }
+                // nomenclatureId 為 null 時無法消歧義，parentTaxonName 維持 null
             } else if ($parentTaxonNames->count() === 1) {
                 $parentTaxonName = $parentTaxonNames->first();
             } else {
-                $this->throwError($row, '查無此 Parent Taxon');
+                $this->addError($row, '查無此 Parent Taxon');
             }
         }
 
@@ -343,7 +355,8 @@ class UsageImportService
                     $cName = str_replace($cc_key, CommonNameArray::get()[$cc_key], $cName);
                 }
 
-                if ($isMatch) {
+                // 僅在格式與語言皆合法時才建立，避免 undefined index
+                if ($isMatch && isset($this->languageMapping[$matches[2]])) {
                     $commonName[] = [
                         'area' => $matches[3] ?? '',
                         'name' => trim(str_replace("\x00", "", $cName)),
@@ -376,20 +389,21 @@ class UsageImportService
             $properties['alien_status_note'] = $alienStatusNote;
         }
 
-        // --- 快取解析結果，save 階段重用（不再打 DB）---
-        $this->resolved[$row] = [
-            'taxon_name_id' => $taxonName->id,
-            'parent_taxon_name_id' => $parentTaxonName->id ?? null,
-            'status' => $status,
-            'properties' => $properties,
-            'per_usages' => $perUsages,
-            'group' => $this->groupCursor,
-            'order' => $this->orderCursor,
-            'is_title' => $isTitle,
-            'is_indent' => $isIndent,
-        ];
+        // --- 僅在該列無任何錯誤時才快取，save 階段重用 ---
+        if (!$this->hasRowError($row)) {
+            $this->resolved[$row] = [
+                'taxon_name_id' => $taxonName->id,
+                'parent_taxon_name_id' => $parentTaxonName->id ?? null,
+                'status' => $status,
+                'properties' => $properties,
+                'per_usages' => $perUsages,
+                'group' => $this->groupCursor,
+                'order' => $this->orderCursor,
+                'is_title' => $isTitle,
+                'is_indent' => $isIndent,
+            ];
+        }
     }
-
     // ---- 寫入階段（分批 commit，重用 validate 解析結果）----
 
     public function save(): int
@@ -455,12 +469,20 @@ class UsageImportService
         return max(0, $this->sheet->getHighestRow() - 1);
     }
 
-    private function throwError(int $row, string $message)
+    private function addError(int $row, string $message): void
     {
-        if (!isset($this->errorRows[$row - 1])) {
-            $this->errorRows[$row - 1] = ['message' => $message];
+        $key = $row - 1;
+        if (!isset($this->errorRows[$key])) {
+            $this->errorRows[$key] = ['messages' => []];
         }
-        throw new ImportRowException($message);
+        $this->errorRows[$key]['messages'][] = $message;
+        // 保留舊有 message 欄位（合併所有訊息），維持前端相容
+        $this->errorRows[$key]['message'] = implode('；', $this->errorRows[$key]['messages']);
+    }
+
+    private function hasRowError(int $row): bool
+    {
+        return isset($this->errorRows[$row - 1]);
     }
 
     public function getErrorRows()

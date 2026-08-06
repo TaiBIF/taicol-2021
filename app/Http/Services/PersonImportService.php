@@ -144,45 +144,44 @@ class PersonImportService
             }
 
             // 姓、名必填
-            if (trim($lastName) === '' || trim($firstName) === '') {
+            $nameOk = (trim($lastName) !== '' && trim($firstName) !== '');
+            if (!$nameOk) {
                 $this->addError($row, '姓與名皆為必填');
-                continue;
             }
 
             $uniqueKey = "{$lastName}{$firstName}{$middleName}{$yearBirth}";
             $nameKey = "{$lastName}{$firstName}";
 
-            // 檔案內重複
-            if ($firstSeen[$uniqueKey] !== $row) {
+            // 檔案內重複（需姓名有效）
+            if ($nameOk && $firstSeen[$uniqueKey] !== $row) {
                 $this->addError($row, "檔案內重複：與第 {$firstSeen[$uniqueKey]} 筆");
-                continue;
             }
 
-            // 資料庫重複
-            if (isset($duplicatePersons[$uniqueKey])) {
+            // 資料庫重複（需姓名有效）
+            if ($nameOk && isset($duplicatePersons[$uniqueKey])) {
                 $this->addError($row, "與資料庫重複（#{$duplicatePersons[$uniqueKey]->id}）");
-                continue;
             }
 
             // 國籍
             if ($countryName !== '' && !isset($this->countries[$countryName])) {
                 $this->addError($row, "國籍 格式錯誤：{$countryName}");
-                continue;
             }
 
             // 研究類群
             $deptError = $this->departmentError($departments);
             if ($deptError !== null) {
                 $this->addError($row, $deptError);
-                continue;
             }
 
-            // 同姓名（不同人）→ 警告，不阻擋
-            if (isset($warningPersons[$nameKey])) {
-                $this->warningRows[$row - 1] = ['message' => "與現有同姓名者（{$nameKey}）"];
-            } else {
-                $this->validRows[$row - 1] = ['message' => ''];
+            // 同姓名（不同人）→ 警告；僅在該列無錯誤時才記 warning / valid
+            if (!$this->hasRowError($row)) {
+                if (isset($warningPersons[$nameKey])) {
+                    $this->warningRows[$row - 1] = ['message' => "與現有同姓名者（{$nameKey}）"];
+                } else {
+                    $this->validRows[$row - 1] = ['message' => ''];
+                }
             }
+
         }
         $this->reportProgress('validating', $done);
 
@@ -278,9 +277,17 @@ class PersonImportService
 
     private function addError(int $row, string $message): void
     {
-        if (!isset($this->errorRows[$row - 1])) {
-            $this->errorRows[$row - 1] = ['message' => $message];
+        $key = $row - 1;
+        if (!isset($this->errorRows[$key])) {
+            $this->errorRows[$key] = ['messages' => []];
         }
+        $this->errorRows[$key]['messages'][] = $message;
+        $this->errorRows[$key]['message'] = implode('；', $this->errorRows[$key]['messages']);
+    }
+
+    private function hasRowError(int $row): bool
+    {
+        return isset($this->errorRows[$row - 1]);
     }
 
     private function departmentError(string $departmentsString): ?string

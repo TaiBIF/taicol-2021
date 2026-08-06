@@ -10,6 +10,7 @@ use App\Book;
 use App\Exceptions\ImportRowException;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class ReferenceImportService
 {
@@ -25,7 +26,8 @@ class ReferenceImportService
     private $uniqueReference = []; // 檔案內 title+year+authors 去重
 
     private array $columnMap = [];  // 欄名 => 數字索引（1 起算）
-
+    private Worksheet $sheet;
+    
     /** @var callable|null  function(string $phase, int $done) */
     public $onProgress = null;
 
@@ -144,32 +146,40 @@ class ReferenceImportService
         $languageString = $this->cell($row, 'language') ?? '';
         $pageRange = $this->cell($row, 'page_range') ?? '';
 
+        $type = null;
         if (!$typeString) {
-            $this->throwError($row, '文獻類型 必填');
+            $this->addError($row, '文獻類型 必填');
+        } elseif (!isset($this->typeMap[$typeString])) {
+            $this->addError($row, '文獻類型 格式錯誤');
+        } else {
+            $type = (int) $this->typeMap[$typeString];
         }
-        if (!isset($this->typeMap[$typeString])) {
-            $this->throwError($row, '文獻類型 格式錯誤');
-        }
-        $type = (int) $this->typeMap[$typeString];
 
         if (!$publishYear) {
-            $this->throwError($row, '發表年份 必填');
+            $this->addError($row, '發表年份 必填');
         }
 
         if ($pageRange !== '' && !str_contains($pageRange, '–')) {
-            $this->throwError($row, '頁碼範圍 格式錯誤');
+            $this->addError($row, '頁碼範圍 格式錯誤');
         }
 
         if ($languageString !== '' && !isset($this->languageMapping[$languageString])) {
-            $this->throwError($row, "語言 格式錯誤：{$languageString}");
+            $this->addError($row, "語言 格式錯誤：{$languageString}");
         }
 
-        // 作者存在性（逐名檢查當列作者欄）
+        // 作者存在性
         $authorNames = explode('|', $authorNamesString);
+        $authorsAllExist = true;
         foreach ($authorNames as $name) {
             if (!isset($this->authors[$name])) {
-                $this->throwError($row, "{$name} 人名不存在");
+                $this->addError($row, "{$name} 人名不存在");
+                $authorsAllExist = false;
             }
+        }
+
+        // 去重需 type、作者、發表年份皆解析成功，否則略過（錯誤已記錄）
+        if ($type === null || !$authorsAllExist || !$publishYear) {
+            return;
         }
 
         $authorIds = $this->authors->whereIn('original_full_name', $authorNames)
@@ -188,9 +198,10 @@ class ReferenceImportService
         // (1) 檔案內去重
         $key = "{$title}{$publishYear}{$authorNamesString}";
         if (isset($this->uniqueReference[$key])) {
-            $this->throwError($row, "資料重複：與第 {$this->uniqueReference[$key]} 筆");
+            $this->addError($row, "資料重複：與第 {$this->uniqueReference[$key]} 筆");
+        } else {
+            $this->uniqueReference[$key] = $row;
         }
-        $this->uniqueReference[$key] = $row;
 
         // (2) 資料庫去重
         $existReference = Reference::query()
@@ -203,7 +214,7 @@ class ReferenceImportService
             ->first();
 
         if ($existReference) {
-            $this->throwError($row, "資料重複：與資料庫 #{$existReference->id}");
+            $this->addError($row, "資料重複：與資料庫 #{$existReference->id}");
         }
 
         $existDraftReference = Reference::query()
@@ -216,7 +227,7 @@ class ReferenceImportService
             ->first();
 
         if ($existDraftReference) {
-            $this->throwError($row, '文獻已存在於草稿');
+            $this->addError($row, '文獻已存在於草稿');
         }
     }
 
@@ -266,12 +277,19 @@ class ReferenceImportService
         return max(0, $this->sheet->getHighestRow() - 1);
     }
 
-    private function throwError(int $row, string $message)
+    private function addError(int $row, string $message): void
     {
-        if (!isset($this->errorRows[$row - 1])) {
-            $this->errorRows[$row - 1] = ['message' => $message];
+        $key = $row - 1;
+        if (!isset($this->errorRows[$key])) {
+            $this->errorRows[$key] = ['messages' => []];
         }
-        throw new ImportRowException($message);
+        $this->errorRows[$key]['messages'][] = $message;
+        $this->errorRows[$key]['message'] = implode('；', $this->errorRows[$key]['messages']);
+    }
+
+    private function hasRowError(int $row): bool
+    {
+        return isset($this->errorRows[$row - 1]);
     }
 
     private function saveReference(int $row)
