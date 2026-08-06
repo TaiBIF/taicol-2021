@@ -124,8 +124,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/import/persons', 'PersonController@import');
         Route::post('/import/references', 'ReferenceController@import');
         Route::post('/import/taxon-names', 'TaxonNameController@import');
-        Route::post('/validate/persons', 'PersonController@validateSheet');
-        Route::post('/validate/references', 'ReferenceController@validateSheet');
+        Route::get('/import/logs/latest', 'ImportLogController@latest');
+        Route::get('/import/logs/{id}', 'ImportLogController@show');
+        Route::post('/import/logs/{id}/dismiss', 'ImportLogController@dismiss');
+        Route::post('/import/logs/{id}/cancel', 'ImportLogController@cancel');
     });
 
     Route::resource('/favorite-folders', 'FavoriteFolderController');

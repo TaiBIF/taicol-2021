@@ -5,7 +5,7 @@
                 <div class="py-3 flex items-center">
                     <p class="ml-4 font-bold text-3xl inline">{{ $t('header.adminMenu.personImport') }}</p>
                 </div>
-                <div class="flex px-4 pb-4 gap-1">
+                <div class="flex px-4 mb-4 gap-1">
                     <div class="w-full">
                         <input
                             class="input is-fullwidth"
@@ -15,235 +15,228 @@
                         <span v-for="message in errors.file" class="text-red-500" v-text="message"></span>
                     </div>
 
-                    <button :disabled="isLoading" class="button" v-on:click="onValidate">檢驗</button>
                     <button :disabled="isLoading" class="button" v-on:click="onSubmit">匯入</button>
                 </div>
 
                 <ul class="px-4 pb-2">
-                    <li>1. <span class="text-red-500">紅色</span>({{ Object.keys(duplicateRows).length }})為重複請刪除,
-                        <span class="text-red-800">暗紅色</span>({{ Object.keys(errorRows).length }})為資料錯誤請修正或刪除,
-                        <span class="text-orange-300">橘色</span>({{ Object.keys(warningRows).length }})為有同姓名存在,
-                        <span>共 {{ Object.keys(validRows).length + Object.keys(warningRows).length }} 筆可匯入</span>
-                    </li>
-                    <li>2. 上傳檔案請依該欄位順序</li>
-                    <li>3. biology_departments 項目: viruses, bacteria, archaea, protozoa, chromista, fungi, plantae,
-                        animalia
-                    </li>
-                    <li>4. first_name, last_name 必填</li>
-                    <li>5. country_name 輸入國家中文名，如「臺灣」、「日本」等</li>
+                    <li>1. 上傳檔案請依該欄位順序</li>
+                    <li>2. last_name, first_name 必填</li>
+                    <li>3. country_name 輸入國家中文名，如「臺灣」、「日本」等</li>
+                    <li>4. biology_departments 項目: viruses, bacteria, archaea, protozoa, chromista, fungi, plantae, animalia</li>
+                    <li>5. 同姓名（last_name+first_name 已存在）不會阻擋匯入</li>
                 </ul>
-            </div>
+                <div class="overflow-y-auto grow">
+                <table class="narrow-table w-full">
+                    <thead>
+                    <tr>
+                        <td>last_name</td>
+                        <td>first_name</td>
+                        <td>middle_name</td>
+                        <td>original_full_name</td>
+                        <td>abbreviation_name</td>
+                        <td>other_names</td>
+                        <td>year_birth</td>
+                        <td>year_death</td>
+                        <td>year_publication</td>
+                        <td>country_name</td>
+                        <td>biology_departments</td>
+                        <td>biological_group</td>
+                    </tr>
+                    </thead>
+                </table>
+                </div>
+                <!-- 處理中：階段 + 進度條 -->
+                <div v-if="isLoading" class="px-4 pb-2">
+                    <div class="text-sm mb-1">檔案：{{ currentFilename || '(未知)' }}</div>
+                    <div class="text-blue-600 mb-1">
+                        {{ phase === 'saving' ? '寫入中' : '驗證中' }}：{{ processedRows }} / {{ totalRows || '?' }}
+                        （可離開本頁，回來會自動接續）
+                    </div>
+                    <div class="w-full bg-gray-200 rounded h-2">
+                        <div class="bg-blue-500 h-2 rounded"
+                            :style="{ width: totalRows ? (processedRows / totalRows * 100) + '%' : '0%' }"></div>
+                    </div>
+                    <button class="button is-small mt-2" :disabled="cancelling" v-on:click="onCancel">
+                        {{ cancelling ? '取消中…' : '取消匯入' }}
+                    </button>
+                </div>
 
-            <div v-if="isLoading" class="grow">
-                <loading-section></loading-section>
-            </div>
-            <div v-else class="overflow-y-auto grow">
-                <div>
-                    <table class="narrow-table">
-                        <thead>
-                        <tr>
-                            <td></td>
-                            <td>last_name</td>
-                            <td>first_name</td>
-                            <td>middle_name</td>
-                            <td>original_full_name</td>
-                            <td>abbreviation_name</td>
-                            <td>other_names</td>
-                            <td>year_birth</td>
-                            <td>year_death</td>
-                            <td>year_publication</td>
-                            <td>country_name</td>
-                            <td>biology_departments</td>
-                            <td>biological_group</td>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr v-for="row in duplicateRows" class="text-red-500">
-                            <td v-text="row.number"></td>
-                            <td v-text="row.lastName"></td>
-                            <td v-text="row.firstName"></td>
-                            <td v-text="row.middleName"></td>
-                            <td v-text="row.originalFullName"></td>
-                            <td v-text="row.abbreviationName"></td>
-                            <td v-text="row.otherNames"></td>
-                            <td v-text="row.yearBirth"></td>
-                            <td v-text="row.yearDeath"></td>
-                            <td v-text="row.yearPublication"></td>
-                            <td v-text="row.countryName"></td>
-                            <td v-text="row.biologyDepartments"></td>
-                            <td v-text="row.biologicalGroup"></td>
-                        </tr>
-                        <tr v-for="row in errorRows" class="text-red-800">
-                            <td v-text="row.number"></td>
-                            <td v-text="row.lastName"></td>
-                            <td v-text="row.firstName"></td>
-                            <td v-text="row.middleName"></td>
-                            <td v-text="row.originalFullName"></td>
-                            <td v-text="row.abbreviationName"></td>
-                            <td v-text="row.otherNames"></td>
-                            <td v-text="row.yearBirth"></td>
-                            <td v-text="row.yearDeath"></td>
-                            <td v-text="row.yearPublication"></td>
-                            <td v-text="row.countryName"></td>
-                            <td v-text="row.biologyDepartments"></td>
-                            <td v-text="row.biologicalGroup"></td>
-                        </tr>
-                        <tr v-for="row in repeatRows" class="text-red-500">
-                            <td v-text="row.number"></td>
-                            <td v-text="row.lastName"></td>
-                            <td v-text="row.firstName"></td>
-                            <td v-text="row.middleName"></td>
-                            <td v-text="row.originalFullName"></td>
-                            <td v-text="row.abbreviationName"></td>
-                            <td v-text="row.otherNames"></td>
-                            <td v-text="row.yearBirth"></td>
-                            <td v-text="row.yearDeath"></td>
-                            <td v-text="row.yearPublication"></td>
-                            <td v-text="row.countryName"></td>
-                            <td v-text="row.biologyDepartments"></td>
-                            <td v-text="row.biologicalGroup"></td>
-                        </tr>
-                        <tr v-for="row in warningRows" class="text-orange-300">
-                            <td v-text="row.number"></td>
-                            <td v-text="row.lastName"></td>
-                            <td v-text="row.firstName"></td>
-                            <td v-text="row.middleName"></td>
-                            <td v-text="row.originalFullName"></td>
-                            <td v-text="row.abbreviationName"></td>
-                            <td v-text="row.otherNames"></td>
-                            <td v-text="row.yearBirth"></td>
-                            <td v-text="row.yearDeath"></td>
-                            <td v-text="row.yearPublication"></td>
-                            <td v-text="row.countryName"></td>
-                            <td v-text="row.biologyDepartments"></td>
-                            <td v-text="row.biologicalGroup"></td>
-                        </tr>
-                        <tr v-for="row in validRows">
-                            <td v-text="row.number"></td>
-                            <td v-text="row.lastName"></td>
-                            <td v-text="row.firstName"></td>
-                            <td v-text="row.middleName"></td>
-                            <td v-text="row.originalFullName"></td>
-                            <td v-text="row.abbreviationName"></td>
-                            <td v-text="row.otherNames"></td>
-                            <td v-text="row.yearBirth"></td>
-                            <td v-text="row.yearDeath"></td>
-                            <td v-text="row.yearPublication"></td>
-                            <td v-text="row.countryName"></td>
-                            <td v-text="row.biologyDepartments"></td>
-                            <td v-text="row.biologicalGroup"></td>
-                        </tr>
-                        </tbody>
-                    </table>
+                <!-- 失敗卡片：檔名 + 時間 + 訊息 + 下載 + 取消 -->
+                <div v-if="failedLog" class="px-4 pb-2 mt-2 border border-red-300 rounded p-3">
+                    <div class="text-red-600 font-bold mb-1">匯入失敗</div>
+                    <div class="text-sm">檔案：{{ failedLog.originalFilename || '(未知)' }}</div>
+                    <div class="text-sm">時間：{{ failedLog.completedAt || failedLog.createdAt }}</div>
+                    <div class="text-sm mb-2">訊息：{{ failedLog.errorMessage }}</div>
+                    <div class="flex gap-2">
+                        <a v-if="failedLog.errorFileUrl" :href="failedLog.errorFileUrl"
+                        class="button is-small" download>下載錯誤檔</a>
+                        <button class="button is-small" v-on:click="onDismiss">取消 / 不再顯示</button>
+                    </div>
+                </div>
+
+                <div v-if="cancelledLog" class="px-4 pb-2 mt-2 border border-gray-300 rounded p-3">
+                    <div class="font-bold mb-1">已取消匯入</div>
+                    <div class="text-sm">檔案：{{ cancelledLog.originalFilename || '(未知)' }}</div>
+                    <div class="text-sm mb-2">{{ cancelledLog.errorMessage }}</div>
+                    <button class="button is-small" v-on:click="onClearCancelled">知道了</button>
                 </div>
             </div>
         </div>
     </div>
 </template>
 <script lang="ts">
-import { defineComponent, inject, ref } from '@vue/composition-api';
-import Page from '../Page.vue';
-import GeneralInput from '../../components/GeneralInput.vue';
+import { defineComponent, inject, ref, onMounted, onBeforeUnmount } from '@vue/composition-api';
 import LoadingSection from '../../components/LoadingSection.vue';
 import { openNotify } from '../../utils';
 
 export default defineComponent({
-    setup(props) {
+    setup() {
         const axios: any = inject('axios');
         const formData = new FormData();
-        const duplicateRows = ref<object>({});
-        const repeatRows = ref<object>({});
-        const warningRows = ref<object>({});
-        const validRows = ref<object>({});
-        const errorRows = ref<object>({});
 
-        const isLoading = ref<boolean>(false);
+        const errors = ref<any>({});        // 檔案格式等 422 錯誤
 
-        const errors = ref<object>({});
+        const isLoading = ref<boolean>(false);   // 上傳後處理中／輪詢中
+        const status = ref<string>('');
+        const successCount = ref<number | null>(null);
+        const totalRows = ref<number | null>(null);
+        const errorMessage = ref<string>('');
+        const logId = ref<number | null>(null);
 
-        const onSetFile = (event) => {
-            formData.set('file', event.target.files[0]);
+        let timer: any = null;
+        const clearTimer = () => { if (timer) { clearInterval(timer); timer = null; } };
+
+        const phase = ref('');
+        const processedRows = ref(0);
+        const failedLog = ref<any>(null);   // 失敗時保留整包給下方顯示
+        const currentFilename = ref('');
+        const cancelling = ref(false);
+        const cancelledLog = ref<any>(null);
+
+        const applyLog = (log) => {
+            status.value = log.status;
+            phase.value = log.phase || '';
+            currentFilename.value = log.originalFilename || '';
+            cancelling.value = !!log.cancelRequestedAt;
+            totalRows.value = log.totalRows;
+            processedRows.value = log.processedRows || 0;
+            successCount.value = log.successCount;
+            errorMessage.value = log.errorMessage || '';
+
+            if (log.status === 'completed') {
+                isLoading.value = false;
+                failedLog.value = null;
+                clearTimer();
+                openNotify(`成功匯入 ${log.successCount} 筆`);
+            } else if (log.status === 'failed') {
+                isLoading.value = false;
+                failedLog.value = log;
+                clearTimer();
+                openNotify(log.errorMessage || '匯入失敗', 'is-danger');
+            } else if (log.status === 'cancelled') {
+                isLoading.value = false;
+                cancelling.value = false;
+                failedLog.value = null;
+                cancelledLog.value = log;
+                clearTimer();
+            } else {
+                isLoading.value = true;
+            }
+        };
+
+        const onDismiss = () => {
+            if (!failedLog.value) return;
+            axios.post(`/import/logs/${failedLog.value.id}/dismiss`).then(() => {
+                failedLog.value = null;
+                resetStates();
+            });
+        };
+
+        const onCancel = () => {
+            if (!logId.value) return;
+            cancelling.value = true;
+            axios.post(`/import/logs/${logId.value}/cancel`)
+                .catch(() => { cancelling.value = false; });
+        };
+
+        const onClearCancelled = () => {
+            cancelledLog.value = null;
+            resetStates();
+        };
+
+        const poll = () => {
+            if (!logId.value) return;
+            axios.get(`/import/logs/${logId.value}`)
+                .then(({ data: { data } }) => { if (data) applyLog(data); })
+                .catch(() => { /* 單次失敗就等下一輪 */ });
+        };
+
+        const startPolling = (id) => {
+            logId.value = id;
+            isLoading.value = true;
+            clearTimer();
+            poll();                             // 立刻打一次，不用等 3 秒
+            timer = setInterval(poll, 3000);
         };
 
         const resetStates = () => {
             errors.value = {};
-            duplicateRows.value = {};
-            repeatRows.value = {};
-            warningRows.value = {};
-            validRows.value = {};
-            errorRows.value = {};
+            errorMessage.value = '';
+            successCount.value = null;
+            totalRows.value = null;
+            status.value = '';
         };
+
+        const onSetFile = (event) => { formData.set('file', event.target.files[0]); };
 
         const onSubmit = () => {
-            isLoading.value = true;
             resetStates();
+            isLoading.value = true;
 
-            axios
-                .post('/import/persons', formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                    },
-                })
-                .then(({ data: { total } }) => {
-                    openNotify(`成功匯入 ${total} 筆`);
-                })
-                .catch(({
-                    status, errors: e, data, message,
-                }, err) => {
-                    if (status === 409) {
-                        duplicateRows.value = data.duplicateRows;
-                        repeatRows.value = data.repeatRows;
-                        warningRows.value = data.warningRows;
-                        validRows.value = data.validRows;
-                        errorRows.value = data.errorRows;
-                        openNotify(message, 'is-danger');
-                    } else if (status === 422) {
+            axios.post('/import/persons', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            })
+                .then(({ data: { logId } }) => { startPolling(logId); })
+                .catch(({ status: code, errors: e, message }) => {
+                    isLoading.value = false;
+                    if (code === 409) {
+                        openNotify(message, 'is-danger');   // 已有處理中的匯入
+                    } else if (code === 422) {
                         errors.value = e;
+                    } else {
+                        openNotify(message || '上傳失敗', 'is-danger');
                     }
-                }).finally(() => {
-                    isLoading.value = false;
                 });
         };
 
-        const onValidate = () => {
-            isLoading.value = true;
-            resetStates();
-
-            axios
-                .post('/validate/persons', formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                    },
-                }).then(({ data }) => {
-                    duplicateRows.value = data.duplicateRows;
-                    repeatRows.value = data.repeatRows;
-                    warningRows.value = data.warningRows;
-                    validRows.value = data.validRows;
-                    errorRows.value = data.errorRows;
-                }).catch(({ status, errors: e, data }, err) => {
-                    errors.value = e;
-                // todo
-                }).finally(() => {
-                    isLoading.value = false;
+        // 進頁補畫面：未結束就接續輪詢，已結束直接顯示
+        onMounted(() => {
+            axios.get('/import/logs/latest', { params: { type: 'person' } })
+                .then(({ data: { data } }) => {
+                    if (!data) return;
+                    if (data.status === 'pending' || data.status === 'processing') {
+                        startPolling(data.id);
+                    } else {
+                        applyLog(data);
+                    }
                 });
-        };
+        });
+
+        onBeforeUnmount(clearTimer);
 
         return {
-            duplicateRows,
-            errorRows,
-            warningRows,
-            repeatRows,
-            validRows,
-            errors,
-            isLoading,
-            onSetFile,
-            onValidate,
-            onSubmit,
+            errors, isLoading, status,
+            successCount, totalRows, errorMessage,
+            onSetFile, onSubmit,
+            phase, processedRows, failedLog, onDismiss,
+            currentFilename, cancelling, onCancel,
+            cancelledLog, onClearCancelled
         };
     },
-    components: { LoadingSection, GeneralInput, Page },
+    components: { LoadingSection },
 });
 </script>
+
 <style lang="scss">
 .narrow-table {
     td {

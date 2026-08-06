@@ -1,7 +1,6 @@
 <template>
     <page :preload="onPreload" class="container">
         <div class="flex flex-col h-full py-6 mb-4">
-            <!-- <div class="box overflow-y-auto px-10 py-4"> -->
             <div class="box overflow-y-auto overflow-x-auto px-10 py-4 flex-1"">
                 <div class="py-3">
                     <p class="ml-3 font-bold text-3xl inline">{{ $t('taxonName.bulkCreate') }}</p>
@@ -15,11 +14,15 @@
                     <i class="ml-3 fas fa-info-circle"></i>
                     <span v-html="$t('taxonName.bulkCreateNote3')"></span>
                 </div>
-                <!-- <table class="mt-1 table is-fullwidth is-hoverable has-text-left"> -->
                 <table class="mt-1 table is-fullwidth is-hoverable has-text-left sticky-table">
                     <thead>
                     <tr>
-                        <th class="w-[60px]">{{ $t('taxonName.skip') }}</th>
+                        <th class="w-[60px]">
+                            <div class="flex flex-col items-center justify-center">
+                                <span>{{ $t('taxonName.skip') }}</span>
+                                <input type="checkbox" v-model="isAllSkip" class="mt-1" />
+                            </div>
+                        </th>
                         <th class="w-[115px] is-marked">
                             {{ $t('taxonName.nomenclature') }}
                             <nomenclature-select
@@ -140,7 +143,22 @@ export default {
             speciesRank: 'rank/getSpeciesRank',
             kingdomRank: 'rank/getKingdomRank',
         }),
-
+        isAllSkip: {
+                get() {
+                    // 當 presetData 還沒載入或為空時回傳 false
+                    if (!this.presetData || this.presetData.length === 0) return false;
+                    // 檢查是否每一筆資料的 _skip 都為 true
+                    return this.presetData.every(p => p._skip);
+                },
+                set(val) {
+                    // 當表頭勾選/取消勾選時，同步將所有 presetData 的 _skip 設定為該數值 (true/false)
+                    if (this.presetData) {
+                        this.presetData.forEach(p => {
+                            p._skip = val;
+                        });
+                    }
+                }
+            }
     },
     methods: {
         onHeaderNomenclatureChange(value) {

@@ -5,71 +5,45 @@ namespace App\Http\Services;
 
 
 use App\Country;
-use App\Exceptions\PersonDuplicateException;
 use App\Person;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 class PersonImportService
 {
-    private $duplicateRows = []; // 與資料庫比對 unique key 重複
-    private $repeatRows = []; // 檔案內部重複
-    private $errorRows = [];
-    private $warningRows = []; // 有同姓名重複
+    private $duplicateRows = []; // 與資料庫比對 unique key 重複（已折入 errorRows）
+    private $repeatRows = [];    // 檔案內部重複（已折入 errorRows）
+    private $errorRows = [];     // { 列號-1 => ['message'] }
+    private $warningRows = [];   // 有同姓名（不阻擋匯入，僅提示）
     private $validRows = [];
 
-    private $allKey1s = [];
-    private $allKey2s = [];
-
-    private int $maxHighRows = 0;
+    private $countries;
+    private ?int $dataRowCount = null;
 
     private Worksheet $sheet;
+    private array $columnMap = [];   // 欄名 => 數字索引（1 起算）
+
+    private const VALID_DEPARTMENTS = [
+        'viruses', 'bacteria', 'archaea', 'protozoa',
+        'chromista', 'fungi', 'plantae', 'animalia',
+    ];
+
+    /** @var callable|null  function(string $phase, int $done) */
+    public $onProgress = null;
+
+    private function reportProgress(string $phase, int $done): void
+    {
+        if (is_callable($this->onProgress)) {
+            ($this->onProgress)($phase, $done);
+        }
+    }
 
     public function __construct($sheet)
     {
         $this->sheet = $sheet;
 
-        // calculate max high row
-        for ($row = 2; $row <= $this->sheet->getHighestRow(); $row++) {
-            $lastName = $sheet->getCell('A' . $row)->getValue();
-            $firstName = $sheet->getCell('B' . $row)->getValue();
-            $middleName = $this->sheet->getCell('C' . $row)->getValue();
-            $yearBirth = $this->sheet->getCell('G' . $row)->getValue();
-
-            if ($lastName == '' || $firstName == '') continue;
-
-            $data = [
-                'number' => $row,
-                'last_name' => $this->sheet->getCell('A' . $row)->getValue(),
-                'first_name' => $this->sheet->getCell('B' . $row)->getValue(),
-                'middle_name' => $this->sheet->getCell('C' . $row)->getValue(),
-                'original_full_name' => $this->sheet->getCell('D' . $row)->getValue(),
-                'abbreviation_name' => $this->sheet->getCell('E' . $row)->getValue(),
-                'other_names' => $this->sheet->getCell('F' . $row)->getValue(),
-                'year_birth' => $this->sheet->getCell('G' . $row)->getValue(),
-                'year_death' => $this->sheet->getCell('H' . $row)->getValue(),
-                'year_publication' => $this->sheet->getCell('I' . $row)->getValue(),
-                'country_name' => trim($this->sheet->getCell('J' . $row)->getValue()),
-                'depart' => trim($this->sheet->getCell('K' . $row)->getValue()),
-                'biological_group' => trim($this->sheet->getCell('L' . $row)->getValue()),
-            ];
-
-            $uniqueKey = "{$lastName}{$firstName}{$middleName}{$yearBirth}";
-            $nameKey = "{$lastName}{$firstName}";
-
-            if (isset($this->allKey1s[$uniqueKey])) {
-                $this->repeatRows[] = $data;
-            } else {
-                $this->allKey1s[$uniqueKey] = $row;
-            }
-
-            $this->allKey2s[$nameKey] = $row;
-
-
-            $this->maxHighRows = $row;
-        }
-
+        // 國籍對照（save 階段亦重用）
         $this->countries = Country::select('display', 'numeric_code')
             ->get()
             ->keyBy(function ($c) {
@@ -77,82 +51,254 @@ class PersonImportService
             });
     }
 
-    public function handle(): int
-    {
-        /**
-         * columns
-         * A: 姓, B: 中間名, C: 名, D: 母語完整名, E: 作者縮寫, F: 其他名, G: 生年, H: 卒年, I: 活躍年代
-         * J: 國籍(用中文), K: 研究類群, L: 研究類群
-         */
-        $this->getErrorRows();
+    // ---- 讀取工具：一律用欄名 ----
 
-        if (count($this->duplicateRows) || count($this->repeatRows)) {
-            throw new PersonDuplicateException('重複');
+    private function buildColumnMap(): void
+    {
+        if (!empty($this->columnMap)) {
+            return;
+        }
+        $highestColumnIndex = Coordinate::columnIndexFromString($this->sheet->getHighestColumn());
+        for ($col = 1; $col <= $highestColumnIndex; $col++) {
+            $header = trim((string) $this->sheet->getCellByColumnAndRow($col, 1)->getValue());
+            if ($header !== '') {
+                $this->columnMap[$header] = $col;
+            }
+        }
+    }
+
+    /** 依欄名讀取；欄位不存在回 null */
+    private function cell(int $row, string $columnName)
+    {
+        $index = $this->columnMap[$columnName] ?? null;
+        if ($index === null) {
+            return null;
+        }
+        return $this->sheet->getCellByColumnAndRow($index, $row)->getValue();
+    }
+
+    /**
+     * 唯讀：逐列收集全部錯誤，回傳錯誤列數。
+     * 欄名：last_name / first_name / middle_name / original_full_name / abbreviation_name /
+     *       other_names / year_birth / year_death / year_publication /
+     *       country_name（讀國籍中文名，存入 country_numeric_code）/ biology_departments / biological_group
+     * 同姓名（last+first 已存在）僅列入 warning，不計入錯誤、不進錯誤檔。
+     */
+    public function validate(): int
+    {
+        $this->buildColumnMap();
+
+        $highest = $this->sheet->getHighestRow();
+
+        // 掃檔案：偵測檔案內重複、蒐集 key 供 DB 比對
+        $firstSeen = [];   // uniqueKey => 首次出現列號
+        $allKey1s = [];    // uniqueKey => true
+        $allKey2s = [];    // nameKey   => true
+        for ($row = 2; $row <= $highest; $row++) {
+            $lastName = (string) $this->cell($row, 'last_name');
+            $firstName = (string) $this->cell($row, 'first_name');
+            $middleName = (string) $this->cell($row, 'middle_name');
+            $yearBirth = (string) $this->cell($row, 'year_birth');
+
+            if (trim($lastName) === '' && trim($firstName) === '') {
+                continue; // 整列空（含結尾空列）→ 略過
+            }
+
+            $uniqueKey = "{$lastName}{$firstName}{$middleName}{$yearBirth}";
+            $nameKey = "{$lastName}{$firstName}";
+            if (!isset($firstSeen[$uniqueKey])) {
+                $firstSeen[$uniqueKey] = $row;
+            }
+            $allKey1s[$uniqueKey] = true;
+            $allKey2s[$nameKey] = true;
         }
 
+        // DB 端：unique key 重複、同姓名
+        $duplicatePersons = Person::select(['id', DB::raw("CONCAT(`last_name`, `first_name`, `middle_name`, `year_birth`) as `unique_key`")])
+            ->whereIn(DB::raw("CONCAT(`last_name`, `first_name`, `middle_name`, `year_birth`)"), array_keys($allKey1s))
+            ->get()
+            ->keyBy('unique_key');
 
-        DB::beginTransaction();
-        $row = 2;
-        $count = 0;
-        try {
-            while ($row <= $this->maxHighRows) {
-                $lastName = $this->sheet->getCell('A' . $row)->getValue();
-                $firstName = $this->sheet->getCell('B' . $row)->getValue();
-                $middleName = $this->sheet->getCell('C' . $row)->getValue();
-                $originalFullName = $this->sheet->getCell('D' . $row)->getValue();
-                $abbreviationName = $this->sheet->getCell('E' . $row)->getValue();
-                $otherNames = $this->sheet->getCell('F' . $row)->getValue();
-                $yearBirth = $this->sheet->getCell('G' . $row)->getValue();
-                $yearDeath = $this->sheet->getCell('H' . $row)->getValue();
-                $yearPublication = $this->sheet->getCell('I' . $row)->getValue();
-                $countryName = trim($this->sheet->getCell('J' . $row)->getValue());
-                $departments = trim($this->sheet->getCell('K' . $row)->getValue());
-                $biologicalGroup = trim($this->sheet->getCell('L' . $row)->getValue());
+        $warningPersons = Person::select([DB::raw("CONCAT(`last_name`, `first_name`) as `name_key`"), DB::raw("COUNT(*) as count")])
+            ->whereIn(DB::raw("CONCAT(`last_name`, `first_name`)"), array_keys($allKey2s))
+            ->groupBy('name_key')
+            ->get()
+            ->keyBy('name_key');
 
-                if (trim($lastName) === '' && trim($firstName) === '') continue;
+        $done = 0;
+        for ($row = 2; $row <= $highest; $row++) {
+            $lastName = (string) $this->cell($row, 'last_name');
+            $firstName = (string) $this->cell($row, 'first_name');
+            $middleName = (string) $this->cell($row, 'middle_name');
+            $yearBirth = (string) $this->cell($row, 'year_birth');
+            $countryName = trim((string) $this->cell($row, 'country_name'));
+            $departments = trim((string) $this->cell($row, 'biology_departments'));
 
-                $this->validBiologyDepartmentsColumn($departments);
-
-                $numericCode = $this->validCountryColumn($countryName);
-
-                $person = new Person();
-                $person->last_name = $lastName ?? '';
-                $person->middle_name = $middleName ?? '';
-                $person->first_name = $firstName ?? '';
-                $person->original_full_name = $originalFullName ?? '';
-                $person->abbreviation_name = $abbreviationName ?? '';
-                $person->other_names = $otherNames ?? '';
-                $person->year_birth = $yearBirth ?? '';
-                $person->year_death = $yearDeath ?? '';
-                $person->year_publication = $yearPublication ?? '';
-                $person->biology_departments = $departments;
-                $person->biological_group = implode('、', explode(', ', $biologicalGroup)) ?? '';
-                $person->country_numeric_code = $numericCode;
-                $person->save();
-
-                $logService = new LogService();
-                $logService->writeImportLog(LogType::PERSON, $person->id);
-
-                $row++;
-                $count++;
+            if (trim($lastName) === '' && trim($firstName) === '') {
+                continue; // 空列略過
             }
-            DB::commit();
-        } catch (PersonDuplicateException $e) {
-            DB::rollBack();
-            Log::error("[fail] import person fail {$row} message: {$e->getMessage()}");
-            throw new PersonDuplicateException("匯入於第 {$row} 筆失敗。");
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("[fail] import person fail {$row} message: {$e->getMessage()}");
-            throw new \Exception("匯入於第 {$row} 筆失敗。");
+
+            $done++;
+            if ($done % 100 === 0) {
+                $this->reportProgress('validating', $done);
+            }
+
+            // 姓、名必填
+            if (trim($lastName) === '' || trim($firstName) === '') {
+                $this->addError($row, '姓與名皆為必填');
+                continue;
+            }
+
+            $uniqueKey = "{$lastName}{$firstName}{$middleName}{$yearBirth}";
+            $nameKey = "{$lastName}{$firstName}";
+
+            // 檔案內重複
+            if ($firstSeen[$uniqueKey] !== $row) {
+                $this->addError($row, "檔案內重複：與第 {$firstSeen[$uniqueKey]} 筆");
+                continue;
+            }
+
+            // 資料庫重複
+            if (isset($duplicatePersons[$uniqueKey])) {
+                $this->addError($row, "與資料庫重複（#{$duplicatePersons[$uniqueKey]->id}）");
+                continue;
+            }
+
+            // 國籍
+            if ($countryName !== '' && !isset($this->countries[$countryName])) {
+                $this->addError($row, "國籍 格式錯誤：{$countryName}");
+                continue;
+            }
+
+            // 研究類群
+            $deptError = $this->departmentError($departments);
+            if ($deptError !== null) {
+                $this->addError($row, $deptError);
+                continue;
+            }
+
+            // 同姓名（不同人）→ 警告，不阻擋
+            if (isset($warningPersons[$nameKey])) {
+                $this->warningRows[$row - 1] = ['message' => "與現有同姓名者（{$nameKey}）"];
+            } else {
+                $this->validRows[$row - 1] = ['message' => ''];
+            }
+        }
+        $this->reportProgress('validating', $done);
+
+        return count($this->errorRows);
+    }
+
+    /** 分批 commit（每 200 筆），回傳成功筆數 */
+    public function save(): int
+    {
+        $this->buildColumnMap();
+
+        $highest = $this->sheet->getHighestRow();
+        $batchSize = 200;
+        $count = 0;
+
+        for ($start = 2; $start <= $highest; $start += $batchSize) {
+            $end = min($start + $batchSize - 1, $highest);
+
+            DB::beginTransaction();
+            try {
+                for ($row = $start; $row <= $end; $row++) {
+                    $lastName = (string) $this->cell($row, 'last_name');
+                    $firstName = (string) $this->cell($row, 'first_name');
+
+                    if (trim($lastName) === '' && trim($firstName) === '') {
+                        continue; // 空列略過（與 validate 一致）
+                    }
+
+                    $middleName = $this->cell($row, 'middle_name');
+                    $originalFullName = $this->cell($row, 'original_full_name');
+                    $abbreviationName = $this->cell($row, 'abbreviation_name');
+                    $otherNames = $this->cell($row, 'other_names');
+                    $yearBirth = $this->cell($row, 'year_birth');
+                    $yearDeath = $this->cell($row, 'year_death');
+                    $yearPublication = $this->cell($row, 'year_publication');
+                    $countryName = trim((string) $this->cell($row, 'country_name'));
+                    $departments = trim((string) $this->cell($row, 'biology_departments'));
+                    $biologicalGroup = trim((string) $this->cell($row, 'biological_group'));
+
+                    $numericCode = ($countryName !== '' && isset($this->countries[$countryName]))
+                        ? $this->countries[$countryName]->numeric_code
+                        : null;
+
+                    $person = new Person();
+                    $person->last_name = $lastName ?? '';
+                    $person->middle_name = $middleName ?? '';
+                    $person->first_name = $firstName ?? '';
+                    $person->original_full_name = $originalFullName ?? '';
+                    $person->abbreviation_name = $abbreviationName ?? '';
+                    $person->other_names = $otherNames ?? '';
+                    $person->year_birth = $yearBirth ?? '';
+                    $person->year_death = $yearDeath ?? '';
+                    $person->year_publication = $yearPublication ?? '';
+                    $person->biology_departments = $departments;
+                    $person->biological_group = implode('、', explode(', ', $biologicalGroup)) ?? '';
+                    $person->country_numeric_code = $numericCode;
+                    $person->save();
+
+                    (new LogService())->writeImportLog(LogType::PERSON, $person->id);
+
+                    $count++;
+                }
+                DB::commit();
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw new \Exception($e->getMessage());
+            }
+
+            // commit 後回報，輪詢連線讀得到
+            $this->reportProgress('saving', $count);
         }
 
         return $count;
     }
 
+    public function totalRows(): int
+    {
+        if ($this->dataRowCount !== null) {
+            return $this->dataRowCount;
+        }
+        $this->buildColumnMap();
+        $count = 0;
+        for ($row = 2; $row <= $this->sheet->getHighestRow(); $row++) {
+            $lastName = trim((string) $this->cell($row, 'last_name'));
+            $firstName = trim((string) $this->cell($row, 'first_name'));
+            if ($lastName === '' && $firstName === '') {
+                continue;
+            }
+            $count++;
+        }
+        return $this->dataRowCount = $count;
+    }
+
+    private function addError(int $row, string $message): void
+    {
+        if (!isset($this->errorRows[$row - 1])) {
+            $this->errorRows[$row - 1] = ['message' => $message];
+        }
+    }
+
+    private function departmentError(string $departmentsString): ?string
+    {
+        foreach (explode(',', $departmentsString) as $d) {
+            $d = trim($d);
+            if ($d === '') {
+                continue; // 未填 / 尾逗號 → 視為沒填，放行
+            }
+            if (!in_array($d, self::VALID_DEPARTMENTS, true)) {
+                return "研究類群 格式錯誤：{$d}";
+            }
+        }
+        return null;
+    }
+
     public function getErrorRows(): array
     {
-        $this->validate();
         return [
             'repeat_rows' => $this->repeatRows,
             'duplicate_rows' => $this->duplicateRows,
@@ -160,80 +306,5 @@ class PersonImportService
             'warning_rows' => $this->warningRows,
             'valid_rows' => $this->validRows,
         ];
-    }
-
-    private function validate()
-    {
-        // person unique key = last_name, middle_name, first_name, year_birth
-        $duplicatePersons = Person::select(['id', DB::raw("CONCAT(`last_name`, `first_name`, `middle_name`, `year_birth`) as `unique_key`")])
-            ->whereIn(DB::raw("CONCAT(`last_name`, `first_name`, `middle_name`, `year_birth`)"), array_keys($this->allKey1s))
-            ->get()
-            ->keyBy('unique_key');
-
-        $warningPersons = Person::select([DB::raw("CONCAT(`last_name`, `first_name`) as `name_key`"), DB::raw("COUNT(*) as count")])
-            ->whereIn(DB::raw("CONCAT(`last_name`, `first_name`)"), array_keys($this->allKey2s))
-            ->groupBy('name_key')
-            ->get()
-            ->keyBy('name_key');
-
-        for ($row = 2; $row <= $this->maxHighRows; $row++) {
-            $lastName = $this->sheet->getCell('A' . $row)->getValue();
-            $firstName = $this->sheet->getCell('B' . $row)->getValue();
-            $middleName = $this->sheet->getCell('C' . $row)->getValue();
-            $yearBirth = $this->sheet->getCell('G' . $row)->getValue();
-
-            $countryName = $this->sheet->getCell('J' . $row)->getValue();
-
-            $data = [
-                'number' => $row,
-                'last_name' => $this->sheet->getCell('A' . $row)->getValue(),
-                'first_name' => $this->sheet->getCell('B' . $row)->getValue(),
-                'middle_name' => $this->sheet->getCell('C' . $row)->getValue(),
-                'original_full_name' => $this->sheet->getCell('D' . $row)->getValue(),
-                'abbreviation_name' => $this->sheet->getCell('E' . $row)->getValue(),
-                'other_names' => $this->sheet->getCell('F' . $row)->getValue(),
-                'year_birth' => $this->sheet->getCell('G' . $row)->getValue(),
-                'year_death' => $this->sheet->getCell('H' . $row)->getValue(),
-                'year_publication' => $this->sheet->getCell('I' . $row)->getValue(),
-                'country_name' => trim($countryName),
-                'biology_departments' => trim($this->sheet->getCell('K' . $row)->getValue()),
-                'biological_group' => trim($this->sheet->getCell('L' . $row)->getValue()),
-            ];
-
-            if ($lastName == '' || $firstName == '') {
-                $this->errorRows[$row] = $data;
-                continue;
-            };
-
-            if (isset($duplicatePersons["{$lastName}{$firstName}{$middleName}{$yearBirth}"])) {
-                $this->duplicateRows[$row] = $data;
-            } else if ($countryName && !isset($this->countries[$countryName])) {
-                $this->errorRows[$row] = $data;
-            } else if (isset($warningPersons["{$lastName}{$firstName}"])) {
-                $this->warningRows[$row] = $data;
-            } else {
-                $this->validRows[$row] = $data;
-            }
-        }
-    }
-
-    private function validBiologyDepartmentsColumn(string $departmentsString)
-    {
-        $validDepartments = ['viruses', 'bacteria', 'archaea', 'protozoa', 'chromista', 'fungi', 'plantae', 'animalia'];
-        $departmentsElements = explode(',', $departmentsString);
-
-        foreach ($departmentsElements as $d) {
-            if (!in_array($d, $validDepartments)) {
-                throw new \Exception("Department Error: {$d}\n");
-            }
-        }
-    }
-
-    private function validCountryColumn($countryName): ?int
-    {
-        if ($countryName && !isset($this->countries[$countryName])) {
-            throw new \Exception("Country not found $countryName");
-        }
-        return $countryName ? $this->countries[$countryName]->numeric_code : NULL;
     }
 }

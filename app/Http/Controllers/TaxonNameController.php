@@ -25,6 +25,8 @@ use App\TaxonName;
 use App\TypeSpecimen;
 use App\Country;
 use App\Person;
+use App\ImportLog;
+use App\Jobs\ImportTaxonNameJob;
 use Hamcrest\Type\IsString;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -1115,7 +1117,6 @@ class TaxonNameController extends Controller
         return response(TaxonNameCollection::collection([$taxonName])[0]);
     }
 
-
     public function import(Request $request)
     {
         $request->validate([
@@ -1126,26 +1127,37 @@ class TaxonNameController extends Controller
             'mimes' => '檔案類型必須為 :values'
         ]);
 
-        $files = $request->file();
-        $file = $files['file'];
+        $userId = $request->user()->id;
 
-        $spreadsheet = IOFactory::load($file->path());
-        $sheets = $spreadsheet->getAllSheets();
+        // 擋重複：同 user 同 type 已有進行中任務（避免 queue 層疊加）
+        $inProgress = ImportLog::where('user_id', $userId)
+            ->where('type', 'taxon_name')
+            ->whereIn('status', ['pending', 'processing'])
+            ->exists();
 
-        try {
-            $service = new TaxonNameImportService($sheets[0]);
-            $count = $service->handle();
-        } catch (\Exception $e) {
+        if ($inProgress) {
             return response()->json([
-                'data' => $service->getErrorRows(),
-                'message' => $e->getMessage(),
+                'message' => '您已有一筆學名匯入正在處理中，請待其完成後再上傳。',
             ])->setStatusCode(409);
         }
 
-        return response()->json([
-            'message' => 'success',
-            'total' => $count,
+        $file = $request->file('file');
+        $path = $file->store('imports');
+
+        $log = ImportLog::create([
+            'type' => 'taxon_name',
+            'status' => 'pending',
+            'user_id' => $userId,
+            'file_path' => $path,
+            'original_filename' => $file->getClientOriginalName(),
         ]);
+
+        ImportTaxonNameJob::dispatch($log->id);
+
+        return response()->json([
+            'message' => 'accepted',
+            'log_id' => $log->id,
+        ])->setStatusCode(202);
     }
 
     public function typeSpecimens($id)

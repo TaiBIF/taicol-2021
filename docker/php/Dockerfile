@@ -22,6 +22,10 @@ RUN docker-php-ext-install \
     zip \
     intl
 
+# 安裝 phpredis 擴充
+RUN pecl install redis \
+    && docker-php-ext-enable redis
+
 # 如果你需要處理圖片(Excel需求)，建議也把 gd 裝起來
 RUN docker-php-ext-configure gd --with-jpeg --with-webp \
     && docker-php-ext-install gd

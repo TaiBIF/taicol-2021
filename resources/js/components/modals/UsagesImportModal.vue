@@ -9,13 +9,49 @@
                     <input
                         class="input is-fullwidth"
                         type="file"
+                        :disabled="isLoading"
                         v-on:change="onSetFile($event)"
                     />
                     <span v-for="message in errors.file" class="text-red-500" v-text="message"></span>
-                    <div v-for="(rowData, row) in errorRows" class="text-center text-red-500">
-                        ERROR: [第 {{ row }} 筆] {{ rowData.message }}
+                </div>
+
+                <!-- 處理中：階段 + 進度條 + 取消 -->
+                <div v-if="isLoading" class="mt-3">
+                    <div class="text-sm mb-1">檔案：{{ currentFilename || '(未知)' }}</div>
+                    <div class="text-blue-600 mb-1">
+                        {{ phase === 'saving' ? '寫入中' : '驗證中' }}：{{ processedRows }} / {{ totalRows || '?' }}
+                        （關閉視窗仍會在背景處理，重開會自動接續）
+                    </div>
+                    <div class="w-full bg-gray-200 rounded h-2">
+                        <div class="bg-blue-500 h-2 rounded"
+                            :style="{ width: totalRows ? (processedRows / totalRows * 100) + '%' : '0%' }"></div>
+                    </div>
+                    <button class="button is-small mt-2" :disabled="cancelling" v-on:click="onCancel">
+                        {{ cancelling ? '取消中…' : '取消匯入' }}
+                    </button>
+                </div>
+
+                <!-- 失敗卡片：檔名 + 時間 + 訊息 + 下載錯誤檔 -->
+                <div v-if="failedLog" class="mt-3 border border-red-300 rounded p-3">
+                    <div class="text-red-600 font-bold mb-1">匯入失敗</div>
+                    <div class="text-sm">檔案：{{ failedLog.originalFilename || '(未知)' }}</div>
+                    <div class="text-sm">時間：{{ failedLog.completedAt || failedLog.createdAt }}</div>
+                    <div class="text-sm mb-2">訊息：{{ failedLog.errorMessage }}</div>
+                    <div class="flex gap-2">
+                        <a v-if="failedLog.errorFileUrl" :href="failedLog.errorFileUrl"
+                        class="button is-small" download>下載錯誤檔</a>
+                        <button class="button is-small" v-on:click="onDismiss">不再顯示</button>
                     </div>
                 </div>
+
+                <!-- 取消結果卡片 -->
+                <div v-if="cancelledLog" class="mt-3 border border-gray-300 rounded p-3">
+                    <div class="font-bold mb-1">已取消匯入</div>
+                    <div class="text-sm">檔案：{{ cancelledLog.originalFilename || '(未知)' }}</div>
+                    <div class="text-sm mb-2">{{ cancelledLog.errorMessage }}</div>
+                    <button class="button is-small" v-on:click="onClearCancelled">知道了</button>
+                </div>
+
                 <div class="p-2">
                     <ol class="list-decimal ml-2">
                         <li>
@@ -66,7 +102,7 @@
         </div>
         <div class="sticky bottom-0 p-4 bg-white border-t">
             <div class="buttons is-right">
-                <button class="button mr-2" v-on:click="onImportExcel">
+                <button class="button mr-2" :disabled="isLoading" v-on:click="onImportExcel">
                     {{ $t('common.import') }}
                 </button>
                 <button class="button mr-2" v-on:click="close">{{ $t('common.close') }}</button>
@@ -75,7 +111,7 @@
     </div>
 </template>
 <script lang="ts">
-import { defineComponent, inject, ref } from '@vue/composition-api';
+import { defineComponent, inject, ref, onMounted, onBeforeUnmount, PropType } from '@vue/composition-api';
 import { debounce } from 'lodash';
 import { openNotify } from '../../utils';
 
@@ -86,10 +122,8 @@ export default defineComponent({
             required: true,
         },
         refresh: {
-            type: Function,
-            default() {
-
-            },
+            type: Function as PropType<() => void>,
+            default: () => {},
         },
     },
     setup(props, context) {
@@ -97,48 +131,163 @@ export default defineComponent({
         const app: any = context.root;
         const store = app.$store;
 
-        const formData = new FormData();
-        const errors = ref<object>({});
-        const errorRows = ref<object>({});
-
         const { namespaceId, refresh } = props;
 
-        const onSetFile = (event) => {
-            formData.set('file', event.target.files[0]);
+        const formData = new FormData();
+        const errors = ref<any>({});
+
+        const isLoading = ref<boolean>(false);
+        const status = ref<string>('');
+        const phase = ref<string>('');
+        const totalRows = ref<number | null>(null);
+        const processedRows = ref<number>(0);
+        const successCount = ref<number | null>(null);
+        const errorMessage = ref<string>('');
+        const currentFilename = ref<string>('');
+        const logId = ref<number | null>(null);
+        const cancelling = ref<boolean>(false);
+        const failedLog = ref<any>(null);
+        const cancelledLog = ref<any>(null);
+
+        let timer: any = null;
+        const clearTimer = () => { if (timer) { clearInterval(timer); timer = null; } };
+
+        const resetStates = () => {
+            errors.value = {};
+            errorMessage.value = '';
+            successCount.value = null;
+            totalRows.value = null;
+            processedRows.value = 0;
+            phase.value = '';
+            status.value = '';
         };
 
-        const close = () => {
-            store.commit('closeModal');
+        const applyLog = (log) => {
+            status.value = log.status;
+            phase.value = log.phase || '';
+            currentFilename.value = log.originalFilename || '';
+            cancelling.value = !!log.cancelRequestedAt;
+            totalRows.value = log.totalRows;
+            processedRows.value = log.processedRows || 0;
+            successCount.value = log.successCount;
+            errorMessage.value = log.errorMessage || '';
+
+            if (log.status === 'completed') {
+                isLoading.value = false;
+                failedLog.value = null;
+                clearTimer();
+                openNotify(`成功匯入 ${log.successCount} 筆`);
+                refresh();
+            } else if (log.status === 'failed') {
+                isLoading.value = false;
+                failedLog.value = log;
+                clearTimer();
+                openNotify(log.errorMessage || '匯入失敗', 'is-danger');
+            } else if (log.status === 'cancelled') {
+                isLoading.value = false;
+                cancelling.value = false;
+                failedLog.value = null;
+                cancelledLog.value = log;
+                clearTimer();
+            } else {
+                isLoading.value = true;
+            }
         };
+
+        const poll = () => {
+            if (!logId.value) return;
+            axios.get(`/import/logs/${logId.value}`)
+                .then(({ data: { data } }) => { if (data) applyLog(data); })
+                .catch(() => { /* 單次失敗就等下一輪 */ });
+        };
+
+        const startPolling = (id) => {
+            logId.value = id;
+            isLoading.value = true;
+            clearTimer();
+            poll();                         // 立刻打一次
+            timer = setInterval(poll, 3000);
+        };
+
+        const onSetFile = (event) => { formData.set('file', event.target.files[0]); };
 
         const onImportExcel = debounce(() => {
-            axios
-                .post(`/import/namespaces/${namespaceId}/usages`, formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                    },
-                })
-                .then(() => {
-                    close();
-                    refresh();
-                })
-                .catch(({
-                    errors: e, status, message, data,
-                }) => {
-                    if (status === 409) {
-                        errorRows.value = data.errorRows;
+            resetStates();
+            failedLog.value = null;
+            cancelledLog.value = null;
+            isLoading.value = true;
+
+            axios.post(`/import/namespaces/${namespaceId}/usages`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            })
+                .then(({ data: { logId: id } }) => { startPolling(id); })
+                .catch(({ status: code, errors: e, message }) => {
+                    isLoading.value = false;
+                    if (code === 409) {
                         openNotify(message, 'is-danger');
-                    } else if (status === 422) {
+                    } else if (code === 422) {
                         errors.value = e;
+                    } else {
+                        openNotify(message || '上傳失敗', 'is-danger');
                     }
                 });
         });
 
+        const onCancel = () => {
+            if (!logId.value) return;
+            cancelling.value = true;
+            axios.post(`/import/logs/${logId.value}/cancel`)
+                .catch(() => { cancelling.value = false; });
+        };
+
+        const onDismiss = () => {
+            if (!failedLog.value) return;
+            axios.post(`/import/logs/${failedLog.value.id}/dismiss`).then(() => {
+                failedLog.value = null;
+                resetStates();
+            });
+        };
+
+        const onClearCancelled = () => {
+            cancelledLog.value = null;
+            resetStates();
+        };
+
+        const close = () => { store.commit('closeModal'); };
+
+        // 開 modal 就撈 latest：未結束接續輪詢，已結束顯示結果卡片
+        onMounted(() => {
+            axios.get('/import/logs/latest', {
+                params: { type: 'namespace_usage', namespace_id: namespaceId },
+            })
+                .then(({ data: { data } }) => {
+                    if (!data) return;
+                    if (data.status === 'pending' || data.status === 'processing') {
+                        startPolling(data.id);
+                    } else {
+                        applyLog(data);
+                    }
+                });
+        });
+
+        onBeforeUnmount(clearTimer);
+
         return {
             errors,
-            errorRows,
+            isLoading,
+            status,
+            phase,
+            totalRows,
+            processedRows,
+            currentFilename,
+            cancelling,
+            failedLog,
+            cancelledLog,
             onSetFile,
             onImportExcel,
+            onCancel,
+            onDismiss,
+            onClearCancelled,
             close,
         };
     },

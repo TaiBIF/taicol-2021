@@ -57,8 +57,6 @@ class UsageAiImportService
         $this->rankMapping = Rank::all()->keyBy('key');
     }
 
-
-
     public function processScientificNames(array $scientificNamesData): array
     {
 

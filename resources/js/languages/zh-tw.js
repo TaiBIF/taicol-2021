@@ -13,6 +13,7 @@ import collect from './zh-tw/collect';
 import validation from './zh-tw/validation';
 import guideline from './zh-tw/guideline';
 import classification from './zh-tw/classification';
+import aiImport from './zh-tw/aiImport';
 
 export default {
     title: '物種學名管理工具',
@@ -40,5 +41,6 @@ export default {
     indexPage,
     loginPage,
     guideline,
-    classification
+    classification,
+    aiImport
 };

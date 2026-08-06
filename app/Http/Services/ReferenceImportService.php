@@ -7,7 +7,9 @@ namespace App\Http\Services;
 use App\Person;
 use App\Reference;
 use App\Book;
+use App\Exceptions\ImportRowException;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 class ReferenceImportService
 {
@@ -20,7 +22,21 @@ class ReferenceImportService
     private $warningRows = []; //
 
     private $authors;
+    private $uniqueReference = []; // 檔案內 title+year+authors 去重
 
+    private array $columnMap = [];  // 欄名 => 數字索引（1 起算）
+
+    /** @var callable|null  function(string $phase, int $done) */
+    public $onProgress = null;
+
+    private function reportProgress(string $phase, int $done): void
+    {
+        if (is_callable($this->onProgress)) {
+            ($this->onProgress)($phase, $done);
+        }
+    }
+
+    // 儲存格值的列舉對照（內容仍為中文，僅表頭改英文）
     private $typeMap = [
         '期刊文章' => Reference::TYPE_JOURNAL,
         '書籍文章(章節)' => Reference::TYPE_BOOK_ARTICLE,
@@ -43,196 +59,243 @@ class ReferenceImportService
         $this->sheet = $sheet;
     }
 
-    public function handle(): int
+    // ---- 讀取工具：一律用欄名 ----
+
+    private function buildColumnMap(): void
     {
-        $this->validateSheetRows();
-
-        DB::beginTransaction();
-
-        try {
-
-            $min_reference_id = 0;
-
-            $count = 0;
-            for ($row = 2; $row <= $this->sheet->getHighestRow(); $row++) {
-                $reference = $this->saveReference($row);
-                $count++;
-                if ($row == 2){
-                    $min_reference_id = $reference->id;
-                }
-            }
-
-            DB::commit();
-
-            // 要commit之後才呼叫API
-
-            $referenceUpdateAPI = env('TAICOL_API_ROOT') . '/update/reference?min_reference_id=' . $min_reference_id;
-            $resp = file_get_contents($referenceUpdateAPI);
-
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            $this->throwError($row, $e->getMessage() . $e->getTraceAsString());
+        if (!empty($this->columnMap)) {
+            return;
         }
-
-        return $count;
+        $highestColumnIndex = Coordinate::columnIndexFromString($this->sheet->getHighestColumn());
+        for ($col = 1; $col <= $highestColumnIndex; $col++) {
+            $header = trim((string) $this->sheet->getCellByColumnAndRow($col, 1)->getValue());
+            if ($header !== '') {
+                $this->columnMap[$header] = $col;
+            }
+        }
     }
 
-    private function validateSheetRows()
+    /** 依欄名讀取；欄位不存在回 null */
+    private function cell(int $row, string $columnName)
     {
-        $sheet = $this->sheet;
+        $index = $this->columnMap[$columnName] ?? null;
+        if ($index === null) {
+            return null;
+        }
+        return $this->sheet->getCellByColumnAndRow($index, $row)->getValue();
+    }
 
+    /** volume 依類型切換：期刊讀 volume、其餘讀 book_volume */
+    private function volume(int $row, int $type)
+    {
+        return (
+            $type === Reference::TYPE_JOURNAL
+                ? $this->cell($row, 'volume')
+                : $this->cell($row, 'book_volume')
+        ) ?? '';
+    }
+
+    /** 唯讀：逐列收集全部錯誤，回傳錯誤列數 */
+    public function validate(): int
+    {
+        $this->buildColumnMap();
+
+        // 先蒐集全部作者名，一次撈回作者 map（save 階段重用）
         $authorStringMap = [];
-
-        // calculate max high row
-        for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
-            $typeString = $sheet->getCell('A' . $row)->getValue();
-            $authorNamesString = $sheet->getCell('B' . $row)->getValue();
-            $publishYear = $sheet->getCell('C' . $row)->getValue();
-            $languageString = $this->sheet->getCell('P' . $row)->getValue() ?? '';
-            $pageRange = $this->sheet->getCell('K' . $row)->getValue() ?? '';
-
-            if (!$this->sheet->getCell('A' . $row)->getValue()) {
-                $this->throwError($row, '文獻類型 必填');
+        for ($row = 2; $row <= $this->sheet->getHighestRow(); $row++) {
+            $authorNamesString = $this->cell($row, 'authors');
+            foreach (explode('|', $authorNamesString) as $name) {
+                $authorStringMap[$name] = true;
             }
-
-            if (!isset($this->typeMap[$typeString])) {
-                $this->throwError($row, '格式錯誤');
-            };
-
-            // check publish year
-            if (!$publishYear) {
-                $this->throwError($row, '發表年份 必填');
-            }
-
-            // check page range
-            if ($pageRange !== '' && !str_contains($pageRange, '–')) {
-                $this->throwError($row, '頁碼範圍 格式錯誤');
-            }
-
-            // check language
-            if ($languageString !== '' && !isset($this->languageMapping[$languageString])) {
-                $this->throwError($row, "語言 格式錯誤：{$languageString}");
-            }
-
-            // collect authors
-            $authorsStrings = explode('|', $authorNamesString);
-            foreach ($authorsStrings as $authorsString) {
-                $authorStringMap[$authorsString] = true;
-            }
-
-            $this->maxHighRows = $row;
         }
 
-        // find authors
         $this->authors = Person::select('id', 'original_full_name', 'last_name')
             ->whereIn('original_full_name', array_keys($authorStringMap))
             ->get()
             ->keyBy('original_full_name');
 
-        $uniqueReference = [];
-        for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
-            $typeString = $this->sheet->getCell('A' . $row)->getValue();
-            $type = (int) $this->typeMap[$typeString];
-            $authorNamesString = $sheet->getCell('B' . $row)->getValue();
-            $authorNames = explode('|', $authorNamesString);
-            $publishYear = $this->sheet->getCell('C' . $row)->getValue();
-            $articleTitle = $this->sheet->getCell('D' . $row)->getValue() ?? '';
-            $bookTitle = $this->sheet->getCell('E' . $row)->getValue();
-            $volume = (
-                $type === Reference::TYPE_JOURNAL ?
-                    $this->sheet->getCell('G' . $row)->getValue() : $this->sheet->getCell('I' . $row)->getValue()
-                ) ?? '';
-            $edition = $this->sheet->getCell('J' . $row)->getValue() ?? '';
-            $chapter = $this->sheet->getCell('L' . $row)->getValue() ?? '';
+        $this->uniqueReference = [];
 
-            foreach ($authorsStrings as $authorsString) {
-                if (!isset($this->authors[$authorsString])) {
-                    $this->throwError($row, "{$authorsString} 人名不存在");
-                }
+        $highest = $this->sheet->getHighestRow();
+        $done = 0;
+        for ($row = 2; $row <= $highest; $row++) {
+            try {
+                $this->validateRow($row);
+            } catch (ImportRowException $e) {
+                // 該列第一個錯誤已記錄
             }
-
-            $authorIds = $this->authors->whereIn('original_full_name', $authorNames)
-                ->values()
-                ->map(function ($authors) {
-                    return $authors->id;
-                })
-                ->toArray();
-
-            /**
-             * check unique
-             *
-             * (1) check in file unique
-             * (2) check database unique
-             **/
-            $title = ReferenceService::generateTitle($type, $articleTitle, $bookTitle, $edition, $volume, $chapter);
-
-            $key = "{$title}{$publishYear}{$authorsString}";
-            if (isset($uniqueReference[$key])) {
-                $this->throwError($row, "資料重複：與第 {$uniqueReference[$key]} 筆");
+            $done++;
+            if ($done % 100 === 0) {
+                $this->reportProgress('validating', $done);
             }
-
-            $uniqueReference[$key] = $row;
-
-
-            $existReference = Reference::query()
-                ->where('title', $title)
-                ->where('publish_year', $publishYear)
-                ->where('is_publish', true)
-                ->whereHas('authors', function ($query) use ($authorIds) {
-                    $query->whereIn('persons.id', $authorIds);
-                }, '=', count($authorIds))
-                ->first();
-
-            $existDraftReference = Reference::query()
-                ->where('title', $title)
-                ->where('publish_year', $publishYear)
-                ->where('is_publish', false)
-                ->whereHas('authors', function ($query) use ($authorIds) {
-                    $query->whereIn('persons.id', $authorIds);
-                }, '=', count($authorIds))
-                ->first();
-
-            if ($existReference) {
-                $this->throwError($row, "資料重複：與資料庫 #{$existReference->id}");
-            } else if ($existDraftReference) {
-                $this->throwError($row, "文獻已存在於草稿");
-            }
-     
         }
+        $this->reportProgress('validating', $done);
+
+        return count($this->errorRows);
+    }
+
+    private function validateRow(int $row)
+    {
+        $typeString = $this->cell($row, 'type');
+        $authorNamesString = $this->cell($row, 'authors');
+        $publishYear = $this->cell($row, 'publish_year');
+        $articleTitle = $this->cell($row, 'article_title') ?? '';
+        $bookTitle = $this->cell($row, 'book_title');
+        $languageString = $this->cell($row, 'language') ?? '';
+        $pageRange = $this->cell($row, 'page_range') ?? '';
+
+        if (!$typeString) {
+            $this->throwError($row, '文獻類型 必填');
+        }
+        if (!isset($this->typeMap[$typeString])) {
+            $this->throwError($row, '文獻類型 格式錯誤');
+        }
+        $type = (int) $this->typeMap[$typeString];
+
+        if (!$publishYear) {
+            $this->throwError($row, '發表年份 必填');
+        }
+
+        if ($pageRange !== '' && !str_contains($pageRange, '–')) {
+            $this->throwError($row, '頁碼範圍 格式錯誤');
+        }
+
+        if ($languageString !== '' && !isset($this->languageMapping[$languageString])) {
+            $this->throwError($row, "語言 格式錯誤：{$languageString}");
+        }
+
+        // 作者存在性（逐名檢查當列作者欄）
+        $authorNames = explode('|', $authorNamesString);
+        foreach ($authorNames as $name) {
+            if (!isset($this->authors[$name])) {
+                $this->throwError($row, "{$name} 人名不存在");
+            }
+        }
+
+        $authorIds = $this->authors->whereIn('original_full_name', $authorNames)
+            ->values()
+            ->map(function ($author) {
+                return $author->id;
+            })
+            ->toArray();
+
+        $volume = $this->volume($row, $type);
+        $edition = $this->cell($row, 'edition') ?? '';
+        $chapter = $this->cell($row, 'chapter') ?? '';
+
+        $title = ReferenceService::generateTitle($type, $articleTitle, $bookTitle, $edition, $volume, $chapter);
+
+        // (1) 檔案內去重
+        $key = "{$title}{$publishYear}{$authorNamesString}";
+        if (isset($this->uniqueReference[$key])) {
+            $this->throwError($row, "資料重複：與第 {$this->uniqueReference[$key]} 筆");
+        }
+        $this->uniqueReference[$key] = $row;
+
+        // (2) 資料庫去重
+        $existReference = Reference::query()
+            ->where('title', $title)
+            ->where('publish_year', $publishYear)
+            ->where('is_publish', true)
+            ->whereHas('authors', function ($query) use ($authorIds) {
+                $query->whereIn('persons.id', $authorIds);
+            }, '=', count($authorIds))
+            ->first();
+
+        if ($existReference) {
+            $this->throwError($row, "資料重複：與資料庫 #{$existReference->id}");
+        }
+
+        $existDraftReference = Reference::query()
+            ->where('title', $title)
+            ->where('publish_year', $publishYear)
+            ->where('is_publish', false)
+            ->whereHas('authors', function ($query) use ($authorIds) {
+                $query->whereIn('persons.id', $authorIds);
+            }, '=', count($authorIds))
+            ->first();
+
+        if ($existDraftReference) {
+            $this->throwError($row, '文獻已存在於草稿');
+        }
+    }
+
+    /** 分批 commit（每 200 筆），回傳成功筆數 */
+    public function save(): int
+    {
+        $this->buildColumnMap();
+
+        $highest = $this->sheet->getHighestRow();
+        $batchSize = 200;
+        $count = 0;
+        $minReferenceId = 0;
+
+        for ($start = 2; $start <= $highest; $start += $batchSize) {
+            $end = min($start + $batchSize - 1, $highest);
+
+            DB::beginTransaction();
+            try {
+                for ($row = $start; $row <= $end; $row++) {
+                    $reference = $this->saveReference($row);
+                    if ($minReferenceId === 0) {
+                        $minReferenceId = $reference->id;
+                    }
+                    $count++;
+                }
+                DB::commit();
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw new \Exception($e->getMessage());
+            }
+
+            // commit 後回報，輪詢連線讀得到
+            $this->reportProgress('saving', $count);
+        }
+
+        // 全部 commit 後才呼叫外部 API
+        if ($minReferenceId > 0) {
+            $referenceUpdateAPI = env('TAICOL_API_ROOT') . '/update/reference?min_reference_id=' . $minReferenceId;
+            @file_get_contents($referenceUpdateAPI);
+        }
+
+        return $count;
+    }
+
+    public function totalRows(): int
+    {
+        return max(0, $this->sheet->getHighestRow() - 1);
     }
 
     private function throwError(int $row, string $message)
     {
-        $this->errorRows[$row - 1] = ['message' => $message];
-        throw new \Exception($message);
+        if (!isset($this->errorRows[$row - 1])) {
+            $this->errorRows[$row - 1] = ['message' => $message];
+        }
+        throw new ImportRowException($message);
     }
 
     private function saveReference(int $row)
     {
-        $typeString = $this->sheet->getCell('A' . $row)->getValue();
+        $typeString = $this->cell($row, 'type');
         $type = (int) $this->typeMap[$typeString];
-        $publishYear = $this->sheet->getCell('C' . $row)->getValue();
-        $articleTitle = $this->sheet->getCell('D' . $row)->getValue() ?? '';
-        $bookTitle = $this->sheet->getCell('E' . $row)->getValue();
-        $bookAbbreviation = $this->sheet->getCell('F' . $row)->getValue();
-        $volume = (
-            $type === Reference::TYPE_JOURNAL ?
-                $this->sheet->getCell('G' . $row)->getValue() : $this->sheet->getCell('I' . $row)->getValue()
-            ) ?? '';
-        $issue = $this->sheet->getCell('H' . $row)->getValue() ?? '';
-        $edition = $this->sheet->getCell('J' . $row)->getValue() ?? '';
-        $pageRange = $this->sheet->getCell('K' . $row)->getValue() ?? '';
-        $chapter = $this->sheet->getCell('L' . $row)->getValue() ?? '';
+        $publishYear = $this->cell($row, 'publish_year');
+        $articleTitle = $this->cell($row, 'article_title') ?? '';
+        $bookTitle = $this->cell($row, 'book_title');
+        $bookAbbreviation = $this->cell($row, 'book_abbreviation');
+        $volume = $this->volume($row, $type);
+        $issue = $this->cell($row, 'issue') ?? '';
+        $edition = $this->cell($row, 'edition') ?? '';
+        $pageRange = $this->cell($row, 'page_range') ?? '';
+        $chapter = $this->cell($row, 'chapter') ?? '';
 
-        $articleNumber = $this->sheet->getCell('M' . $row)->getValue() ?? '';
-        $doi = $this->sheet->getCell('N' . $row)->getValue();
-        $url = $this->sheet->getCell('O' . $row)->getValue();
-        $languageString = $this->sheet->getCell('P' . $row)->getValue();
-        $copyright = $this->sheet->getCell('Q' . $row)->getValue();
-        $note = $this->sheet->getCell('R' . $row)->getValue();
+        $articleNumber = $this->cell($row, 'article_number') ?? '';
+        $doi = $this->cell($row, 'doi');
+        $url = $this->cell($row, 'url');
+        $languageString = $this->cell($row, 'language');
+        $copyright = $this->cell($row, 'copyright');
+        $note = $this->cell($row, 'note');
 
-        $authorNamesString = $this->sheet->getCell('B' . $row)->getValue();
+        $authorNamesString = $this->cell($row, 'authors');
         $authorNames = explode('|', $authorNamesString);
         $authors = $this->authors->whereIn('original_full_name', $authorNames)
             ->sortBy(function ($model) use ($authorNames) {
@@ -273,24 +336,6 @@ class ReferenceImportService
         $reference = new Reference();
         $service = new ReferenceService($reference);
 
-        $authorIds = $authors->pluck('id')->toArray();
-
-        $book = $bookTitle ? Book::where('title', $bookTitle)->first() : null;
-        $bookId = $book ? ($book->id ?? '') : '';
-
-
-        if ($service->hasReferenceExist($title, $publishYear, $authorIds, true, $bookId, $volume, $pageRange)) {
-            throw new \Exception('資料重複');
-        } else if ($service->hasReferenceExist($title, $publishYear, $authorIds, false, $bookId, $volume, $pageRange)) {
-            throw new \Exception('文獻已存在於草稿');
-        }
-
-        // if ($service->hasReferenceExist($title, $publishYear, $authorIds, true)) {
-        //     throw new \Exception('資料重複');
-        // } else if ($service->hasReferenceExist($title, $publishYear, $authorIds, false)) {
-        //     throw new \Exception('文獻已存在於草稿');
-        // }
-
         $service->create([
             'type' => $type,
             'title' => $title,
@@ -312,8 +357,8 @@ class ReferenceImportService
 
         $logService = new LogService();
         $logService->writeImportLog(LogType::REFERENCE, $reference->id);
-        
-        return  $reference;
+
+        return $reference;
     }
 
     public function getErrorRows()

@@ -23,6 +23,8 @@ use App\ImportChecklistLog;
 use App\User;
 use App\Country;
 use App\Nomenclature;
+use App\ImportLog;
+use App\Jobs\ImportNamespaceUsageJob;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -505,27 +507,39 @@ class MyNamespaceUsageController extends Controller
             'mimes' => '檔案類型必須為 :values'
         ]);
 
-        $files = $request->file();
-        $file = $files['file'];
+        $userId = $request->user()->id;
 
-        $spreadsheet = IOFactory::load($file->path());
-        $sheets = $spreadsheet->getAllSheets();
+        // 擋重複：同 user + type + 同 namespace 有進行中任務才擋
+        $inProgress = ImportLog::where('user_id', $userId)
+            ->where('type', 'namespace_usage')
+            ->where('context->namespace_id', (int) $id)
+            ->whereIn('status', ['pending', 'processing'])
+            ->exists();
 
-        try {
-            $service = new UsageImportService($sheets[0], $id);
-            $count = $service->handle();
-        } catch (\Exception $e) {
+        if ($inProgress) {
             return response()->json([
-                'data' => $service->getErrorRows(),
-                'message' => $e->getMessage(),
+                'message' => '此名錄已有一筆匯入正在處理中，請待其完成後再上傳。',
             ])->setStatusCode(409);
         }
 
-        return response()->json([
-            'message' => 'success',
-            'total' => $count,
+        // 檔案落地（storage/app/imports），Job 讀完後刪除
+        $path = $request->file('file')->store('imports');
+
+        $log = ImportLog::create([
+            'type' => 'namespace_usage',
+            'status' => 'pending',
+            'user_id' => $userId,
+            'file_path' => $path,
+            'original_filename' => $request->file('file')->getClientOriginalName(),
+            'context' => ['namespace_id' => (int) $id],
         ]);
 
+        ImportNamespaceUsageJob::dispatch($log->id);
+
+        return response()->json([
+            'message' => 'accepted',
+            'log_id' => $log->id,
+        ])->setStatusCode(202);
     }
 
     public function export(Request $request, $id)

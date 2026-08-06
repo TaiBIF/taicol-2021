@@ -1,21 +1,31 @@
 <template>
     <div>
         <div class="px-16 py-12 w-[768px]">
-            <!-- <div class="flex gap-2">
-                <p class="leading-10 w-[80px]">
-                    <span class="font-bold">DOI</span>
-                </p>
-                <general-input v-model="doi" :errors="errors.doi" class="grow"/>
-            </div>
-            或
-            <div class="flex gap-2">
-                <p class="leading-10 w-[80px]">
-                    <span class="font-bold">文獻URL</span>
-                </p>
-                <general-input v-model="url" :errors="errors.url" class="grow"/>
-            </div>
-            或 -->
-            <div class="flex gap-2 mb-4">
+            <p class="text-center" v-if="!submitted"><b>{{ $t('aiImport.guide.title') }}</b></p>
+            <ul class="guide-list" v-if="!submitted">
+
+                <li>{{ $t('aiImport.guide.fileUpload') }}</li>
+                <li>{{ $t('aiImport.guide.redundancyCheck') }}</li>
+                
+                <!-- 子層情境列表 -->
+                <li>
+                    <span>{{ $t('aiImport.guide.scenariosTitle') }}</span>
+                    <ul class="sub-list">
+                        <li>{{ $t('aiImport.guide.scenarios.case1') }}</li>
+                        <li>{{ $t('aiImport.guide.scenarios.case2') }}</li>
+                        <li>{{ $t('aiImport.guide.scenarios.case3') }}</li>
+                        <li>{{ $t('aiImport.guide.scenarios.case4') }}</li>
+                        <li>{{ $t('aiImport.guide.scenarios.case5') }}</li>
+                    </ul>
+                </li>
+                <li>{{ $t('aiImport.guide.newRef') }}</li>
+                <li>{{ $t('aiImport.guide.parsingProcess') }}</li>
+                <li>{{ $t('aiImport.guide.newTaxa') }}</li>
+                <li>{{ $t('aiImport.guide.verification') }}</li>
+                <li>{{ $t('aiImport.guide.finalImport') }}</li>
+                </ul>
+
+            <div class="flex gap-2 my-4">
                 <p class="leading-10 w-[80px]">
                     <span class="font-bold">文獻PDF</span>
                 </p>
@@ -175,6 +185,7 @@ export default defineComponent({
         const result = ref<any>(null);
         const errors = ref<object>({});
         const isLoading = ref<boolean>(false);
+        const submitted = ref<boolean>(false);
         const selectedAuthors = ref<{[key: number]: any[]}>({});
 
         // 處理檔案上傳
@@ -184,6 +195,8 @@ export default defineComponent({
         // };
 
         const onFetchReferenceAI = () => {
+
+            submitted.value = true; // 按下匯入後就隱藏note
 
             // 1. 前端基本驗證
             if (!uploadedFile.value) {
@@ -385,6 +398,7 @@ export default defineComponent({
             result,
             errors,
             isLoading,
+            submitted,
             selectedAuthors,
             typeDisplay,
             onFetchReferenceAI,
@@ -397,3 +411,24 @@ export default defineComponent({
     components: { Loading, GeneralInput, PersonSelect },
 });
 </script>
+
+<style scoped>
+/* 主層清單顯示實心圓點 */
+.guide-list {
+  list-style-type: disc ;
+  padding-left: 1.25rem; /* 必須加上內縮，否則圓點會跑到容器外被吃掉 */
+}
+
+/* 子層情境清單顯示空心圓點（視覺更有層次） */
+.sub-list {
+  list-style-type: circle;
+  padding-left: 1.25rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+/* 讓列表間距稍微拉開，閱讀更舒適 */
+.guide-list > li {
+  margin-bottom: 0.5rem;
+}
+</style>

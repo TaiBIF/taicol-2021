@@ -718,7 +718,7 @@ class ReferenceUsageController extends Controller
 
     public function updateUsageCheck(Request $request) {
 
-        $url = "https://api.taicol.tw/v2/update_check_usage";
+        $url = env('TAICOL_API_ROOT') . "/update_check_usage";
 
         $curl = curl_init();
         curl_setopt($curl, CURLOPT_URL, $url);
