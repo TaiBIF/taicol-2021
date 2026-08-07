@@ -116,6 +116,23 @@ class ImportNamespaceUsageJob implements ShouldQueue
             }
 
             if ($errorCount > 0) {
+                $namesResolved = $log->context['names_resolved'] ?? false;
+
+                // 第一次遇到查無此 Taxon → 先去批次新增（其他錯誤留待重跑後再回報）
+                if (!$namesResolved && $service->hasUnmatchedNames()) {
+                    $log->update([
+                        'status'        => 'awaiting_names',
+                        'phase'         => null,
+                        'completed_at'  => now(),
+                        'error_message' => null,
+                        'context'       => array_merge($log->context ?? [], [
+                            'unmatched_names' => $service->getUnmatchedNames(),
+                        ]),
+                    ]);
+                    return;
+                }
+
+                // 已建過名 或 已無查無此 Taxon → 照常寫錯誤檔
                 $errorRows = $service->getErrorRows()['error_rows'];
                 $errorFilePath = $this->writeErrorFile($sheet, $spreadsheet, $errorRows, $log->id);
 
@@ -172,8 +189,9 @@ class ImportNamespaceUsageJob implements ShouldQueue
             ]);
             throw $e;
         } finally {
-            // 原始上傳一律刪；錯誤檔留給使用者下載，取消時才刪
-            if ($log->file_path && Storage::exists($log->file_path)) {
+            // awaiting_names 需要保留原始檔以便建名後續跑，其餘一律刪
+            if ($log->status !== 'awaiting_names'
+                && $log->file_path && Storage::exists($log->file_path)) {
                 Storage::delete($log->file_path);
             }
         }

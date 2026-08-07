@@ -238,14 +238,13 @@ export default {
     },
     mounted() {
         this.refresh();
-
-        const { items } = this.$store.state.breadcrumb;
-
-        if (this.$route.meta.type === 'reference' && items[items.length - 1]?.type === 'reference-usages-list') {
-            items.splice(-1);
-            this.$store.commit('breadcrumb/SET_ITEMS', items);
+        const pollLog = this.$route.query.poll_log;
+        if (pollLog) {
+            this.openImportModalForPolling(parseInt(pollLog));
+            const query = { ...this.$route.query };
+            delete query.poll_log;
+            this.$router.replace({ query }).catch(() => {});
         }
-
     },
     computed: {
         usageInfoImagePath() {
@@ -274,6 +273,16 @@ export default {
     methods: {
         goBack(){
             window.history.back();
+        },
+        openImportModalForPolling(logId) {
+            this.$store.commit('openModal', {
+                component: () => import('../components/modals/UsagesImportModal.vue'),
+                props: {
+                    namespaceId: parseInt(this.$route.params.id),
+                    refresh: this.refresh,
+                    initialLogId: logId,
+                },
+            });
         },
         onDragStart(event){
             let index = event.oldIndex; 

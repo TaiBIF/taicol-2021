@@ -18,7 +18,13 @@
                 <!-- 處理中：階段 + 進度條 + 取消 -->
                 <div v-if="isLoading" class="mt-3">
                     <div class="text-sm mb-1">檔案：{{ currentFilename || '(未知)' }}</div>
-                    <div class="text-blue-600 mb-1">
+                    <div v-if="phase === 'creating_names'" class="text-blue-600 mb-1">
+                        新增學名中…（關閉視窗仍會在背景處理，重開會自動接續）
+                    </div>
+                    <div v-else-if="phase === 'importing_usages'" class="text-blue-600 mb-1">
+                        匯入中…（關閉視窗仍會在背景處理，重開會自動接續）
+                    </div>
+                    <div v-else class="text-blue-600 mb-1">
                         {{ phase === 'saving' ? '寫入中' : '驗證中' }}：{{ processedRows }} / {{ totalRows || '?' }}
                         （關閉視窗仍會在背景處理，重開會自動接續）
                     </div>
@@ -40,7 +46,20 @@
                     <div class="flex gap-2">
                         <a v-if="failedLog.errorFileUrl" :href="failedLog.errorFileUrl"
                         class="button is-small" download>下載錯誤檔</a>
-                        <button class="button is-small" v-on:click="onDismiss">不再顯示</button>
+                        <button class="button is-small" v-on:click="onDismiss">取消 / 不再顯示</button>
+                    </div>
+                </div>
+
+                <!-- 待新增學名卡片 -->
+                <div v-if="awaitingLog" class="mt-3 border border-amber-300 rounded p-3">
+                    <div class="text-amber-600 font-bold mb-1">有一批匯入待新增學名</div>
+                    <div class="text-sm">檔案：{{ awaitingLog.originalFilename || '(未知)' }}</div>
+                    <div class="text-sm mb-2">此份匯入有未比對到的學名，需先完成批次新增才能繼續匯入。</div>
+                    <div class="flex gap-2">
+                        <button class="button is-small is-link" v-on:click="onGoCreateName">前往新增</button>
+                        <button class="button is-small" :disabled="discarding" v-on:click="onDiscardAwaiting">
+                            {{ discarding ? '處理中…' : '放棄' }}
+                        </button>
                     </div>
                 </div>
 
@@ -117,21 +136,16 @@ import { openNotify } from '../../utils';
 
 export default defineComponent({
     props: {
-        namespaceId: {
-            type: Number,
-            required: true,
-        },
-        refresh: {
-            type: Function as PropType<() => void>,
-            default: () => {},
-        },
+        namespaceId: { type: Number, required: true },
+        refresh: { type: Function as PropType<() => void>, default: () => {} },
+        initialLogId: { type: Number, default: null },   // ← 新增
     },
     setup(props, context) {
         const axios: any = inject('axios');
         const app: any = context.root;
         const store = app.$store;
 
-        const { namespaceId, refresh } = props;
+        const { namespaceId, refresh, initialLogId } = props;
 
         const formData = new FormData();
         const errors = ref<any>({});
@@ -148,6 +162,8 @@ export default defineComponent({
         const cancelling = ref<boolean>(false);
         const failedLog = ref<any>(null);
         const cancelledLog = ref<any>(null);
+        const awaitingLog = ref<any>(null);
+        const discarding = ref<boolean>(false);
 
         let timer: any = null;
         const clearTimer = () => { if (timer) { clearInterval(timer); timer = null; } };
@@ -178,6 +194,16 @@ export default defineComponent({
                 clearTimer();
                 openNotify(`成功匯入 ${log.successCount} 筆`);
                 refresh();
+                store.commit('closeModal');   // ← 成功後自動關閉 modal
+            } else if (log.status === 'awaiting_names') {
+                isLoading.value = false;
+                clearTimer();
+                store.commit('closeModal');   // ← 先關 modal
+                app.$router.push({
+                    name: 'namespace-name-create-page',
+                    params: { id: namespaceId },
+                    query: { import_log_id: log.id },
+                });
             } else if (log.status === 'failed') {
                 isLoading.value = false;
                 failedLog.value = log;
@@ -249,28 +275,53 @@ export default defineComponent({
         };
 
         const onClearCancelled = () => {
+            if (cancelledLog.value) {
+                axios.post(`/import/logs/${cancelledLog.value.id}/dismiss`).catch(() => {});
+            }
             cancelledLog.value = null;
             resetStates();
         };
-
         const close = () => { store.commit('closeModal'); };
 
         // 開 modal 就撈 latest：未結束接續輪詢，已結束顯示結果卡片
         onMounted(() => {
+            if (initialLogId) {
+                startPolling(initialLogId);   // 直接輪詢指定 log；已完成也會回 completed → 跳成功訊息
+                return;
+            }
             axios.get('/import/logs/latest', {
                 params: { type: 'namespace_usage', namespace_id: namespaceId },
             })
-                .then(({ data: { data } }) => {
-                    if (!data) return;
-                    if (data.status === 'pending' || data.status === 'processing') {
-                        startPolling(data.id);
-                    } else {
-                        applyLog(data);
-                    }
-                });
+            .then(({ data: { data } }) => {
+                if (!data) return;
+                if (data.status === 'pending' || data.status === 'processing') {
+                    startPolling(data.id);
+                } else if (data.status === 'awaiting_names') {
+                    awaitingLog.value = data;
+                } else {
+                    applyLog(data);
+                }
+            });
         });
 
         onBeforeUnmount(clearTimer);
+
+        const onGoCreateName = () => {
+            store.commit('closeModal');   // 先關 modal
+            app.$router.push({
+                name: 'namespace-name-create-page',
+                params: { id: namespaceId },
+                query: { import_log_id: awaitingLog.value.id },
+            });
+        };
+
+        const onDiscardAwaiting = () => {
+            if (!awaitingLog.value) return;
+            discarding.value = true;
+            axios.post(`/import/logs/${awaitingLog.value.id}/dismiss`)
+                .then(() => { awaitingLog.value = null; resetStates(); })
+                .finally(() => { discarding.value = false; });
+        };
 
         return {
             errors,
@@ -289,6 +340,10 @@ export default defineComponent({
             onDismiss,
             onClearCancelled,
             close,
+            awaitingLog,
+            discarding,
+            onGoCreateName,
+            onDiscardAwaiting,
         };
     },
 });

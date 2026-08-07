@@ -48,7 +48,7 @@
                         <th>{{ $t('taxonName.sLatin',
                                 {s: $t('taxonName.s').repeat(1)},1)}}</th>
                         <th>{{ $t('taxonName.authors') }}</th>
-                        <th class="w-[200px]">{{ $t('taxonName.selectAnotherScientificName') }}</th>
+                        <th class="w-[200px]" v-if="!isExcelSource">{{ $t('taxonName.selectAnotherScientificName') }}</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -87,7 +87,7 @@
                         <td><general-input v-model="p.s2Rank"/></td>
                         <td><general-input v-model="p.latinS2"/></td>
                         <td><general-input v-model="p.formattedAuthors"/></td>
-                        <td><taxon-name-select v-model="p._selectedName"/></td>
+                        <td v-if="!isExcelSource"><taxon-name-select v-model="p._selectedName"/></td>
                     </tr>
                     </tbody>
                 </table>
@@ -144,21 +144,24 @@ export default {
             kingdomRank: 'rank/getKingdomRank',
         }),
         isAllSkip: {
-                get() {
-                    // 當 presetData 還沒載入或為空時回傳 false
-                    if (!this.presetData || this.presetData.length === 0) return false;
-                    // 檢查是否每一筆資料的 _skip 都為 true
-                    return this.presetData.every(p => p._skip);
-                },
-                set(val) {
-                    // 當表頭勾選/取消勾選時，同步將所有 presetData 的 _skip 設定為該數值 (true/false)
-                    if (this.presetData) {
-                        this.presetData.forEach(p => {
-                            p._skip = val;
-                        });
-                    }
+            get() {
+                // 當 presetData 還沒載入或為空時回傳 false
+                if (!this.presetData || this.presetData.length === 0) return false;
+                // 檢查是否每一筆資料的 _skip 都為 true
+                return this.presetData.every(p => p._skip);
+            },
+            set(val) {
+                // 當表頭勾選/取消勾選時，同步將所有 presetData 的 _skip 設定為該數值 (true/false)
+                if (this.presetData) {
+                    this.presetData.forEach(p => {
+                        p._skip = val;
+                    });
                 }
             }
+        },
+        isExcelSource() {
+            return !!this.$route.query.import_log_id;
+        }
     },
     methods: {
         onHeaderNomenclatureChange(value) {
@@ -203,8 +206,13 @@ export default {
             row._rankOptions = n?.ranks.filter(rank => rank.id !== 47) || [],
             row._kingdomOptions = n?.kingdoms || []
         },
-        goBack(){
-            this.$router.push({ name: 'namespace-list' });
+        goBack() {
+            // Excel 來源（import_log_id）→ 回該 namespace 的 usage 列表；AI 來源維持原本的 namespace 列表
+            if (this.$route.query.import_log_id) {
+                this.$router.push({ name: 'namespace-usage-list', params: { id: this.$route.params.id } });
+            } else {
+                this.$router.push({ name: 'namespace-list' });
+            }
         },
         onSubmit() {
 
@@ -261,10 +269,20 @@ export default {
             }
 
 
-            this.axios.post(`namespaces/${this.$route.params.id}/import/nameandusage`, submitData)
+            const importLogId = this.$route.query.import_log_id;
+            const url = `namespaces/${this.$route.params.id}/import/nameandusage`
+                    + (importLogId ? `?import_log_id=${importLogId}` : '');
+            this.axios.post(url, submitData)
             .then(({ data }) => {
                 if (data.success) {
-                    this.$router.push({ name: 'namespace-usage-list', params: { id: this.$route.params.id } });
+                    const importLogId = this.$route.query.import_log_id;
+                    // Excel 用既有 importLogId；AI 用後端回傳的新 log_id
+                    const pollLogId = importLogId || data.log_id;
+                    this.$router.push({
+                        name: 'namespace-usage-list',
+                        params: { id: this.$route.params.id },
+                        query: pollLogId ? { poll_log: pollLogId } : {},
+                    });
                 }
             })
             .catch((error) => {
@@ -277,11 +295,20 @@ export default {
         },
         async onPreload() {
             try {
-                const { data: {data, nomenclatures, finished} } = await this.axios.get(`/namespaces/${this.$route.params.id}/names`);
+                const importLogId = this.$route.query.import_log_id;
+                const url = `/namespaces/${this.$route.params.id}/names`
+                        + (importLogId ? `?import_log_id=${importLogId}` : '');
+                        
+                const { data: { data, nomenclatures, finished, log_id } } = await this.axios.get(url);
 
                 if (finished) {
-                    this.$router.push({ name: 'namespace-usage-list', params: { id: this.$route.params.id} });
-                } 
+                    this.$router.push({
+                        name: 'namespace-usage-list',
+                        params: { id: this.$route.params.id },
+                        query: log_id ? { poll_log: log_id } : {},
+                    });
+                    return 200;
+                }
 
                 this.presetData = data;
                 this.nomenclatures = nomenclatures;

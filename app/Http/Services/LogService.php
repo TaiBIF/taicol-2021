@@ -42,7 +42,7 @@ class LogService
         $this->log->model_id = $modelId;
         $this->log->action = $action->value;
         $this->log->columns = implode(',', array_map(fn($column) => $this->snakeToCamel($column), $columns));
-        $this->log->user_id = Auth::user()->id;
+        $this->log->user_id = Auth::id(); 
         $this->log->save();
 
         return $this->log;

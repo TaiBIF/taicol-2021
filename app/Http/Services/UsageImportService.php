@@ -24,6 +24,9 @@ class UsageImportService
     private $validRows = [];
     private $warningRows = [];
 
+    const UNMATCHED_MSG = '查無此 Taxon';
+    private array $unmatchedNames = [];
+
     private Worksheet $sheet;
     private int $namespaceId;
 
@@ -312,7 +315,8 @@ class UsageImportService
             } else if ($taxonNames->count() === 1) {
                 $taxonName = $taxonNames->first();
             } else {
-                $this->addError($row, '查無此 Taxon');
+                $this->addError($row, self::UNMATCHED_MSG);
+                $this->collectUnmatched($nomenclatureId, $rank, $name, $authorsString);
             }
         }
 
@@ -483,6 +487,37 @@ class UsageImportService
     private function hasRowError(int $row): bool
     {
         return isset($this->errorRows[$row - 1]);
+    }
+
+    private function collectUnmatched(?int $nomenclatureId, ?string $rankKey, string $name, ?string $authors): void
+    {
+        // 依 命名法+階層+名字 去重，對齊 AI 服務的輸出結構
+        $key = ($nomenclatureId ?? '') . '.' . ($rankKey ?? '') . '.' . $name;
+        if (isset($this->unmatchedNames[$key])) {
+            return;
+        }
+        $this->unmatchedNames[$key] = [
+            'nomenclature'      => $nomenclatureId, // 頁面用 id 對照
+            'kingdom'           => null,
+            'rank'              => $rankKey,        // 頁面用 key 對照
+            'latin_name'        => $name,
+            'latin_genus'       => null,            // 使用者自行填
+            'latin_s1'          => null,
+            's2_rank'           => null,
+            'latin_s2'          => null,
+            'formatted_authors' => $authors ?: null,
+            'original_name'     => $name,
+        ];
+    }
+
+    public function getUnmatchedNames(): array
+    {
+        return array_values($this->unmatchedNames);
+    }
+
+    public function hasUnmatchedNames(): bool
+    {
+        return !empty($this->unmatchedNames);
     }
 
     public function getErrorRows()

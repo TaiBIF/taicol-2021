@@ -20,7 +20,8 @@ class ImportLogController extends Controller
                 $q->whereRaw("JSON_EXTRACT(context, '$.namespace_id') = ?", [(int) $namespaceId]);
             })
             ->whereNull('dismissed_at')
-            ->orderByDesc('id')   // 用主鍵排序，取代 latest() 的 created_at
+            ->whereNotIn('status', ['completed', 'cancelled'])  // ← 已結束的不再撈回，重開就不會重複跳
+            ->orderByDesc('id')
             ->first();
 
         return response()->json(['data' => $log ? $this->format($log) : null]);
@@ -41,6 +42,10 @@ class ImportLogController extends Controller
 
         if ($log->error_file_path && file_exists(public_path($log->error_file_path))) {
             @unlink(public_path($log->error_file_path));
+        }
+        // awaiting_names 會保留原始上傳檔，放棄時一併刪除實體檔（欄位值保留，避免違反 NOT NULL）
+        if ($log->file_path && Storage::exists($log->file_path)) {
+            Storage::delete($log->file_path);
         }
         $log->update(['dismissed_at' => now(), 'error_file_path' => null]);
 

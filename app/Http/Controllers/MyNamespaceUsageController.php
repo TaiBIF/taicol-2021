@@ -25,6 +25,9 @@ use App\Country;
 use App\Nomenclature;
 use App\ImportLog;
 use App\Jobs\ImportNamespaceUsageJob;
+use App\Jobs\CreateNamesForNamespaceUsageJob;
+use App\Jobs\CreateNamesAndImportUsagesFromAiJob;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -935,8 +938,26 @@ class MyNamespaceUsageController extends Controller
 
     }
 
-    public function createName(Request $request, $namespaceId)  
+    public function createName(Request $request, $namespaceId)
     {
+        // 名錄編輯區 - 匯入分類群 - 從 ImportLog 讀未比對學名
+        $importLogId = $request->query('import_log_id');
+        if ($importLogId) {
+            $log = ImportLog::where('id', $importLogId)
+                ->where('user_id', $request->user()->id)
+                ->where('type', 'namespace_usage')
+                ->firstOrFail();
+
+            if ($log->status !== 'awaiting_names') {
+                return response(['finished' => true]);
+            }
+
+            return response([
+                'data'          => $log->context['unmatched_names'] ?? [],
+                'nomenclatures' => Nomenclature::with('ranks', 'kingdoms')->get(),
+            ]);
+        }
+
         $namespace = MyNamespace::find($namespaceId);
 
         // 1 - 重新判斷一次需要新增的學名 並回傳給前端
@@ -954,15 +975,6 @@ class MyNamespaceUsageController extends Controller
             unset($item);
         }
 
-        // if (is_array($usageJson)) {
-        //     foreach ($usageJson as $key => &$item) {
-        //         if (!array_key_exists('index', $item)) {
-        //             $item['index'] = $key +1;
-        //         }
-        //     }
-        //     unset($item);
-        // }
-
         $service = new UsageAiImportService();
         $processedData = $service->processScientificNames($usageJson);
         $unmatchedCount = $service->countUnmatchedScientificNames($processedData);
@@ -978,17 +990,28 @@ class MyNamespaceUsageController extends Controller
 
 
         } else {
-            // 2 - 如果在這步就沒有缺學名了 直接匯入學名使用 完成後redirect到名錄編輯區
-            $importedCount = $service->handle($processedData, $namespace->id);
-            $jobLog->update([
-                'status' => 'added'
+            // 2 - 這步已無缺學名：改為 dispatch 同一個 Job（submit_data 空即可重用），前端輪詢
+            $log = ImportLog::create([
+                'type'              => 'namespace_usage_ai',
+                'status'            => 'processing',
+                'phase'             => 'creating_names', // 無學名可建，Job 會很快進入 importing_usages
+                'user_id'           => $request->user()->id,
+                'started_at'        => now(),
+                'file_path'         => $jobLog->file_uri ?? 'ai', // file_path NOT NULL，佔位
+                'original_filename' => 'AI 匯入',
+                'context'           => [
+                    'namespace_id' => (int) $namespace->id,
+                    'ai_log_id'    => $jobLog->id,
+                    'submit_data'  => [],
+                ],
             ]);
 
+            \App\Jobs\CreateNamesAndImportUsagesFromAiJob::dispatch($log->id);
 
             return response([
-                'finished' => True,
+                'finished' => true,
+                'log_id'   => $log->id,
             ]);
-
         }
 
 
@@ -997,209 +1020,83 @@ class MyNamespaceUsageController extends Controller
 
     public function addNameAndUsage(Request $request, $namespaceId)  
     {
+
+        // 名錄編輯區 - 匯入分類群 - 從 ImportLog 讀未比對學名
+        $importLogId = $request->query('import_log_id');
+        if ($importLogId) {
+            return $this->addNameAndUsageFromExcel($request, $namespaceId, (int) $importLogId);
+        }
+
         try {
-            // 新增學名
-            $submitData = $request->getContent();
-            $submitData = json_decode($submitData, true);
+            $submitData = json_decode($request->getContent(), true) ?? [];
 
-            // 取得要跳過的 original_name 清單
-            $skipNames = collect($submitData)
-                ->filter(fn($item) => $item['skip'] ?? false)
-                ->pluck('original_name')
-                ->toArray();
+            // index() 靠這筆 AI log 的 status='added' 判斷是否還要導去補學名頁，收尾時由 Job 設回
+            $aiLog = ImportAiLog::where('import_to_id', $namespaceId)->first();
 
-
-            // 1. 挑出沒有 selectedName 的資料並新增學名
-            // $dataWithoutSelectedName = collect($submitData)->filter(function ($item) {
-            //     return empty($item['selected_name']);
-            // });
-            $dataWithoutSelectedName = collect($submitData)->filter(function ($item) {
-                return empty($item['selected_name']) && empty($item['skip']);
-            });
-
-            $dataToImport = [
-                'scientific_names' => $dataWithoutSelectedName->toArray()  
-            ];
-
-            $importService = new TaxonNameAiImportService($dataToImport);
-            $result = $importService->handle();
-
-            // 2. 讀取原本的 JSON
-            $jobLog = ImportAiLog::where('import_to_id', $namespaceId)->first();
-            $fileUri = $jobLog->file_uri;
-            // $fileUri = 'files/uyhkzl8dq049';
-            $usageJson = json_decode(file_get_contents(public_path('usage_results/' . $fileUri . '.json')), true);
-
-            if (is_array($usageJson) && isset($usageJson['scientific_names'])) {
-                foreach ($usageJson['scientific_names'] as $key => &$item) {
-                    if (!array_key_exists('index', $item)) {
-                        $item['index'] = (int)$key + 1;
-                    }
-                }
-                unset($item);
-            }
-
-            // if (is_array($usageJson)) {
-            //     foreach ($usageJson as $key => &$item) {
-            //         if (!array_key_exists('index', $item)) {
-            //             $item['index'] = $key +1;
-            //         }
-            //     }
-            //     unset($item);
-            // }
-            
-            // 3. 計算要跳過的 usage index
-            $skipIndexes = $this->calculateSkipIndexes($usageJson['scientific_names'], $skipNames);
-
-            // 4. 建立 original_name 到 taxon_name_id 的映射
-            $nameToTaxonNameId = [];
-
-            foreach ($result['imported_taxon_names'] as $importedTaxon) {
-                $nameToTaxonNameId[$importedTaxon['original_name']] = $importedTaxon['taxon_name_id'];
-            }
-
-            foreach ($submitData as $item) {
-                if (!empty($item['selected_name']) && empty($item['skip'])) {
-                    $nameToTaxonNameId[$item['original_name']] = $item['selected_name'];
-                }
-            }
-
-            // // 新增學名的映射
-            // foreach ($result['imported_taxon_names'] as $importedTaxon) {
-            //     $nameToTaxonNameId[$importedTaxon['original_name']] = $importedTaxon['taxon_name_id'];
-            // }
-
-            // // 原本就有 selected_name 的映射
-            // foreach ($submitData as $item) {
-            //     if (!empty($item['selected_name'])) {
-            //         $nameToTaxonNameId[$item['original_name']] = $item['selected_name'];
-            //     }
-            // }
-
-            // 5. 用更新後的資料匯入學名使用
-            $service = new UsageAiImportService();
-            $processedData = $service->processScientificNames($usageJson);
-
-            // 過濾掉要跳過的 usage
-            $processedData['scientific_names'] = array_values(
-                array_filter($processedData['scientific_names'], function ($item) use ($skipIndexes) {
-                    return !in_array($item['index'], $skipIndexes);
-                })
-            );
-
-            // 更新 scientific_names 的 taxon_name_id
-            foreach ($processedData['scientific_names'] as &$scientificName) {
-                if (isset($nameToTaxonNameId[$scientificName['latin_name']])) {
-                    $scientificName['taxon_name_id'] = $nameToTaxonNameId[$scientificName['latin_name']];
-                }
-            }
-
-            $importedCount = $service->handle($processedData, $namespaceId);
-
-            // 修改jobLog
-            $jobLog->update([
-                'status' => 'added'
+            // 建名 + 匯入 usage 全部移到背景 Job，立即返回
+            $log = ImportLog::create([
+                'type'              => 'namespace_usage_ai',
+                'status'            => 'processing',
+                'phase'             => 'creating_names',
+                'user_id'           => $request->user()->id,
+                'started_at'        => now(),
+                // ImportLog.file_path 可能為 NOT NULL；AI 無上傳檔，塞 file_uri 佔位（Job 實際仍從 file_uri 讀 json）
+                'file_path'         => $aiLog->file_uri ?? 'ai',
+                'original_filename' => 'AI 匯入',
+                'context'           => [
+                    'namespace_id' => (int) $namespaceId,
+                    'ai_log_id'    => $aiLog->id ?? null,
+                    'submit_data'  => $submitData,
+                ],
             ]);
 
-            return response()->json([
-                'success' => true,
-            ]);
+            CreateNamesAndImportUsagesFromAiJob::dispatch($log->id);
 
+            return response()->json(['success' => true, 'log_id' => $log->id]);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
-    /**
-     * 計算要跳過的 usage index
-     */
-    private function calculateSkipIndexes(array $scientificNames, array $skipNames): array
+    private function addNameAndUsageFromExcel(Request $request, $namespaceId, int $importLogId)
     {
-        $skipIndexes = [];
-        
-        foreach ($scientificNames as $i => $item) {
-            if (!in_array($item['latin_name'], $skipNames)) {
-                continue;
-            }
-            
-            // 如果是 accepted，跳過到下一個 accepted 之前的所有 usage
-            if ($item['status'] === 'accepted') {
-                $skipIndexes[] = $item['index'];
-                
-                // 往後找到下一個 accepted 為止
-                for ($j = $i + 1; $j < count($scientificNames); $j++) {
-                    if ($scientificNames[$j]['status'] === 'accepted') {
-                        break;
-                    }
-                    $skipIndexes[] = $scientificNames[$j]['index'];
-                }
-            } else {
-                // 非 accepted 只跳過該筆
-                $skipIndexes[] = $item['index'];
-            }
+        try {
+            $log = ImportLog::where('id', $importLogId)
+                ->where('user_id', $request->user()->id)
+                ->where('type', 'namespace_usage')
+                ->firstOrFail();
+
+            $submitData = json_decode($request->getContent(), true) ?? [];
+
+            // 只建立未跳過的學名；跳過者會在重跑後出現在錯誤檔
+            $toCreate = collect($submitData)
+                ->filter(fn($item) => empty($item['skip']))
+                ->map(function ($item) {
+                    // 服務讀的是 kingdom_name，前端送的是 kingdom
+                    $item['kingdom_name'] = $item['kingdom'] ?? null;
+                    return $item;
+                })
+                ->values();
+
+            // 建名移到背景 Job：把待建學名塞進 context，狀態進 creating_names，立即返回
+            $context = $log->context ?? [];
+            $context['names_to_create'] = $toCreate->toArray();
+
+            $log->update([
+                'status'          => 'processing',
+                'phase'           => 'creating_names',
+                'error_message'   => null,
+                'error_file_path' => null,
+                'processed_rows'  => 0,
+                'success_count'   => null,
+                'context'         => $context,
+            ]);
+
+            CreateNamesForNamespaceUsageJob::dispatch($log->id);
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
-        
-        return $skipIndexes;
     }
-
-    // public function usage_preview(Request $request)
-    // {
-    //     $namespaceId = $request->get('namespace_id');
-    //     $usageId = $request->get('usage_id');
-
-    //     $usage = MyNamespaceUsage::with([
-    //         'parent',
-    //         'taxonName.nomenclature',
-    //         'taxonName.rank',
-    //         'taxonName.authors',
-    //         'taxonName.exAuthors',
-    //         'taxonName.reference.authors',
-    //         'taxonName.originalTaxonName',
-    //         'taxonName.originalTaxonName.authors',
-    //         'taxonName.originalTaxonName.exAuthors',
-    //         'namespace'
-    //     ])
-    //         ->where('namespace_id', $namespaceId)
-    //         ->where('id', $usageId)
-    //         ->first();
-
-
-    //     $typeName = ($usage->properties['type_name'] ?? '') ? TaxonNameSimpleSubResource::collection([
-    //         TaxonName::with([
-    //             'authors',
-    //             'exAuthors',
-    //             'reference',
-    //             'nomenclature',
-    //             'originalTaxonName.authors',
-    //             'originalTaxonName.exauthors'
-    //         ])->find((int) $usage->properties['type_name'])
-    //     ])[0] : null;
-
-    //     $service = new UsagePreviewService();
-        
-    //     $result = $service->process(
-    //         TaxonNameSimpleSubResource::collection([$usage->taxonName])[0],
-    //         $usage->properties['indications'], 
-    //         collect($usage->per_usages)->map(function ($r) {
-    //             $r['target'] = isset($r['reference_id']) ? Reference::with('authors')->find($r['reference_id']) : null;
-    //             return $r;
-    //         }), 
-    //         collect($usage->type_specimens)->map(function ($t) {
-    //                 $t['collectors'] = PersonCollection::collection(Person::whereIn('id', $t['collector_ids'] ?? [])->get());
-    //                 return $t;
-    //             }) ?? [], 
-    //         $usage->status, 
-    //         false,  
-    //         $typeName
-    //     );
-
-    //     return response()->json($result, 200, [], 
-    //         JSON_UNESCAPED_UNICODE | 
-    //         JSON_UNESCAPED_SLASHES | 
-    //         JSON_PRETTY_PRINT
-    //     );
-    // }
 }
