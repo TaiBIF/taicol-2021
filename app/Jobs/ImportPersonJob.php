@@ -39,7 +39,7 @@ class ImportPersonJob implements ShouldQueue
 
         // 背景 Job 無 session，補回發起者身份，讓匯入寫的 log／建立者正確歸戶
         if ($log->user_id) {
-            \Illuminate\Support\Facades\Auth::onceUsing($log->user_id);
+            \Illuminate\Support\Facades\Auth::setUser(\App\User::find($log->user_id));
         }
 
         // fatal error（OOM/timeout）catch 抓不到，用 shutdown 補救
