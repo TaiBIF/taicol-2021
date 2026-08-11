@@ -37,6 +37,11 @@ class ImportPersonJob implements ShouldQueue
             return;
         }
 
+        // 背景 Job 無 session，補回發起者身份，讓匯入寫的 log／建立者正確歸戶
+        if ($log->user_id) {
+            \Illuminate\Support\Facades\Auth::onceUsing($log->user_id);
+        }
+
         // fatal error（OOM/timeout）catch 抓不到，用 shutdown 補救
         $logId = $this->logId;
         register_shutdown_function(function () use ($logId) {
@@ -190,7 +195,7 @@ class ImportPersonJob implements ShouldQueue
             $sheet->setCellValue($errorCol . $ssRow, $info['message'] ?? '');
         }
 
-        $dir = public_path('import/taxon-name');
+        $dir = public_path('import/person');
         if (!is_dir($dir)) {
             mkdir($dir, 0775, true);
         }
