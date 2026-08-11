@@ -38,8 +38,8 @@ class ImportPersonJob implements ShouldQueue
         }
 
         // 背景 Job 無 session，補回發起者身份，讓匯入寫的 log／建立者正確歸戶
-        if ($log->user_id) {
-            \Illuminate\Support\Facades\Auth::setUser(\App\User::find($log->user_id));
+        if ($log->user_id && ($u = \App\User::find($log->user_id))) {
+            \Illuminate\Support\Facades\Auth::setUser($u);
         }
 
         // fatal error（OOM/timeout）catch 抓不到，用 shutdown 補救
@@ -213,6 +213,19 @@ class ImportPersonJob implements ShouldQueue
 
     public function failed(\Throwable $e): void
     {
+        $log = ImportLog::find($this->logId);
+        if ($log && in_array($log->status, ['pending', 'processing'], true)) {
+            $log->update([
+                'status'        => 'failed',
+                'phase'         => null,
+                'completed_at'  => now(),
+                'error_message' => $e->getMessage(),
+            ]);
+            if ($log->file_path && Storage::exists($log->file_path)) {
+                Storage::delete($log->file_path);
+            }
+        }
+
         Mail::to(env('TAICOL_EMAIL', 'catalogueoflife.taiwan@gmail.com'))
             ->send(new Email(
                 '人名 Excel 匯入任務最終失敗：<br>' . nl2br($e->getMessage()),

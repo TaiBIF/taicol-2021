@@ -56,8 +56,8 @@ class CreateNamesForNamespaceUsageJob implements ShouldQueue
         $names = $log->context['names_to_create'] ?? [];
 
         // 背景 Job 無 session，補回發起者身份，讓建名寫的 log 正確歸戶
-        if ($log->user_id) {
-            \Illuminate\Support\Facades\Auth::setUser(\App\User::find($log->user_id));
+        if ($log->user_id && ($u = \App\User::find($log->user_id))) {
+            \Illuminate\Support\Facades\Auth::setUser($u);
         }
 
         try {
@@ -107,7 +107,17 @@ class CreateNamesForNamespaceUsageJob implements ShouldQueue
 
     public function failed(\Throwable $e): void
     {
-        // 僅框架層失敗（如 timeout）會走到這；使用者資料錯誤已於 handle() 內處理、不 rethrow
+        $log = ImportLog::find($this->logId);
+        if ($log && in_array($log->status, ['pending', 'processing'], true)) {
+            $log->update([
+                'status'        => 'failed',
+                'phase'         => null,
+                'completed_at'  => now(),
+                'error_message' => $e->getMessage(),
+            ]);
+            // 上傳檔保留供修正後重傳，不刪
+        }
+
         Mail::to(env('TAICOL_EMAIL', 'catalogueoflife.taiwan@gmail.com'))
             ->send(new Email(
                 '名錄 Usage 批次建名任務最終失敗：<br>' . nl2br($e->getMessage()),
