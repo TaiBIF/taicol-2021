@@ -114,29 +114,6 @@ class ReferenceService
         ]));
     }
 
-    // public function hasReferenceExist($title, $publishYear, $authors, bool $isPublish, bool $returnReference = false)
-    // {
-    //     $existQuery = Reference::query()
-    //         ->where('title', $title)
-    //         ->where('publish_year', $publishYear)
-    //         ->where('is_publish', $isPublish)
-    //         ->whereHas('authors', function ($query) use ($authors) {
-    //             $query->whereIn('persons.id', $authors);
-    //         }, '=', count($authors));
-
-    //     if ($this->reference->id) {
-    //         $existQuery->where('id', '!=', $this->reference->id);
-    //     }
-
-    //     if ($returnReference) {
-    //         $references = $existQuery->get();
-    //         return $references->isNotEmpty() ? $references : false;
-    //     }
-
-    //     return $existQuery->count() > 0;
-    // }
-
-
     public function hasReferenceExist(
         $title, 
         $publishYear, 

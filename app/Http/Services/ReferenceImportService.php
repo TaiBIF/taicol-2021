@@ -159,9 +159,9 @@ class ReferenceImportService
             $this->addError($row, '發表年份 必填');
         }
 
-        if ($pageRange !== '' && !str_contains($pageRange, '–')) {
-            $this->addError($row, '頁碼範圍 格式錯誤');
-        }
+        // if ($pageRange !== '' && !str_contains($pageRange, '–')) {
+        //     $this->addError($row, '頁碼範圍 格式錯誤');
+        // }
 
         if ($languageString !== '' && !isset($this->languageMapping[$languageString])) {
             $this->addError($row, "語言 格式錯誤：{$languageString}");
@@ -195,40 +195,38 @@ class ReferenceImportService
 
         $title = ReferenceService::generateTitle($type, $articleTitle, $bookTitle, $edition, $volume, $chapter);
 
-        // (1) 檔案內去重
-        $key = "{$title}{$publishYear}{$authorNamesString}";
+        // (1) 檔案內去重（比對欄位與資料庫判重一致：title/year/authors/book_title/volume/page_range）
+        $key = "{$title}|{$publishYear}|{$authorNamesString}|{$bookTitle}|{$volume}|{$pageRange}";
         if (isset($this->uniqueReference[$key])) {
-            $this->addError($row, "資料重複：與第 {$this->uniqueReference[$key]} 筆");
+            $this->addError($row, "資料重複：與檔案內第 {$this->uniqueReference[$key]} 筆重複");
         } else {
             $this->uniqueReference[$key] = $row;
         }
 
-        // (2) 資料庫去重
-        $existReference = Reference::query()
-            ->where('title', $title)
-            ->where('publish_year', $publishYear)
-            ->where('is_publish', true)
-            ->whereHas('authors', function ($query) use ($authorIds) {
-                $query->whereIn('persons.id', $authorIds);
-            }, '=', count($authorIds))
-            ->first();
-
-        if ($existReference) {
-            $this->addError($row, "資料重複：與資料庫 #{$existReference->id}");
+        // 解析 book_id（書籍尚未建立時為 null，hasReferenceExist 對空值不比對）
+        $bookId = null;
+        if (!empty($bookTitle)) {
+            $bookId = Book::where('title', $bookTitle)->value('id');
         }
 
-        $existDraftReference = Reference::query()
-            ->where('title', $title)
-            ->where('publish_year', $publishYear)
-            ->where('is_publish', false)
-            ->whereHas('authors', function ($query) use ($authorIds) {
-                $query->whereIn('persons.id', $authorIds);
-            }, '=', count($authorIds))
-            ->first();
+        $refService = new ReferenceService(new Reference());
 
-        if ($existDraftReference) {
-            $this->addError($row, '文獻已存在於草稿');
+        // (2) 資料庫去重（已發表）
+        $existReferences = $refService->hasReferenceExist(
+            $title, $publishYear, $authorIds, true, $bookId, $volume, $pageRange, true
+        );
+        if ($existReferences) {
+            $this->addError($row, "資料重複：與資料庫 #{$existReferences->first()->id}");
         }
+
+        // (3) 資料庫去重（草稿，is_publish = false）
+        $existDraftReferences = $refService->hasReferenceExist(
+            $title, $publishYear, $authorIds, false, $bookId, $volume, $pageRange, true
+        );
+        if ($existDraftReferences) {
+            $this->addError($row, "資料重複：資料庫已存在草稿 #{$existDraftReferences->first()->id}");
+        }
+
     }
 
     /** 分批 commit（每 200 筆），回傳成功筆數 */
