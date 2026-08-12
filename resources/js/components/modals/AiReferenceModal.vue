@@ -1,7 +1,7 @@
 <template>
     <div>
         <div class="px-16 py-12 w-[768px]">
-            <p class="text-center" v-if="!submitted"><b>{{ $t('aiImport.guide.title') }}</b></p>
+            <p class="title text-center" v-if="!submitted"><b>{{ $t('aiImport.guide.title') }}</b></p>
             <ul class="guide-list" v-if="!submitted">
 
                 <li>{{ $t('aiImport.guide.fileUpload') }}</li>
@@ -27,7 +27,7 @@
 
             <div class="flex gap-2 my-4">
                 <p class="leading-10 w-[80px]">
-                    <span class="font-bold">文獻PDF</span>
+                    <span class="font-bold">{{ $t('aiImport.referencePDF') }}</span>
                 </p>
                 <general-input
                     class="grow"

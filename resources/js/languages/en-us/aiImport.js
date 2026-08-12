@@ -15,6 +15,7 @@ export default {
     parsingProcess: "Parsing Process: Automated notification sent via email. Results in \"My Checklists.\"",
     newTaxa: "New Taxa: New names are routed to \"Batch Name Addition.\"",
     verification: "Data Verification: Verify AI results against the original. Refine or complete manually as needed.",
-    finalImport: "Final Import: One-time action. Post-import edits must be performed on the reference page."
-  }
+    finalImport: "Final Import: One-time action. Post-import edits must be performed on the reference page.",
+  },
+  referencePDF: "Reference PDF"
 }

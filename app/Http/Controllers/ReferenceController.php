@@ -301,7 +301,6 @@ class ReferenceController extends Controller
 
         $service = new ReferenceService(new Reference());
 
-
         if ($service->hasReferenceExist($title, $publishYear, $authors, true, $bookId, $volume, $pagesRange)) {
             return response([
                 'message' => 'Reference exist',
@@ -311,7 +310,6 @@ class ReferenceController extends Controller
                 'message' => 'Reference draft exist',
             ])->setStatusCode(409);
         }
-
 
         if (!$hasChecked){
 
