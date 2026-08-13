@@ -65,4 +65,80 @@ class PersonService
 
         return $this->person;
     }
+
+    public function getPotentialDuplicates(
+        string $lastName,
+        string $firstName,
+        string $middleName,
+        string $originalFullName,
+        string $abbreviationName,
+        string $yearBirth
+    ): array {
+        // 四個條件都無可比對值時直接跳過，避免誤撈
+        $hasCondition = ($lastName !== '' && $firstName !== '')
+            || $originalFullName !== ''
+            || ($lastName !== '' && $yearBirth !== '')
+            || $abbreviationName !== '';
+
+        if (!$hasCondition) {
+            return [];
+        }
+
+        $query = Person::query();
+
+        if ($this->person) {
+            $query->where('id', '!=', $this->person->id);
+        }
+
+        $query->where(function ($q) use ($lastName, $firstName, $originalFullName, $abbreviationName, $yearBirth) {
+            // 1. 姓 + 名 相同
+            if ($lastName !== '' && $firstName !== '') {
+                $q->orWhere(fn ($sub) => $sub->where('last_name', $lastName)->where('first_name', $firstName));
+            }
+            // 2. 原母語完整名 相同
+            if ($originalFullName !== '') {
+                $q->orWhere('original_full_name', $originalFullName);
+            }
+            // 3. 姓 + 出生年 相同
+            if ($lastName !== '' && $yearBirth !== '') {
+                $q->orWhere(fn ($sub) => $sub->where('last_name', $lastName)->where('year_birth', $yearBirth));
+            }
+            // 4. 人名縮寫 相同
+            if ($abbreviationName !== '') {
+                $q->orWhere('abbreviation_name', $abbreviationName);
+            }
+        });
+
+        return $query->get()->map(fn ($p) => [
+            'id' => $p->id,
+            'title' => self::formatTitle($p),
+            'subtitle' => self::formatSubtitle($p),
+        ])->toArray();
+    }
+
+    private static function formatTitle(Person $p): string
+    {
+        // [姓], [名] [中間名] ([人名縮寫])
+        $name = trim($p->last_name . ', ' . trim(($p->first_name ?? '') . ' ' . ($p->middle_name ?? '')));
+
+        if ($p->abbreviation_name) {
+            $name .= ' (' . $p->abbreviation_name . ')';
+        }
+
+        return $name;
+    }
+
+    private static function formatSubtitle(Person $p): string
+    {
+        // [原母語完整名] [生卒年 or 活躍年代]
+        if ($p->year_birth) {
+            $years = $p->year_birth . '-' . ($p->year_death ?? '');
+        } elseif ($p->year_publication) {
+            $years = $p->year_publication;
+        } else {
+            $years = '';
+        }
+
+        return trim(($p->original_full_name ?? '') . ' ' . $years);
+    }
 }

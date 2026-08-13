@@ -65,4 +65,7 @@ export default {
     editBy: 'By',
     editName: 'Name',
 
+    // 確認是否重複
+    checkDuplicates: 'We found matching entries in our database. Please check if your record already exists before creating a new one:'
+
 };

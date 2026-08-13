@@ -914,8 +914,8 @@ export default {
         onRemoveTypeSpecimens(index){
             this.typeSpecimens.splice(index, 1);
         },
-        submit(isPublish) {
-            if (this.isSubmitting) return; // 已經送出就不再送
+        submit(isPublish, hasCheckedDuplicates = false) {
+            if (this.isSubmitting) return;
 
             this.isSubmitting = true;
 
@@ -924,14 +924,14 @@ export default {
             return this.axios({
                 method: isEdit ? 'PUT' : 'POST',
                 url: isEdit ? `/taxon-names/${this.presetData.id}` : '/taxon-names',
-                data: { ...this.formData, 'isPublish': isPublish },
+                data: { ...this.formData, 'isPublish': isPublish, hasCheckedDuplicates },
             })
             .then(({ data }) => {
                 this.onAfterSubmit(data);
                 openNotify(this.$t('common.saveSuccess'));
-                return data; // 回傳給父元件
+                return data;
             })
-            .catch(({ status, message, errors }) => {
+            .catch(({ status, message, data, errors }) => {
                 if (status === 409 && message === 'TaxonName exist') {
                     openNotify('學名已存在', 'is-danger');
                 } else if (status === 409 && message === 'TaxonName draft exist') {
@@ -941,13 +941,23 @@ export default {
                             onContinueEditing: this.onContinueEditing,
                         },
                     });
+                } else if (status === 409 && message === 'TaxonName possibly duplicates') {
+                    this.$store.commit('openModal', {
+                        component: () => import('../modals/ConfirmTaxonNameDuplicatesModal.vue'),
+                        props: {
+                            duplicates: data,
+                            onForceSave: () => {
+                                this.submit(isPublish, true);
+                            },
+                        },
+                    });
                 } else {
                     this.errors = errors;
                 }
-                throw { status, message, errors }; // 讓父元件可以捕捉
+                throw { status, message, errors };
             })
             .finally(() => {
-                this.isSubmitting = false; // 無論成功或失敗都解鎖
+                this.isSubmitting = false;
             });
         }
     },

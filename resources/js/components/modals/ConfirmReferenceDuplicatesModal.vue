@@ -2,7 +2,7 @@
     <div>
         <div class="px-16 py-12 w-[768px]">
             <div>
-                <p class="is-danger">您輸入的內容於資料庫中已有以下類似的資料，請先確認是否相同以避免重複建立：</p>
+                <p class="is-danger">{{ $t('common.checkDuplicates') }}</p>
                 <div v-for="item in duplicates" :key="item.id">
                     <router-link target="_blank" :to="{name: 'reference-page', params: {id: item.id}}" class="my-link">
                         <b class="text-base">{{ item.title }}</b>

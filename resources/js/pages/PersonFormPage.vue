@@ -55,7 +55,7 @@ export default {
             this.$router.push({ name: 'person-page', params: { id: person.id } });
         },
         onSubmit() {
-            this.$refs.form.onSubmit(true);
+            this.$refs.form.onSubmit();
         },
     },
     components: {

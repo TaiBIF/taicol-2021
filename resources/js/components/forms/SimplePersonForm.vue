@@ -219,26 +219,36 @@ export default defineComponent({
             countryNumericCode: form.value.nationality?.numericCode,
         }));
 
-        const onSubmit = () => {
+        const onSubmit = (hasCheckedDuplicates = false) => {
             props.onLoadingChange?.(true);
             axios({
                 method: isEdit.value ? 'PUT' : 'POST',
                 url: isEdit.value ? `/persons/${formData.value.id}` : '/persons',
-                data: formData.value,
+                data: { ...formData.value, hasCheckedDuplicates },
             })
-                .then(({ data }) => {
-                    props.onAfterSubmit(data);
-                })
-                .catch(({ errors: errorMessages, status }) => {
-                    if (status === 409) {
-                        openNotify('人名已存在', 'is-danger');
-                    } else {
-                        errors.value = errorMessages;
-                    }
-                })
-                .finally(() => {
-                    props.onLoadingChange?.(false);
-                });
+            .then(({ data }) => {
+                props.onAfterSubmit(data);
+            })
+            .catch(({ errors: errorMessages, status, message, data }) => {
+                if (status === 409 && message === 'Person possibly duplicates') {
+                    app.$store.commit('openModal', {
+                        component: () => import('../modals/ConfirmPersonDuplicatesModal.vue'),
+                        props: {
+                            duplicates: data,
+                            onForceSave: () => {
+                                onSubmit(true);
+                            },
+                        },
+                    });
+                } else if (status === 409) {
+                    openNotify('人名已存在', 'is-danger');
+                } else {
+                    errors.value = errorMessages;
+                }
+            })
+            .finally(() => {
+                props.onLoadingChange?.(false);
+            });
         };
 
         return {

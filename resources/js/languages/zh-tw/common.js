@@ -65,4 +65,7 @@ export default {
     editItem: '編輯項目',
     editBy: '編輯者',
     editName: '學名',
+
+    // 確認是否重複
+    checkDuplicates: '您輸入的內容於資料庫中已有以下類似的資料，請先確認是否相同以避免重複建立：'
 };

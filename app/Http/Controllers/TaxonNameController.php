@@ -934,6 +934,24 @@ class TaxonNameController extends Controller
             ])->setStatusCode(409);
         }
 
+        // 檢查是否有 name 相同的疑似重複資料(排除自己)
+        if (!$request->boolean('has_checked_duplicates')) {
+            $duplicates = TaxonName::with([
+                    'authors', 'exAuthors', 'reference', 'reference.authors',
+                    'nomenclature', 'rank', 'originalTaxonName.authors',
+                ])
+                ->whereNull('deleted_at')
+                ->where('name', $name)
+                ->where('id', '!=', $id)
+                ->get();
+
+            if ($duplicates->isNotEmpty()) {
+                return response()->json([
+                    'message' => 'TaxonName possibly duplicates',
+                    'data' => TaxonNameSelectCollection::collection($duplicates),
+                ])->setStatusCode(409);
+            }
+        }
 
         if (isset($referenceId) &&  $request->get('is_publish', true)){
 
@@ -1043,6 +1061,23 @@ class TaxonNameController extends Controller
             return response([
                 'message' => 'TaxonName draft exist'
             ])->setStatusCode(409);
+        }
+
+        if (!$request->boolean('has_checked_duplicates')) {
+            $duplicates = TaxonName::with([
+                    'authors', 'exAuthors', 'reference', 'reference.authors',
+                    'nomenclature', 'rank', 'originalTaxonName.authors',
+                ])
+                ->whereNull('deleted_at')
+                ->where('name', $name)
+                ->get();
+
+            if ($duplicates->isNotEmpty()) {
+                return response()->json([
+                    'message' => 'TaxonName possibly duplicates',
+                    'data' => TaxonNameSelectCollection::collection($duplicates),
+                ])->setStatusCode(409);
+            }
         }
 
         if (isset($referenceId) &&  $request->get('is_publish', true)){

@@ -157,6 +157,23 @@ class PersonController extends Controller
             ])->setStatusCode(409);
         }
 
+        $originalFullName = $request->get('original_full_name') ?? '';
+        $abbreviationName = $request->get('abbreviation_name') ?? '';
+
+        if (!$request->boolean('has_checked_duplicates')) {
+
+            $duplicates = $service->getPotentialDuplicates(
+                $lastName, $firstName, $middleName, $originalFullName, $abbreviationName, $yearBirth
+            );
+
+            if (count($duplicates) > 0) {
+                return response()->json([
+                    'message' => 'Person possibly duplicates',
+                    'data' => $duplicates,
+                ])->setStatusCode(409);
+            }
+        }
+
         $person = $service->saveAll($request->all());
         $logService = new LogService();
         $logService->writeCreateLog(LogType::PERSON, $person->id);
@@ -186,6 +203,22 @@ class PersonController extends Controller
             return response([
                 'message' => 'Person exist.'
             ])->setStatusCode(409);
+        }
+
+        $originalFullName = $request->get('original_full_name') ?? '';
+        $abbreviationName = $request->get('abbreviation_name') ?? '';
+
+        if (!$request->boolean('has_checked_duplicates')) {
+            $duplicates = $service->getPotentialDuplicates(
+                $lastName, $firstName, $middleName, $originalFullName, $abbreviationName, $yearBirth
+            );
+
+            if (count($duplicates) > 0) {
+                return response()->json([
+                    'message' => 'Person possibly duplicates',
+                    'data' => $duplicates,
+                ])->setStatusCode(409);
+            }
         }
 
         $person = $service->saveAll($request->all());
