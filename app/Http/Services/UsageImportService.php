@@ -80,6 +80,11 @@ class UsageImportService
         '其他' => 'others',
     ];
 
+    private const UNDER_SPECIES_KEYS = [
+        'aberration', 'morph', 'stirp', 'race', 'special-form', 'subform', 'form',
+        'nothovariety', 'subvariety', 'variety', 'nothosubspecies', 'subspecies',
+    ];
+
     public function __construct(Worksheet $sheet, int $namespaceId)
     {
         $this->sheet = $sheet;
@@ -117,7 +122,7 @@ class UsageImportService
         $this->buildColumnMap();
 
         $this->nomenclatures = Nomenclature::select('id', 'name')->get()->keyBy('name');
-        $this->rankMap = Rank::select('id', 'key')->get()->keyBy('key');
+        $this->rankMap = Rank::select('id', 'key', 'abbreviation')->get()->keyBy('key');
 
         $lastGroupUsage = MyNamespaceUsage::where('namespace_id', $this->namespaceId)
             ->orderBy('group', 'desc')
@@ -316,7 +321,9 @@ class UsageImportService
                 $taxonName = $taxonNames->first();
             } else {
                 $this->addError($row, self::UNMATCHED_MSG);
-                $this->collectUnmatched($nomenclatureId, $rank, $name, $authorsString);
+                if (!$this->collectUnmatched($nomenclatureId, $rank, $name, $authorsString)) {
+                    $this->addError($row, '種下下無法使用批次新增學名');
+                }
             }
         }
 
@@ -489,25 +496,90 @@ class UsageImportService
         return isset($this->errorRows[$row - 1]);
     }
 
-    private function collectUnmatched(?int $nomenclatureId, ?string $rankKey, string $name, ?string $authors): void
+    private function collectUnmatched(?int $nomenclatureId, ?string $rankKey, string $name, ?string $authors): bool
     {
-        // 依 命名法+階層+名字 去重，對齊 AI 服務的輸出結構
+        // 種下下（名字含兩個以上「.」）不提供批次新增 → 不收集，維持在錯誤檔
+        if (substr_count($name, '.') >= 2) {
+            return false;
+        }
+
         $key = ($nomenclatureId ?? '') . '.' . ($rankKey ?? '') . '.' . $name;
         if (isset($this->unmatchedNames[$key])) {
-            return;
+            return true;
         }
+
+        $parsed = $this->parseScientificName($name, $rankKey);
+
         $this->unmatchedNames[$key] = [
-            'nomenclature'      => $nomenclatureId, // 頁面用 id 對照
-            'kingdom'           => null,
-            'rank'              => $rankKey,        // 頁面用 key 對照
-            'latin_name'        => $name,
-            'latin_genus'       => null,            // 使用者自行填
-            'latin_s1'          => null,
-            's2_rank'           => null,
-            'latin_s2'          => null,
-            'formatted_authors' => $authors ?: null,
-            'original_name'     => $name,
+            'nomenclature'     => $nomenclatureId, // 頁面用 id 對照
+            'kingdom'          => null,
+            'rank'             => $rankKey,        // 頁面用 key 對照
+            'latinName'        => $name,
+            'latinGenus'       => $parsed['latin_genus'],
+            'latinS1'          => $parsed['latin_s1'],
+            's2Rank'           => $parsed['s2_rank'],
+            'latinS2'          => $parsed['latin_s2'],
+            'formattedAuthors' => $authors ?: null,
+            'originalName'     => $name,
+            'isHybrid'         => $parsed['is_hybrid'],
         ];
+
+        return true;
+    }
+
+    /**
+     * 依 name 與 rank 拆解批次新增頁欄位。
+     * 回傳 latin_genus / latin_s1 / s2_rank(縮寫) / latin_s2 / is_hybrid。
+     * 僅處理「種」與「種下」；其餘階層回傳空值（沿用讓使用者自填的行為）。
+     */
+    private function parseScientificName(string $name, ?string $rankKey): array
+    {
+        $result = [
+            'latin_genus' => null,
+            'latin_s1'    => null,
+            's2_rank'     => null,
+            'latin_s2'    => null,
+            'is_hybrid'   => false,
+        ];
+
+        // 前處理：僅辨認 × 符號（不管字母 x），去除後再拆解
+        if (mb_strpos($name, '×') !== false) {
+            $result['is_hybrid'] = true;
+        }
+        $clean = trim(preg_replace('/\s+/', ' ', str_replace('×', ' ', $name)));
+
+        $isSpecies      = ($rankKey === Rank::KEY_SPECIES);
+        $isUnderSpecies = in_array($rankKey, self::UNDER_SPECIES_KEYS, true);
+
+        if (!$isSpecies && !$isUnderSpecies) {
+            return $result; // 屬以上不拆
+        }
+
+        // 種下階層縮寫一律由 rank 帶（ICZN 的 subsp. 於 name 省略，仍以此補上）
+        if ($isUnderSpecies) {
+            $result['s2_rank'] = $this->rankMap[$rankKey]->abbreviation ?? null;
+        }
+
+        $rightParenPos = mb_strpos($clean, ')');
+        if ($rightParenPos !== false) {
+            // 有括號：latin_genus 取到右括號（含），例如 "Agathidium (Agathidium)"
+            $result['latin_genus'] = trim(mb_substr($clean, 0, $rightParenPos + 1));
+            $rest   = trim(mb_substr($clean, $rightParenPos + 1));
+            $tokens = $rest === '' ? [] : preg_split('/\s+/', $rest);
+        } else {
+            $tokens = preg_split('/\s+/', $clean);
+            $result['latin_genus'] = $tokens[0] ?? null;
+            $tokens = array_slice($tokens, 1); // 去掉屬名
+        }
+
+        if ($isSpecies) {
+            $result['latin_s1'] = $tokens ? end($tokens) : null;            // 最後一段
+        } else {
+            $result['latin_s1'] = $tokens[0] ?? null;                       // 第一段
+            $result['latin_s2'] = count($tokens) > 1 ? end($tokens) : null; // 最後一段（中間縮寫略過）
+        }
+
+        return $result;
     }
 
     public function getUnmatchedNames(): array

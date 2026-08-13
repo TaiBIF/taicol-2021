@@ -62,6 +62,7 @@ export default {
     authorNotApplyInfo: '(若作者尚未歸檔，請將作者以「純文字」填於此欄)',
     genomeComposition: '遺傳組成',
     host: '寄主/來源',
+    hybrid: '雜交',
     note: '備註',
 
     taxonNameInfo: '學名資訊',

@@ -48,6 +48,7 @@
                         <th>{{ $t('taxonName.sLatin',
                                 {s: $t('taxonName.s').repeat(1)},1)}}</th>
                         <th>{{ $t('taxonName.authors') }}</th>
+                        <th class="w-[80px] text-center">{{ $t('taxonName.hybrid') }}</th>
                         <th class="w-[200px]" v-if="!isExcelSource">{{ $t('taxonName.selectAnotherScientificName') }}</th>
                     </tr>
                     </thead>
@@ -87,6 +88,7 @@
                         <td><general-input v-model="p.s2Rank"/></td>
                         <td><general-input v-model="p.latinS2"/></td>
                         <td><general-input v-model="p.formattedAuthors"/></td>
+                        <td class="text-center"><input type="checkbox" v-model="p.isHybrid" /></td>
                         <td v-if="!isExcelSource"><taxon-name-select v-model="p._selectedName"/></td>
                     </tr>
                     </tbody>
@@ -230,6 +232,7 @@ export default {
                 latin_s1: row.latinS1,
                 s2_rank: row.s2Rank,
                 latin_s2: row.latinS2,
+                is_hybrid: row.isHybrid || false,
                 formatted_authors: row.formattedAuthors,
                 selected_name: row._selectedName?.id || null, // 加上這個欄位
             }));
@@ -327,6 +330,7 @@ export default {
 
                 return {
                     ...p,
+                    isHybrid: p.isHybrid ?? false,
                     _skip: false, 
 
                     // v-model 用

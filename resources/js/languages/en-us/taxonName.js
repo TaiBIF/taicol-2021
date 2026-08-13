@@ -74,6 +74,7 @@ export default {
     authorNotApplyInfo: '(if the author has not been created, you can leave plain text of author here.)',
     genomeComposition: 'Genome Composition',
     host: 'Host/Source',
+    hybrid: 'Hybrid',
     note: 'Note',
 
     taxonNameInfo: 'Details',
