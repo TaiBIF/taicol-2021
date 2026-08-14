@@ -6,6 +6,7 @@
 /public/*.js
 /public/mix-manifest.json
 /storage/*.key
+/storage/debugbar
 /vendor
 .idea/
 .env
@@ -16,3 +17,17 @@ Homestead.json
 Homestead.yaml
 npm-debug.log
 yarn-error.log
+/public/usage_results
+/public/pdfs
+/public/import
+
+deprecated/
+
+update_name
+update_server
+view_create
+
+# redis使用
+dump.rdb
+
+.env.prod
