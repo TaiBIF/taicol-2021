@@ -1,0 +1,13 @@
+http:
+  middlewares:
+    # ── 限「總併發」──
+    api-inflight:
+      inFlightReq:
+        amount: 40
+
+    # ── 輔助:per-IP 限流 ──
+    api-ratelimit:
+      rateLimit:
+        average: 20      # 每來源 IP 平均 20 req/s
+        burst: 40        # 短時可衝到 40
+        period: 1s

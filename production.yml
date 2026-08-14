@@ -1,0 +1,106 @@
+networks:
+  traefik:
+    name: taicol-traefik
+  internal:
+    name: taicol-internal
+
+services:
+  traefik:
+    image: traefik:v3.1
+    container_name: taicol-traefik
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+      - ./traefik/acme.json:/acme.json
+    networks:
+      - traefik
+    extra_hosts:
+      # file provider 要能轉發到 host 上的 apache(127.0.0.1:8081)
+      - "host.docker.internal:host-gateway"
+
+  web:
+    image: nginx:alpine
+    container_name: taicol-nametool-web
+    restart: always
+    volumes:
+      - ./docker/nginx/prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - .:/var/www/html
+    depends_on:
+      - app
+    networks:
+      - traefik
+      - internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nametool.rule=Host(`nametool.taicol.tw`)"
+      - "traefik.http.routers.nametool.entrypoints=websecure"
+      - "traefik.http.routers.nametool.tls.certresolver=myresolver"
+      - "traefik.http.services.nametool.loadbalancer.server.port=80"
+      - "traefik.http.routers.nametool.middlewares=api-inflight@file,api-ratelimit@file"
+      - "traefik.docker.network=taicol-traefik"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile-stag
+    container_name: taicol-nametool-app
+    restart: always
+    volumes:
+      - .:/var/www/html
+      - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+      - ./docker/php/www.conf:/usr/local/etc/php-fpm.d/www.conf:ro
+    depends_on:
+      - redis
+    networks:
+      - internal
+    extra_hosts:
+      # 連 host 上的 MySQL
+      - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        limits:
+          memory: 400M
+        reservations:
+          memory: 128M
+
+  redis:
+    image: redis:alpine
+    container_name: taicol-nametool-redis
+    restart: always
+    command: redis-server --maxmemory 100mb --maxmemory-policy allkeys-lru
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile-stag
+    container_name: taicol-nametool-worker
+    restart: always
+    command: php /var/www/html/artisan queue:work --tries=1 --max-time=3600
+    volumes:
+      - .:/var/www/html
+      - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+    depends_on:
+      - redis
+    networks:
+      - internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    deploy:
+      resources:
+        limits:
+          memory: 200M

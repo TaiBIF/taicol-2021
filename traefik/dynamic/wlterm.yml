@@ -1,0 +1,26 @@
+http:
+  routers:
+    wlterm:
+      rule: "Host(`wlterm.biodiv.tw`)"
+      entryPoints:
+        - websecure
+      service: apache-host
+      tls:
+        certResolver: myresolver
+
+    wlterm-intra:
+      rule: "Host(`wlterm-intra.biodiv.tw`)"
+      entryPoints:
+        - websecure
+      service: apache-host
+      tls:
+        certResolver: myresolver
+      # Basic Auth 維持由 apache 處理(/home/ubuntu/passwords),Traefik 不重複設
+
+  services:
+    apache-host:
+      loadBalancer:
+        # passHostHeader 讓 apache 收到正確 Host 以選對 vhost
+        passHostHeader: true
+        servers:
+          - url: "http://host.docker.internal:8081"
