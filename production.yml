@@ -51,7 +51,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: docker/php/Dockerfile-stag
+      dockerfile: docker/php/Dockerfile-prod
     container_name: taicol-nametool-app
     restart: always
     volumes:
@@ -87,7 +87,7 @@ services:
   worker:
     build:
       context: .
-      dockerfile: docker/php/Dockerfile-stag
+      dockerfile: docker/php/Dockerfile-prod
     container_name: taicol-nametool-worker
     restart: always
     command: php /var/www/html/artisan queue:work --tries=1 --max-time=3600
