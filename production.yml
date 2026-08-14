@@ -9,6 +9,8 @@ services:
     image: traefik:v3.1
     container_name: taicol-traefik
     restart: always
+    environment:
+      - DOCKER_API_VERSION=1.44
     ports:
       - "80:80"
       - "443:443"
