@@ -6,7 +6,7 @@ networks:
 
 services:
   traefik:
-    image: traefik:v3.ˊ
+    image: traefik:v3.6
     container_name: taicol-traefik
     restart: always
     ports:
