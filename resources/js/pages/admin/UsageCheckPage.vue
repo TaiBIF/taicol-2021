@@ -1,6 +1,6 @@
 <template>
-    <div class="w-full h-full">
-        <div class="container flex flex-col h-full">
+    <div class="w-full h-full overflow-y-auto">
+        <div class="container flex flex-col min-h-full pb-6">
             <div class="bg-white">
 
                 <div class="py-3 flex items-center">
@@ -8,34 +8,75 @@
                 </div>
                 <div class="flex px-4 mb-4 gap-1">
                     <div class="w-full">
-                    <button :disabled="isLoading" class="button" v-on:click="onSubmit">開始檢查</button>
+                        <button :disabled="isLoading" class="button" v-on:click="onSubmit">開始檢查</button>
                     </div>
                 </div>
 
-                <!-- 列出is_checked=0的資料 -->
+                <div class="px-4 mb-4">
+                    <details class="bg-gray-50 border rounded-md p-3 text-sm">
+                        <summary class="font-bold cursor-pointer text-gray-700">錯誤類型對照表</summary>
+                        <div class="mt-2 max-h-[200px] overflow-y-auto border-t pt-2">
+                            <table class="w-full text-xs text-left text-gray-600 border-collapse">
+                                <thead>
+                                    <tr class="border-b bg-gray-100">
+                                        <th class="p-1.5 w-16 text-center">代號</th>
+                                        <th class="p-1.5">說明</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(desc, code) in errorTypeMap" :key="code" class="border-b hover:bg-gray-100">
+                                        <td class="p-1.5 font-bold text-center border-r">{{ code }}</td>
+                                        <td class="p-1.5">{{ desc }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                </div>
+
                 <div class="p-4">
                     <p class="mb-3">上次檢查時間：{{ lastUpdated }}</p>
-                    <p class="mb-3">尚未確認usage👇(請至api_usage_check確認詳細資訊)</p>
-                    <div class="max-h-[350px] overflow-y-auto shadow-sm">
-                        <table class="table text-[14px] is-fullwidth max-w-full has-text-grey">
-                            <thead class="font-bold">
+                    <p class="mb-3">尚未確認的 usage 👇（可直接勾選 is_checked 並更新表格）</p>
+                    <div class="max-h-[350px] overflow-auto shadow-sm border">
+                        <table class="table text-[13px] has-text-grey whitespace-nowrap">
+                            <thead class="font-bold sticky top-0 bg-white z-10">
                             <tr>
-                                <th class="w-[80px] has-text-grey" v-text="'Check ID'"/>
-                                <th class="w-[80px] has-text-grey" v-text="'錯誤類型'"/>
-                                <th class="w-[270px] has-text-grey" v-text="'更新時間'"/>
+                                <th class="has-text-grey">Check ID</th>
+                                <th class="has-text-grey">錯誤類型</th>
+                                <th class="has-text-grey">reference_usage_id</th>
+                                <th class="has-text-grey">accepted_taxon_name_id</th>
+                                <th class="has-text-grey">taxon_name_id</th>
+                                <th class="has-text-grey">reference_id</th>
+                                <th class="has-text-grey">autonym_group</th>
+                                <th class="has-text-grey">object_group</th>
+                                <th class="has-text-grey">更新時間</th>
+                                <th class="has-text-grey text-center">is_checked</th>
                             </tr>
                             </thead>
                             <tbody>
-                            <tr v-for="usage in usages">
+                            <tr v-for="usage in usages" :key="usage.id">
                                 <td>{{ usage.id }}</td>
-                                <td>{{ errorTypeMap[usage.errorType] }}</td>
+                                <td :title="errorTypeMap[usage.errorType]">
+                                    {{ usage.errorType }}
+                                </td>
+                                <td>{{ usage.referenceUsageId }}</td>
+                                <td>{{ usage.acceptedTaxonNameId }}</td>
+                                <td>{{ usage.taxonNameId }}</td>
+                                <td>{{ usage.referenceId }}</td>
+                                <td>{{ usage.autonymGroup }}</td>
+                                <td>{{ usage.objectGroup }}</td>
                                 <td>{{ usage.updatedAt }}</td>
+                                <td class="text-center">
+                                    <input type="checkbox"
+                                        :checked="usage.isChecked == 1"
+                                        :disabled="isLoading"
+                                        @change="usage.isChecked = $event.target.checked ? 1 : 0">
+                                </td>
                             </tr>
                             </tbody>
                         </table>
                     </div>
-                    <button :disabled="isLoading" class="button" v-on:click="getUncheckedUsage">確認完畢更新表格</button>
-
+                    <button :disabled="isLoading" class="button mt-3" v-on:click="saveChecked">確認完畢更新表格</button>
                 </div>
 
             </div>
@@ -53,7 +94,6 @@ import LoadingSection from '../../components/LoadingSection.vue';
 
 export default {
     data() {
-
         return {
             lastUpdated: null,
             isLoading: false,
@@ -74,7 +114,7 @@ export default {
         };
     },
     mounted() {
-        this.getUncheckedUsage()
+        this.getUncheckedUsage();
     },
     methods: {
         getUncheckedUsage(){
@@ -102,9 +142,22 @@ export default {
                 }
 
             });
-
-
-        }
+        },
+        saveChecked(){
+            const ids = this.usages.filter(u => u.isChecked == 1).map(u => u.id);
+            if (ids.length === 0) {   // 沒勾任何列就只重抓
+                this.getUncheckedUsage();
+                return;
+            }
+            this.isLoading = true;
+            this.axios.post('/update-usage-checked', { ids })
+                .then(() => {
+                    openNotify(this.$t('common.checkSuccess'));
+                    this.getUncheckedUsage(); // 重抓，已確認的會消失
+                })
+                .catch(() => openNotify('更新失敗', 'is-danger'))
+                .finally(() => this.isLoading = false);
+        },
     },
     components: {
         page, openNotify, LoadingSection

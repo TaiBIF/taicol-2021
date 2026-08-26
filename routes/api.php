@@ -62,6 +62,7 @@ Route::get('/biota', 'MyNamespaceUsageController@biota');
 // 檢查usage
 Route::get('/get-unchecked-usage', 'ReferenceUsageController@getUncheckedUsage');
 Route::get('/update-usage-check', 'ReferenceUsageController@updateUsageCheck');
+Route::post('/update-usage-checked', 'ReferenceUsageController@updateUsageChecked');
 Route::get('/export/namespaces/{id}/usages', 'MyNamespaceUsageController@export');
 
 Route::middleware('auth:sanctum')->group(function () {

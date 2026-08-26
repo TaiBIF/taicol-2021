@@ -745,6 +745,19 @@ class ReferenceUsageController extends Controller
 
     }
 
+    public function updateUsageChecked(Request $request) {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'integer',
+        ]);
+
+        DB::table('api_usage_check')
+            ->whereIn('id', $request->get('ids'))
+            ->update(['is_checked' => 1]);
+
+        return response()->json(['message' => 'done']);
+    }
+
     public function higherTaxa(Request $request) {
 
         $keyword = $request->get('keyword');
