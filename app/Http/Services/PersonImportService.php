@@ -157,9 +157,9 @@ class PersonImportService
                 $this->addError($row, "檔案內重複：與第 {$firstSeen[$uniqueKey]} 筆");
             }
 
-            // 資料庫重複（需姓名有效）
+            // 資料庫重複：警告，允許資料正常寫入
             if ($nameOk && isset($duplicatePersons[$uniqueKey])) {
-                $this->addError($row, "與資料庫重複（#{$duplicatePersons[$uniqueKey]->id}）");
+                $this->warningRows[$row - 1] = ['message' => "與資料庫既有資料重複（#{$duplicatePersons[$uniqueKey]->id}）"];
             }
 
             // 國籍
