@@ -23,12 +23,18 @@ mkdir -p \
     bootstrap/cache \
     public/images/references \
     public/pdfs/references \
-    public/usage_results
+    public/usage_results \
+    public/import
 
-# 只修正新建/擁有者不符的目錄(對齊後多為 no-op,故不慢)
 chown -R www-data:www-data \
     storage bootstrap/cache \
-    public/images public/pdfs public/usage_results 2>/dev/null || true
+    public/images public/pdfs public/usage_results public/import 2>/dev/null || true
 
-# 降權以 www-data 執行傳入的命令(php-fpm 或 queue:work)
-exec su-exec www-data "$@"
+# 降權執行:
+# - php-fpm 需以 root 啟動 master,再由它自己 fork www-data worker
+# - 其餘命令(如 queue:work)才直接以 www-data 執行
+if [ "$1" = "php-fpm" ]; then
+    exec "$@"
+else
+    exec su-exec www-data "$@"
+fi
