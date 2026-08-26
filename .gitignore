@@ -31,3 +31,5 @@ view_create
 dump.rdb
 
 .env.prod
+
+traefik/acme.json
