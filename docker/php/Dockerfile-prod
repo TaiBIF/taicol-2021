@@ -1,7 +1,7 @@
 # 使用 FPM 版本以支援 Nginx 連線
 FROM php:8.2-fpm-alpine
 
-# 1. 安裝系統依賴
+# 1. 安裝系統依賴(含 entrypoint 需要的 shadow 與 su-exec)
 RUN apk add --no-cache \
     icu-dev \
     libzip-dev \
@@ -12,6 +12,8 @@ RUN apk add --no-cache \
     libjpeg-turbo-dev \
     libwebp-dev \
     zlib-dev \
+    shadow \
+    su-exec \
     $PHPIZE_DEPS
 
 # 2. 安裝 PHP 核心擴展
@@ -40,23 +42,9 @@ COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
 # 設定工作目錄
 WORKDIR /var/www/html
 
-# 5. 只建立並調整「需要寫入權限」的目錄
-RUN mkdir -p storage/app/public \
-    storage/framework/cache/data \
-    storage/framework/sessions \
-    storage/framework/views \
-    storage/logs \
-    bootstrap/cache \
-    public/images/references \
-    public/pdfs/references \
-    public/usage_results
+# 5. entrypoint:掛載生效後動態對齊 UID/GID 並降權執行
+COPY docker/php/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# 6. 精準調整擁有者：只針對 storage 和上傳目錄
-RUN chown -R www-data:www-data storage bootstrap/cache public/images public/pdfs public/usage_results
-
-# 7. 設定權限：目錄 775, 檔案 664，確保組群內可寫入
-RUN find storage bootstrap/cache public/images public/pdfs public/usage_results -type d -exec chmod 775 {} \; \
-    && find storage bootstrap/cache public/images public/pdfs public/usage_results -type f -exec chmod 664 {} \;
-
-# 預設啟動命令
+ENTRYPOINT ["entrypoint.sh"]
 CMD ["php-fpm"]
