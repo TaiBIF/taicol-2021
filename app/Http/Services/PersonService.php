@@ -24,25 +24,6 @@ class PersonService
         return PersonCollection::collection([$person])->first();
     }
 
-    public function hasPersonExist(string $lastName, string $middleName, string $firstName, string $yearBirth): int|null
-    {
-        $existPersonQuery = Person::query()
-            ->where('last_name', $lastName)
-            ->where('middle_name', $middleName)
-            ->where('first_name', $firstName)
-            ->where('year_birth', $yearBirth);
-
-        if ($this->person) {
-            $existPersonQuery->where('id', '!=', $this->person->id);
-        }
-
-        $existPerson = $existPersonQuery->first();
-
-        if ($existPerson) return $existPerson->id;
-
-        return null;
-    }
-
     public function saveAll(array $data): Model
     {
         // create save

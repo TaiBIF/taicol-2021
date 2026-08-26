@@ -151,12 +151,6 @@ class PersonController extends Controller
 
         $service = new PersonService(new Person());
 
-        if ($service->hasPersonExist($lastName, $middleName, $firstName, $yearBirth)) {
-            return response([
-                'message' => 'Person exist.'
-            ])->setStatusCode(409);
-        }
-
         $originalFullName = $request->get('original_full_name') ?? '';
         $abbreviationName = $request->get('abbreviation_name') ?? '';
 
@@ -199,11 +193,11 @@ class PersonController extends Controller
 
         $service = new PersonService($person);
 
-        if ($service->hasPersonExist($lastName, $middleName, $firstName, $yearBirth)) {
-            return response([
-                'message' => 'Person exist.'
-            ])->setStatusCode(409);
-        }
+        // if ($service->hasPersonExist($lastName, $middleName, $firstName, $yearBirth)) {
+        //     return response([
+        //         'message' => 'Person exist.'
+        //     ])->setStatusCode(409);
+        // }
 
         $originalFullName = $request->get('original_full_name') ?? '';
         $abbreviationName = $request->get('abbreviation_name') ?? '';

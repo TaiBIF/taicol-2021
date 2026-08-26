@@ -1,30 +1,9 @@
 <template>
     <div>
         <div class="px-16 py-12 w-[768px]">
-            <p class="title text-center" v-if="!submitted"><b>{{ $t('aiImport.guide.title') }}</b></p>
-            <ul class="guide-list" v-if="!submitted">
+            <p class="title text-center"><b>{{ $t('aiImport.guide.title') }}</b></p>
 
-                <li>{{ $t('aiImport.guide.fileUpload') }}</li>
-                <li>{{ $t('aiImport.guide.redundancyCheck') }}</li>
-                
-                <!-- 子層情境列表 -->
-                <li>
-                    <span>{{ $t('aiImport.guide.scenariosTitle') }}</span>
-                    <ul class="sub-list">
-                        <li>{{ $t('aiImport.guide.scenarios.case1') }}</li>
-                        <li>{{ $t('aiImport.guide.scenarios.case2') }}</li>
-                        <li>{{ $t('aiImport.guide.scenarios.case3') }}</li>
-                        <li>{{ $t('aiImport.guide.scenarios.case4') }}</li>
-                        <li>{{ $t('aiImport.guide.scenarios.case5') }}</li>
-                    </ul>
-                </li>
-                <li>{{ $t('aiImport.guide.newRef') }}</li>
-                <li>{{ $t('aiImport.guide.parsingProcess') }}</li>
-                <li>{{ $t('aiImport.guide.newTaxa') }}</li>
-                <li>{{ $t('aiImport.guide.verification') }}</li>
-                <li>{{ $t('aiImport.guide.finalImport') }}</li>
-                </ul>
-
+            <!-- 1. 檔案上傳區域 -->
             <div class="flex gap-2 my-4">
                 <p class="leading-10 w-[80px]">
                     <span class="font-bold">{{ $t('aiImport.referencePDF') }}</span>
@@ -40,6 +19,32 @@
 
             <button class="button" v-on:click="onFetchReferenceAI">{{ $t('common.import') }}</button>
 
+            <!-- 2. Guide 說明區域（移至上傳區域下方） -->
+            <div v-if="!submitted" class="mt-6">
+                <ul class="guide-list">
+                    <li>{{ $t('aiImport.guide.fileUpload') }}</li>
+                    <li>{{ $t('aiImport.guide.redundancyCheck') }}</li>
+                    
+                    <!-- 子層情境列表 -->
+                    <li>
+                        <span>{{ $t('aiImport.guide.scenariosTitle') }}</span>
+                        <ul class="sub-list">
+                            <li>{{ $t('aiImport.guide.scenarios.case1') }}</li>
+                            <li>{{ $t('aiImport.guide.scenarios.case2') }}</li>
+                            <li>{{ $t('aiImport.guide.scenarios.case3') }}</li>
+                            <li>{{ $t('aiImport.guide.scenarios.case4') }}</li>
+                            <li>{{ $t('aiImport.guide.scenarios.case5') }}</li>
+                        </ul>
+                    </li>
+                    <li>{{ $t('aiImport.guide.newRef') }}</li>
+                    <li>{{ $t('aiImport.guide.parsingProcess') }}</li>
+                    <li>{{ $t('aiImport.guide.newTaxa') }}</li>
+                    <li>{{ $t('aiImport.guide.verification') }}</li>
+                    <li>{{ $t('aiImport.guide.finalImport') }}</li>
+                </ul>
+            </div>
+
+            <!-- 3. 上傳後動態產生的內容（載入狀態與解析結果表格） -->
             <div class="min-h-3/5 flex w-full">
                 <div v-if="isLoading" class="flex w-full items-center justify-center">
                     <loading></loading>

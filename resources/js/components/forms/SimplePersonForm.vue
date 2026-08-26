@@ -241,6 +241,7 @@ export default defineComponent({
                         },
                     });
                 } else if (status === 409) {
+                    // 應該已無此限制
                     openNotify('人名已存在', 'is-danger');
                 } else {
                     errors.value = errorMessages;
