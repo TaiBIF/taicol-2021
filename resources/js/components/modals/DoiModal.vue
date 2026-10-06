@@ -24,49 +24,15 @@
                         <tr>
                             <td class="no-wrap">{{ $t('reference.author') }}</td>
                             <td>
-                                <!-- 新增的作者表格 -->
-                                <table class="table w-full border border-gray-300">
-                                    <thead>
-                                        <tr class="bg-gray-100">
-                                            <th class="border border-gray-300 px-4 py-2 text-left">文獻中作者</th>
-                                            <th class="border border-gray-300 px-4 py-2 text-left">對應現有資料庫人名</th>
-                                            <th class="border border-gray-300 px-4 py-2 text-center">選擇其他人名</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="(author, key) in result.authors" :key="key">
-                                            <!-- 文獻中作者 -->
-                                            <td class="border border-gray-300 px-4 py-2">
-                                                <span :class="{'text-red-500': !result.authorsPossible[key]}" 
-                                                    class="font-bold">
-                                                    {{ author.family }}, {{ author.given }}
-                                                </span>
-                                            </td>
-                                            
-                                            <!-- 對應TaiCOL資料庫內作者 -->
-                                            <td class="border border-gray-300 px-4 py-2">
-                                                <div v-if="!!result.authorsPossible[key]">
-                                                    <router-link  target="_blank" :to="{name: 'person-page', params: {id: result.authorsPossible[key].id }}" class="my-link">
-                                                        {{ result.authorsPossible[key]['fullName'] }} <span v-if=" result.authorsPossible[key].abbreviationName ">({{ result.authorsPossible[key].abbreviationName }})</span>
-                                                    </router-link>
-                                                </div>
-                                                <span v-else class="text-gray-500 italic">未找到對應作者</span>
-                                            </td>
-
-                                            <!-- 動作 -->
-                                            <td class="border border-gray-300 px-4 py-2 text-center">
-                                                <person-select  
-                                                    class="w-[180px]"
-                                                    :multiple="false"
-                                                    :errors="errors.authors"
-                                                    :value="selectedAuthors[key] || []"
-                                                    :authorData="{ given: author.given, family: author.family, index: key }"
-                                                    @input="(value) => onAuthorSelect(key, value)"
-                                                />
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                                <!-- 作者比對：多筆相似人名時讓使用者確認 -->
+                                <author-match-table
+                                    :authors="result.authors"
+                                    :authors-possible="result.authorsPossible"
+                                    :authors-candidates="result.authorsCandidates"
+                                    :errors="errors.authors"
+                                    v-model="selectedAuthors"
+                                />
+                                <p v-if="authorError" class="help is-danger mt-1">{{ authorError }}</p>
                             </td>
                         </tr>
 
@@ -150,7 +116,8 @@ import {
 import GeneralInput from '../GeneralInput.vue';
 import Loading from '../Loading.vue';
 import referenceTypes from '../../utils/options/referenceTypes';
-import PersonSelect from '../selects/PersonSelect.vue';
+import AuthorMatchTable from '../AuthorMatchTable.vue';
+import { resolveAuthors } from '../../utils/resolveAuthors';
 
 export default defineComponent({
     name: 'doi-modal',
@@ -169,6 +136,7 @@ export default defineComponent({
             type: number,
             authors: Array<{ given: string, family: string }>,
             authorsPossible: object,
+            authorsCandidates?: object,
             publishYear: string,
             articleTitle: string,
             bookTitle: string,
@@ -184,7 +152,8 @@ export default defineComponent({
         const isLoading = ref<boolean>(false);
         
         // 追蹤每個作者位置選擇的人員
-        const selectedAuthors = ref<{[key: number]: any[]}>({});
+        const selectedAuthors = ref<{[key: number]: any}>({});
+        const authorError = ref<string>('');
 
 
         const onFetchDoi = () => {
@@ -197,6 +166,8 @@ export default defineComponent({
                 .then(({ data }) => {
                     // console.log(data);
                     result.value = data;
+                    selectedAuthors.value = {};
+                    authorError.value = '';
                     errors.value = {};
                     isLoading.value = false;
                 })
@@ -214,8 +185,18 @@ export default defineComponent({
         const onSetToForm = () => {
             if (!result.value) return;
 
-            // 整合最終的作者清單
-            const finalAuthorsPossible = getFinalAuthorsPossible();
+            // 整合最終的作者清單（多筆相似人名需先確認）
+            const { final: finalAuthorsPossible, unresolved } = resolveAuthors(
+                result.value.authors,
+                result.value.authorsPossible,
+                result.value.authorsCandidates,
+                selectedAuthors.value,
+            );
+            if (unresolved.length) {
+                authorError.value = app.$t('aiImport.author.unresolved', { names: unresolved.join(app.$i18n.locale() === 'zh-tw' ? '、' : ', ') });
+                return;
+            }
+            authorError.value = '';
 
             props.onOverwrite({
                 type: result.value.type,
@@ -234,32 +215,6 @@ export default defineComponent({
             app.$store.commit('closeModal');
         };
 
-        // 處理作者選擇
-        const onAuthorSelect = (authorIndex: number, selectedPersons: any[]) => {
-            selectedAuthors.value[authorIndex] = Array.isArray(selectedPersons) 
-                ? selectedPersons[0] 
-                : selectedPersons;
-        };
-
-        // 整合最終的作者清單
-        const getFinalAuthorsPossible = () => {
-            const finalAuthors: any[] = [];
-            
-            // 按照原始作者順序處理
-            result.value?.authors?.forEach((originalAuthor, index) => {
-                // 1. 優先使用下拉選單選擇的人名
-                if (selectedAuthors.value[index]) {
-                    finalAuthors.push(selectedAuthors.value[index]);
-                } 
-                // 2. 如果下拉選單沒有選擇，但有對應的現有資料庫人名
-                else if (result.value?.authorsPossible && result.value.authorsPossible[index]) {
-                    finalAuthors.push(result.value.authorsPossible[index]);
-                }
-                // 如果都沒有，則跳過該作者
-            });
-            
-            return finalAuthors;
-        };
 
         const onClose = () => {
             app.$store.commit('closeModal');
@@ -280,10 +235,9 @@ export default defineComponent({
             onFetchDoi,
             onSetToForm,
             onClose,
-            onAuthorSelect,
-            getFinalAuthorsPossible,
+            authorError,
         };
     },
-    components: { Loading, GeneralInput, PersonSelect },
+    components: { Loading, GeneralInput, AuthorMatchTable },
 });
 </script>

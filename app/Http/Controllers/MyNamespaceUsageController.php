@@ -39,6 +39,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use App\Http\Services\UsagePreviewService;
 use App\Http\Resources\TaxonNameSimpleSubResource;
 use App\ImportAiLog;
+use App\ReferenceUsage;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redis;
 use App\Jobs\ProcessAiUsageRequest;
@@ -54,21 +55,29 @@ class MyNamespaceUsageController extends Controller
     {
         $namespace = MyNamespace::find($namespaceId);
 
+        // 先檢查權限，再判斷是否導去補學名頁（避免非擁有者也被導向）
+        if (!$namespace || $namespace->user_id !== $request->user()->id) {
+            return response()->json([], 401);
+        }
+
         // 判斷從ai匯入的話是不是有需要新增的學名
         $hasUnmatchedNames = ImportAiLog::where('import_to_id', $namespaceId)
             ->whereRaw("JSON_EXTRACT(metadata, '$.unmatched_name_count') > 0")
             ->where('status', '!=', 'added')
             ->exists();
 
-        if ($hasUnmatchedNames) {
+        // 已送出「確認新增學名並繼續匯入」、背景 Job 尚在處理時，不再導回補學名頁
+        // （Job 完成前 AI log 的 status 還不是 added，略過的學名也仍算未比對）
+        $aiImportInProgress = ImportLog::where('type', 'namespace_usage_ai')
+            ->whereIn('status', ['pending', 'processing'])
+            ->where('context->namespace_id', (int) $namespaceId)
+            ->exists();
+
+        if ($hasUnmatchedNames && !$aiImportInProgress) {
             return response()->json([
                 'has_unmatched_names' => true,
                 'redirect_to' => 'namespace-name-create-page'
             ]);
-        }
-
-        if ($namespace->user_id !== $request->user()->id) {
-            return response()->json([], 401);
         }
 
         $offset = $request->get('offset', 0);
@@ -919,23 +928,63 @@ class MyNamespaceUsageController extends Controller
     }
 
 
-    public function fetchUsageAi(Request $request)  
+    public function fetchUsageAi(Request $request)
     {
-        $data = $request->all();
-
         $referenceId = $request->input('reference_id');
         $userId = Auth::user()->id;
 
-        // 背景處理
+        // 先驗證文獻與 PDF，避免 Job 在背景 crash
+        $reference = $referenceId ? Reference::find($referenceId) : null;
+        if (!$reference) {
+            return response()->json(['message' => '找不到此文獻', 'message_key' => 'aiImport.server.referenceNotFound'], 404);
+        }
 
-        ProcessAiUsageRequest::dispatch($referenceId, $userId);
-        
-        return response()->json([
-            'status' => 'queued', 
-            'message' => '請求已送出，處理完成後將寄信通知，完成後也可以至「我的名錄區」查看及編輯。',
+        $filePath = $reference->properties['file'] ?? null;
+        if (!$filePath || !Storage::disk('pdfs')->exists($filePath)) {
+            return response()->json(['message' => '此文獻沒有可供 AI 辨識的 PDF 檔案', 'message_key' => 'aiImport.server.noPdf'], 400);
+        }
+
+        // 草稿、已有學名使用、已在解析中 → 不可送出（避免重複解析或重複送出）
+        if (!$reference->is_publish) {
+            return response()->json(['message' => '此文獻為草稿，請先至我的收藏確認並發布。', 'message_key' => 'aiImport.server.draft'], 409);
+        }
+
+        $hasUsage = ReferenceUsage::where('reference_id', $reference->id)->whereNull('deleted_at')->exists();
+        if ($hasUsage) {
+            return response()->json(['message' => '此文獻已有學名使用存在，不得匯入', 'message_key' => 'aiImport.status.has_usage'], 409);
+        }
+
+        $processing = ImportAiLog::where('job_type', 'usage_gemini_url')
+            ->where('status', 'processing')
+            ->where('file_path', $filePath)
+            ->exists();
+        if ($processing) {
+            return response()->json(['message' => '此文獻的學名使用正在解析中，請待完成後再確認。', 'message_key' => 'aiImport.server.processing'], 409);
+        }
+
+        // 檢查API限制
+        $dailyKey = 'gemini_api_calls:' . date('Y-m-d');
+        if ((Redis::get($dailyKey) ?? 0) >= config('services.gemini.daily_limit', 1000)) {
+            return response()->json(['message' => '今日 AI 辨識次數已達上限，請明天再試。', 'message_key' => 'aiImport.server.dailyLimit'], 429);
+        }
+
+        // 在這裡建立 log，把 id 交給 Job（failed() 才找得到正確的 log）
+        $jobLog = ImportAiLog::create([
+            'job_type' => 'usage_gemini_url',
+            'status' => 'processing',
+            'user_id' => $userId,
+            'started_at' => now(),
+            'file_path' => $filePath,
         ]);
 
+        // 背景處理
+        ProcessAiUsageRequest::dispatch($reference->id, $userId, $jobLog->id);
 
+        return response()->json([
+            'status' => 'queued',
+            'message' => '請求已送出，處理完成後將寄信通知，完成後也可以至「我的名錄區」查看及編輯。',
+            'message_key' => 'aiImport.server.usageQueued',
+        ]);
     }
 
     public function createName(Request $request, $namespaceId)
@@ -960,6 +1009,19 @@ class MyNamespaceUsageController extends Controller
 
         $namespace = MyNamespace::find($namespaceId);
 
+        // 已送出建名與匯入、背景 Job 尚在處理：直接回到名錄編輯區輪詢，不再顯示補學名頁
+        $inProgressLog = ImportLog::where('type', 'namespace_usage_ai')
+            ->whereIn('status', ['pending', 'processing'])
+            ->where('context->namespace_id', (int) $namespaceId)
+            ->latest('id')
+            ->first();
+        if ($inProgressLog) {
+            return response([
+                'finished' => true,
+                'log_id'   => $inProgressLog->id,
+            ]);
+        }
+
         // 1 - 重新判斷一次需要新增的學名 並回傳給前端
 
         $jobLog = ImportAiLog::where('import_to_id', $namespaceId)->first();
@@ -975,7 +1037,7 @@ class MyNamespaceUsageController extends Controller
             unset($item);
         }
 
-        $service = new UsageAiImportService();
+        $service = app(UsageAiImportService::class);
         $processedData = $service->processScientificNames($usageJson);
         $unmatchedCount = $service->countUnmatchedScientificNames($processedData);
 
@@ -1029,6 +1091,12 @@ class MyNamespaceUsageController extends Controller
 
         try {
             $submitData = json_decode($request->getContent(), true) ?? [];
+
+            // TaxonNameAiImportService 讀的是 kingdom_name，前端送的是 kingdom（同 Excel 流程）
+            $submitData = array_map(function ($item) {
+                $item['kingdom_name'] = $item['kingdom'] ?? null;
+                return $item;
+            }, $submitData);
 
             // index() 靠這筆 AI log 的 status='added' 判斷是否還要導去補學名頁，收尾時由 Job 設回
             $aiLog = ImportAiLog::where('import_to_id', $namespaceId)->first();

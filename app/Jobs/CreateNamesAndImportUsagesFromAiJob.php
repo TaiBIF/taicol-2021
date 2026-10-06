@@ -124,7 +124,7 @@ class CreateNamesAndImportUsagesFromAiJob implements ShouldQueue
             // 5. 匯入 usage（此階段更新輪詢文字為「匯入中」）
             $log->update(['phase' => 'importing_usages']);
 
-            $service = new UsageAiImportService();
+            $service = app(UsageAiImportService::class);
             $processedData = $service->processScientificNames($usageJson);
 
             // 過濾要跳過的 usage
@@ -220,11 +220,16 @@ class CreateNamesAndImportUsagesFromAiJob implements ShouldQueue
             ]);
         }
 
-        Mail::to(env('TAICOL_EMAIL', 'catalogueoflife.taiwan@gmail.com'))
-            ->send(new Email(
-                'AI 匯入批次建名／匯入任務最終失敗：<br>' . nl2br($e->getMessage()),
-                'TaiCOL - AI 匯入失敗',
-                'TaiCOL管理員'
-            ));
+        // 寄信失敗只記 log，不再往外拋
+        try {
+            Mail::to(env('TAICOL_EMAIL', 'catalogueoflife.taiwan@gmail.com'))
+                ->send(new Email(
+                    'AI 匯入批次建名／匯入任務最終失敗：<br>' . nl2br(e($e->getMessage())),
+                    'TaiCOL - AI 匯入失敗',
+                    'TaiCOL管理員'
+                ));
+        } catch (\Throwable $mailError) {
+            Log::error('Notify admin failed', ['error' => $mailError->getMessage()]);
+        }
     }
 }

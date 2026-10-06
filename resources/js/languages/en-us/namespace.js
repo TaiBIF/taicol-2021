@@ -39,6 +39,7 @@ export default {
     importToReference: 'Import to Bound Reference',
     referenceToBind: 'Reference to Bind:',
     importToReferenceNotice: 'Notice: This function allows one-time import only. Please make sure all edits are complete before importing. If a bound reference already has name usage, it cannot be imported again.',
+    usageExistsCannotImport: 'Import failed: Name usage already exists',
     continueToImportChecklist: 'Confirm the Binding and Continue to Import Checklist',
     addNameAndContinueToImportChecklist: 'Confirm Adding Names and Continue to Import Checklist',
 };

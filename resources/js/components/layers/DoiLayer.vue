@@ -28,21 +28,14 @@
                         <tr>
                             <td class="no-wrap">作者</td>
                             <td>
-                                <div class="flex-col">
-                                    <div v-for="(author, key) in result.authors">
-                                        <p :class="{'text-red-500': !result.authorsPossible[key]}"
-                                           class="font-bold mb-2">{{ author.family }}, {{ author.given }}</p>
-                                        <div v-if="!!result.authorsPossible[key]" class="w-full mb-2 gap-3">
-                                            <span class="font-bold">&nbsp;&nbsp;&nbsp;&nbsp;{{
-                                                    result.authorsPossible[key].id
-                                                }}:&nbsp;</span>
-                                            <span class="space-x-44">
-                                                {{ result.authorsPossible[key]['fullName'] }}
-                                                ({{ result.authorsPossible[key].abbreviationName }})
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
+                                <!-- 作者比對：多筆相似人名時讓使用者確認（與 AI 匯入、DoiModal 共用） -->
+                                <author-match-table
+                                    :authors="result.authors"
+                                    :authors-possible="result.authorsPossible"
+                                    :authors-candidates="result.authorsCandidates"
+                                    v-model="selectedAuthors"
+                                />
+                                <p v-if="authorError" class="help is-danger mt-1">{{ authorError }}</p>
                             </td>
                         </tr>
                         <tr>
@@ -106,6 +99,8 @@ import {
 import GeneralInput from '../GeneralInput.vue';
 import Loading from '../Loading.vue';
 import referenceTypes from '../../utils/options/referenceTypes';
+import AuthorMatchTable from '../AuthorMatchTable.vue';
+import { resolveAuthors } from '../../utils/resolveAuthors';
 
 export default defineComponent({
     name: 'doi-modal',
@@ -122,7 +117,9 @@ export default defineComponent({
         const doi = ref<string>('');
         const result = ref<{
             type: number
+            authors: any[],
             authorsPossible: object,
+            authorsCandidates?: object,
             publishYear: string,
             articleTitle: string,
             bookTitle: string,
@@ -136,6 +133,9 @@ export default defineComponent({
         } | null>(null);
         const errors = ref<object>({});
         const isLoading = ref<boolean>(false);
+        // 使用者選擇的作者 { [index]: person }
+        const selectedAuthors = ref<{[key: number]: any}>({});
+        const authorError = ref<string>('');
 
         const onFetchDoi = () => {
             isLoading.value = true;
@@ -144,6 +144,8 @@ export default defineComponent({
                 .get('/doi', { params: { doi: doi.value } })
                 .then(({ data }) => {
                     result.value = data;
+                    selectedAuthors.value = {};
+                    authorError.value = '';
                     errors.value = {};
                     isLoading.value = false;
                 })
@@ -165,9 +167,22 @@ export default defineComponent({
         const onSetToForm = () => {
             if (!result.value) return;
 
+            // 多筆相似人名需先確認，不自動取第一筆
+            const { final, unresolved } = resolveAuthors(
+                result.value.authors,
+                result.value.authorsPossible,
+                result.value.authorsCandidates,
+                selectedAuthors.value,
+            );
+            if (unresolved.length) {
+                authorError.value = app.$t('aiImport.author.unresolved', { names: unresolved.join(app.$i18n.locale() === 'zh-tw' ? '、' : ', ') });
+                return;
+            }
+            authorError.value = '';
+
             props.onOverwrite({
                 type: result.value.type,
-                authors: Object.values(result.value.authorsPossible).filter(Boolean),
+                authors: final,
                 publishYear: result.value.publishYear,
                 articleTitle: result.value.articleTitle,
                 bookTitle: result.value.bookTitle,
@@ -192,13 +207,15 @@ export default defineComponent({
             doi,
             result,
             errors,
+            selectedAuthors,
+            authorError,
             typeDisplay,
             onFetchDoi,
             onSetToForm,
             onClose,
         };
     },
-    components: { Loading, GeneralInput },
+    components: { Loading, GeneralInput, AuthorMatchTable },
 });
 </script>
 <style lang="scss">

@@ -62,7 +62,7 @@ export default {
                 bind_only: bindOnly,
             }).then((response) => {
                 if (response.data.data === true) {
-                    openNotify('此文獻已有學名使用存在，不得匯入', 'is-danger');
+                    openNotify(this.$t('namespace.usageExistsCannotImport'), 'is-danger');
                     this.isLoading = false;
                     return;
                 }

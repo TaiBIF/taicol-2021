@@ -18,6 +18,7 @@
 <script>
 
 import { openNotify } from '../../utils';
+import { serverMessage } from '../../utils/serverMessage';
 
 export default {
     data() {
@@ -49,10 +50,10 @@ export default {
                 referenceId: referenceId,
             })
             .then(({ data }) => {
-                openNotify(data.message)
+                openNotify(serverMessage(data));
             })
-            .catch(({ errors: e, status, message }) => {
-                openNotify(data.message, 'is-danger')
+            .catch((err) => {
+                openNotify(serverMessage(err, this.$t('aiImport.error.submitFailed')), 'is-danger');
             });
 
             this.$store.commit('closeModal');

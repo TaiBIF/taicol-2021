@@ -49,7 +49,87 @@
                 <div v-if="isLoading" class="flex w-full items-center justify-center">
                     <loading></loading>
                 </div>
-                <div v-else-if="!!result" class="py-4">
+                <div v-else-if="!!result" class="py-4 w-full">
+                    <!-- 有找到可能的既有文獻：先請使用者確認 -->
+                    <template v-if="hasSimilar">
+                        <p class="font-bold mb-2">{{ $t('aiImport.choice.title') }}</p>
+                        <div class="flex flex-col gap-1 mb-4">
+                            <label class="cursor-pointer">
+                                <input type="radio" value="similar" v-model="choice" /> {{ $t('aiImport.choice.similar') }}
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" value="manual" v-model="choice" /> {{ $t('aiImport.choice.manual') }}
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" value="new" v-model="choice" /> {{ $t('aiImport.choice.new') }}
+                            </label>
+                        </div>
+                    </template>
+
+                    <!-- 沒找到可能的既有文獻：直接新增，保留手動搜尋入口 -->
+                    <p v-else class="mb-4">
+                        <a v-if="choice === 'new'" class="my-link" v-on:click="choice = 'manual'">{{ $t('aiImport.choice.manualLink') }}</a>
+                        <a v-else class="my-link" v-on:click="choice = 'new'">{{ $t('aiImport.choice.backToNew') }}</a>
+                    </p>
+
+                    <!-- A. 相似文獻 -->
+                    <div v-if="choice === 'similar'" class="mb-6 p-4 border rounded">
+                        <p class="font-bold mb-1">{{ $t('aiImport.similar.title', { count: result.similarReferences.length }) }}</p>
+                        <p class="help mb-3">{{ $t('aiImport.similar.hint') }}</p>
+                        <label v-for="item in result.similarReferences" :key="item.id"
+                               class="flex items-start gap-2 mb-2"
+                               :class="isSelectable(item) ? 'cursor-pointer' : 'opacity-60'">
+                            <input type="radio" class="mt-1" :value="item" v-model="selectedSimilar" :disabled="!isSelectable(item)" />
+                            <span>
+                                <router-link target="_blank" :to="{ name: 'reference-page', params: { id: item.id } }" class="my-link">
+                                    {{ item.title }}
+                                </router-link>
+                                <span v-if="item.exact" class="tag is-info is-light ml-1">{{ $t('aiImport.similar.exact') }}</span>
+                                <span class="tag ml-1" :class="statusTag(item.status).cls">{{ statusTag(item.status).text }}</span>
+                                <span v-if="item.subtitle" class="help has-text-grey-light">{{ item.subtitle }}</span>
+                            </span>
+                        </label>
+                        <div class="flex gap-2 mt-2">
+                            <button class="button" :disabled="!selectedSimilar" v-on:click="selectedSimilar = null">{{ $t('aiImport.action.clearSelection') }}</button>
+                            <button class="button is-primary" :class="{ 'is-loading': isBinding }" :disabled="!selectedSimilar || isBinding"
+                                    v-on:click="onBindReference(selectedSimilar)">{{ $t('aiImport.action.bind') }}</button>
+                        </div>
+                    </div>
+
+                    <!-- B. 手動搜尋 -->
+                    <div v-if="choice === 'manual'" class="mb-6">
+                        <div class="flex gap-2">
+                            <reference-select
+                                class="grow"
+                                hide-create
+                                :value="manualReference"
+                                @input="(v) => { manualReference = v; conflict = null; bindError = ''; }"
+                            />
+                            <button class="button is-primary" :class="{ 'is-loading': isBinding }" :disabled="!manualReference || isBinding"
+                                    v-on:click="onBindReference(manualReference)">{{ $t('aiImport.action.bind') }}</button>
+                        </div>
+                        <p class="help mt-1">{{ $t('aiImport.manual.hint') }}</p>
+                    </div>
+
+                    <!-- A / B 綁定時遇到的狀態：已有 PDF 確認覆蓋、或無法綁定 -->
+                    <div v-if="choice !== 'new' && (conflict || bindError)" class="box mb-6">
+                        <div v-if="conflict" v-html="conflictMessage"></div>
+                        <div v-if="conflict && conflict.code === 'REF_WITH_FILE'" class="mt-2">
+                            <p>{{ $t('aiImport.overwrite.existingPdf') }}<a v-if="conflict.payload.fileUrl" :href="conflict.payload.fileUrl" target="_blank" class="my-link">{{ $t('aiImport.overwrite.openExisting') }}</a></p>
+                            <p>{{ $t('aiImport.overwrite.uploadedPdf') }}<a v-if="result.fileUrl" :href="result.fileUrl" target="_blank" class="my-link">{{ $t('aiImport.overwrite.openUploaded') }}</a></p>
+                            <div class="flex gap-2 mt-2">
+                                <button class="button is-primary" :class="{ 'is-loading': isBinding }" :disabled="isBinding"
+                                        v-on:click="onBindReference(conflict.payload, true)">{{ $t('aiImport.overwrite.confirm') }}</button>
+                                <button class="button" v-on:click="conflict = null">{{ $t('common.cancel') }}</button>
+                            </div>
+                        </div>
+                        <p v-else-if="conflict" class="help mt-2">{{ $t('aiImport.conflict.reselect') }}</p>
+                        <p v-if="bindError" class="help is-danger mt-1" v-html="bindError"></p>
+                    </div>
+
+                    <!-- C. 新增文獻 -->
+                    <template v-if="choice === 'new'">
+                    <p class="font-bold mb-2">{{ $t('aiImport.preview.title') }}</p>
                     <table class="table">
                         <tr>
                             <td class="no-wrap">{{ $t('reference.type') }}</td>
@@ -59,49 +139,15 @@
                         <tr>
                             <td class="no-wrap">{{ $t('reference.author') }}</td>
                             <td>
-                                <!-- 新增的作者表格 -->
-                                <table class="table w-full border border-gray-300">
-                                    <thead>
-                                        <tr class="bg-gray-100">
-                                            <th class="border border-gray-300 px-4 py-2 text-left">文獻中作者</th>
-                                            <th class="border border-gray-300 px-4 py-2 text-left">對應現有資料庫人名</th>
-                                            <th class="border border-gray-300 px-4 py-2 text-center">選擇其他人名</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="(author, key) in result.authors" :key="key">
-                                            <!-- 文獻中作者 -->
-                                            <td class="border border-gray-300 px-4 py-2">
-                                                <span :class="{'text-red-500': !result.authorsPossible[key]}" 
-                                                    class="font-bold">
-                                                    {{ author.family }}, {{ author.given }}
-                                                </span>
-                                            </td>
-                                            
-                                            <!-- 對應TaiCOL資料庫內作者 -->
-                                            <td class="border border-gray-300 px-4 py-2">
-                                                <div v-if="!!result.authorsPossible[key]">
-                                                    <router-link  target="_blank" :to="{name: 'person-page', params: {id: result.authorsPossible[key].id }}" class="my-link">
-                                                        {{ result.authorsPossible[key]['fullName'] }} <span v-if=" result.authorsPossible[key].abbreviationName ">({{ result.authorsPossible[key].abbreviationName }})</span>
-                                                    </router-link>
-                                                </div>
-                                                <span v-else class="text-gray-500 italic">未找到對應作者</span>
-                                            </td>
-
-                                            <!-- 動作 -->
-                                            <td class="border border-gray-300 px-4 py-2 text-center">
-                                                <person-select  
-                                                    class="w-[180px]"
-                                                    :multiple="false"
-                                                    :errors="errors.authors"
-                                                    :value="selectedAuthors[key] || []"
-                                                    :authorData="{ given: author.given, family: author.family, index: key }"
-                                                    @input="(value) => onAuthorSelect(key, value)"
-                                                />
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                                <!-- 作者比對：多筆相似人名時讓使用者確認 -->
+                                <author-match-table
+                                    :authors="result.authors"
+                                    :authors-possible="result.authorsPossible"
+                                    :authors-candidates="result.authorsCandidates"
+                                    :errors="errors.authors"
+                                    v-model="selectedAuthors"
+                                />
+                                <p v-if="authorError" class="help is-danger mt-1">{{ authorError }}</p>
                             </td>
                         </tr>
                         <tr>
@@ -148,11 +194,12 @@
                             <td>{{ result.language }}</td>
                         </tr>
                     </table>
+                    </template>
                 </div>
             </div>
         </div>
         <div class="flex justify-end sticky bottom-0 p-4 bg-white border-t gap-2">
-            <button :disabled="!result" class="button" v-on:click="onSetToForm">{{ $t('reference.fillInByDoi') }}</button>
+            <button v-if="!!result && choice === 'new'" class="button is-primary" v-on:click="onSetToForm">{{ $t('reference.fillInByDoi') }}</button>
             <button class="button" v-on:click="onClose">{{ $t('common.close') }}</button>
         </div>
     </div>
@@ -160,12 +207,15 @@
 
 <script lang="ts">
 import {
-    defineComponent, inject, PropType, ref,
+    computed, defineComponent, inject, PropType, ref, watch,
 } from '@vue/composition-api';
 import GeneralInput from '../GeneralInput.vue';
 import Loading from '../Loading.vue';
 import referenceTypes from '../../utils/options/referenceTypes';
-import PersonSelect from '../selects/PersonSelect.vue';
+import AuthorMatchTable from '../AuthorMatchTable.vue';
+import { resolveAuthors } from '../../utils/resolveAuthors';
+import ReferenceSelect from '../selects/ReferenceSelect.vue';
+import { serverMessage } from '../../utils/serverMessage';
 
 export default defineComponent({
     name: 'ai-reference-modal',
@@ -191,7 +241,16 @@ export default defineComponent({
         const errors = ref<object>({});
         const isLoading = ref<boolean>(false);
         const submitted = ref<boolean>(false);
-        const selectedAuthors = ref<{[key: number]: any[]}>({});
+        const selectedAuthors = ref<{[key: number]: any}>({});
+        const authorError = ref<string>('');
+        const selectedSimilar = ref<any>(null);
+        // similar：相似文獻 / manual：手動搜尋 / new：新增文獻
+        const choice = ref<string>('new');
+        // 綁定時遇到的狀態 { code, payload }
+        const conflict = ref<any>(null);
+        const manualReference = ref<any>(null);
+        const isBinding = ref<boolean>(false);
+        const bindError = ref<string>('');
 
         // 處理檔案上傳
         // const onSetFile = (event) => {
@@ -205,20 +264,27 @@ export default defineComponent({
 
             // 1. 前端基本驗證
             if (!uploadedFile.value) {
-                errors.value = { file: ['請上傳PDF檔案'] };
+                errors.value = { file: [app.$t('aiImport.error.noFile')] };
                 return;
             }
 
             // 檢查檔名是否含有非 ASCII 字符
             // eslint-disable-next-line no-control-regex
             if (/[^\x00-\x7F]/.test(uploadedFile.value.name)) {
-                errors.value = { file: ['檔案名稱含有中文或特殊字符，可能導致處理失敗，請重新命名檔案後再上傳'] };
+                errors.value = { file: [app.$t('aiImport.error.invalidFileName')] };
                 return;
             }
 
             isLoading.value = true;
             errors.value = {};
             result.value = null;
+            selectedSimilar.value = null;
+            manualReference.value = null;
+            conflict.value = null;
+            choice.value = 'new';
+            selectedAuthors.value = {};
+            authorError.value = '';
+            bindError.value = '';
 
             const formData = new FormData();
             formData.append('file', uploadedFile.value);
@@ -233,6 +299,14 @@ export default defineComponent({
                 // 成功處理
                 result.value = data.data; 
                 errors.value = {};
+                // 有可能的既有文獻時預設先請使用者確認
+                const list = data.data?.similarReferences || [];
+                choice.value = list.length ? 'similar' : 'new';
+                // 完全相符且可綁定者預設選取（等 choice 的 watch 清空選取後再設定）
+                const exactItem = list.find((item) => item.exact && isSelectable(item));
+                if (exactItem) {
+                    app.$nextTick(() => { selectedSimilar.value = exactItem; });
+                }
             })
             .catch((error) => {
             // --- 重構重點：正確解析 Axios 錯誤物件 ---
@@ -243,7 +317,7 @@ export default defineComponent({
                 const status = error.status || 500;
 
                 // 2. 抓取我們定義的 code 與 message
-                const message = res.message || error.message || '處理失敗';
+                const message = serverMessage({ ...error, ...res }, app.$t('aiImport.error.processFailed'));
                 const code = res.code || 'UNKNOWN'; // 從 data 裡面拿 code
                 const conflictData = res.payload;   // 從 data 裡面拿 payload
 
@@ -254,11 +328,11 @@ export default defineComponent({
                         break;
                     
                     case 413:
-                        errors.value = { file: ['檔案大小超過伺服器限制'] };
+                        errors.value = { file: [app.$t('aiImport.error.fileTooLarge')] };
                         break;
 
                     case 503:
-                        errors.value = { file: ['AI 服務忙碌中，請稍後再試'] };
+                        errors.value = { file: [message || app.$t('aiImport.error.aiBusy')] };
                         break;
 
                     default:
@@ -305,10 +379,10 @@ export default defineComponent({
                         app.$store.commit('openModal', {
                             component: () => import('../modals/BindReferenceModal.vue'),
                         });
-                        if (app.$toast) app.$toast.success('文獻已存在，已自動上傳 PDF 並轉至綁定流程');
+                        if (app.$toast) app.$toast.success(app.$t('aiImport.toast.autoBound'));
                         return; 
                     }
-                    errorMessage = '文獻已存在但資料讀取錯誤';
+                    errorMessage = app.$t('aiImport.error.loadExisting');
                     break;
                 }
                 default: // DRAFT_EXISTS or UNKNOWN_TYPE
@@ -320,13 +394,110 @@ export default defineComponent({
         };
 
 
+        // 情形四、五：綁定既有文獻 → 轉至學名使用解析
+        const goToBindModal = (reference: any) => {
+            app.$store.commit('setBindReferenceData', reference);
+            app.$store.commit('closeModal');
+            app.$store.commit('openModal', {
+                component: () => import('../modals/BindReferenceModal.vue'),
+            });
+        };
+
+        const hasSimilar = computed(() => (result.value?.similarReferences || []).length > 0);
+
+        // 相似文獻可否選取：草稿、已有學名使用、解析中不可選
+        const isSelectable = (item: any) => !item.status || ['bindable', 'has_file'].includes(item.status);
+
+        const statusTag = (status: string) => {
+            const cls = {
+                bindable:   'is-success is-light',
+                has_file:   'is-warning is-light',
+                has_usage:  'is-danger is-light',
+                processing: 'is-danger is-light',
+                draft:      'is-light',
+            }[status];
+
+            return cls
+                ? { text: app.$t(`aiImport.status.${status}`), cls }
+                : { text: '', cls: 'is-hidden' };
+        };
+
+        const conflictMessage = computed(() => {
+            if (!conflict.value) return '';
+            const { code, payload } = conflict.value;
+            const link = getRefLink(payload);
+            switch (code) {
+                case 'REF_WITH_FILE':
+                    return `${link}<br>${app.$t('aiImport.conflict.hasFile')}`;
+                case 'REF_HAS_USAGE':
+                    return `${app.$t('validation.referenceUsagePrefix')} ${link}`;
+                case 'REF_PROCESSING':
+                    return `${app.$t('aiImport.conflict.processing')}${link}`;
+                case 'DRAFT_EXISTS':
+                    return `${app.$t('aiImport.conflict.draft')}${link}`;
+                default:
+                    return link;
+            }
+        });
+
+        // 切換選項時清除先前的選取與狀態
+        watch(choice, () => {
+            selectedSimilar.value = null;
+            manualReference.value = null;
+            conflict.value = null;
+            bindError.value = '';
+        });
+        watch(selectedSimilar, () => {
+            conflict.value = null;
+            bindError.value = '';
+        });
+
+        // 情形四、五：綁定既有文獻 → 轉至學名使用解析
+        // overwrite = true：使用者已確認覆蓋原有 PDF
+        const onBindReference = (reference: any, overwrite = false) => {
+            const aiLogId = result.value?.aiLogId || conflict.value?.payload?.aiLogId;
+            if (!reference || !aiLogId) return;
+
+            isBinding.value = true;
+            bindError.value = '';
+
+            axios.post('/fetch/reference/ai/bind', {
+                referenceId: reference.id,
+                aiLogId,
+                overwrite,
+            })
+            .then(({ data }) => {
+                conflict.value = null;
+                goToBindModal(data.data);
+                if (app.$toast) app.$toast.success(app.$t('aiImport.toast.bound'));
+            })
+            .catch((err) => {
+                const { status, data } = err;
+                if (status === 409 && data && data.code) {
+                    conflict.value = { code: data.code, payload: data.payload };
+                } else {
+                    bindError.value = serverMessage(err, app.$t('aiImport.error.bindFailed'));
+                }
+            })
+            .finally(() => {
+                isBinding.value = false;
+            });
+        };
+
         const onSetToForm = () => {
 
             if (!result.value) return;
 
+            const { final, unresolved } = getFinalAuthors();
+            if (unresolved.length) {
+                authorError.value = app.$t('aiImport.author.unresolved', { names: unresolved.join(app.$i18n.locale() === 'zh-tw' ? '、' : ', ') });
+                return;
+            }
+            authorError.value = '';
+
             const referenceData = {
                  ...result.value, // 展開所有後端回傳屬性 (已是 camelCase)
-                 authors: getFinalAuthorsPossible(), // 覆蓋處理過的 authors
+                 authors: final, // 覆蓋處理過的 authors
                  fromAiImport: true
              };
             
@@ -349,7 +520,7 @@ export default defineComponent({
                         app.$store.commit('setBindReferenceData', data);
 
                         // // AI 導入特殊的後續處理
-                        app.$toast && app.$toast.success('文獻已成功發布！');
+                        app.$toast && app.$toast.success(app.$t('aiImport.toast.published'));
 
                         // 這邊要直接打開另外一個綁定modal
                         app.$store.commit('layer/CLOSE');
@@ -366,28 +537,12 @@ export default defineComponent({
             });
         };
 
-        const onAuthorSelect = (authorIndex: number, selectedPersons: any[]) => {
-
-            selectedAuthors.value[authorIndex] = selectedPersons;
-        };
-
-        const getFinalAuthorsPossible = () => {
-            const finalAuthors: any[] = [];
-            
-            result.value?.authors?.forEach((originalAuthor, index) => {
-                if (selectedAuthors.value[index]) {
-                    // 如果是array，取第一個；如果不是array，直接使用
-                    const selectedAuthor = Array.isArray(selectedAuthors.value[index]) 
-                        ? selectedAuthors.value[index][0] 
-                        : selectedAuthors.value[index];
-                    finalAuthors.push(selectedAuthor);
-                } else if (result.value?.authorsPossible && result.value.authorsPossible[index]) {
-                    finalAuthors.push(result.value.authorsPossible[index]);
-                }
-            });
-            
-            return finalAuthors;
-        };
+        const getFinalAuthors = () => resolveAuthors(
+            result.value?.authors,
+            result.value?.authorsPossible,
+            result.value?.authorsCandidates,
+            selectedAuthors.value,
+        );
 
         const onClose = () => {
             app.$store.commit('closeModal');
@@ -405,15 +560,25 @@ export default defineComponent({
             isLoading,
             submitted,
             selectedAuthors,
+            selectedSimilar,
+            manualReference,
+            choice,
+            conflict,
+            conflictMessage,
+            hasSimilar,
+            isSelectable,
+            statusTag,
+            isBinding,
+            bindError,
+            onBindReference,
             typeDisplay,
             onFetchReferenceAI,
             onSetToForm,
             onClose,
-            onAuthorSelect,
-            getFinalAuthorsPossible,
+            authorError,
         };
     },
-    components: { Loading, GeneralInput, PersonSelect },
+    components: { Loading, GeneralInput, AuthorMatchTable, ReferenceSelect },
 });
 </script>
 

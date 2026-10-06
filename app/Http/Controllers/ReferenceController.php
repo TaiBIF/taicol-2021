@@ -28,6 +28,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Client\ConnectionException;
+use App\Exceptions\AiModelException;
 use Illuminate\Support\Str;
 
 class ReferenceController extends Controller
@@ -206,7 +208,8 @@ class ReferenceController extends Controller
             if (count($duplicates) > 0) {
                 return response([
                     'message' => 'Reference possibly duplicates',
-                    'data' => $duplicates,
+                    // 附上可綁定狀態，AI 匯入時重複文獻視窗據此停用不可綁定的選項
+                    'data' => $this->withAiStatus($duplicates),
                 ])->setStatusCode(409);
             }
         } 
@@ -301,9 +304,16 @@ class ReferenceController extends Controller
 
         $service = new ReferenceService(new Reference());
 
-        if ($service->hasReferenceExist($title, $publishYear, $authors, true, $bookId, $volume, $pagesRange)) {
+        $existing = $service->hasReferenceExist($title, $publishYear, $authors, true, $bookId, $volume, $pagesRange, true);
+        if ($existing) {
             return response([
                 'message' => 'Reference exist',
+                // 附上相同的文獻與可綁定狀態：AI 匯入時前端可直接讓使用者綁定（手動流程不使用）
+                'data' => $this->withAiStatus($existing->map(fn($ref) => [
+                    'id' => $ref->id,
+                    'title' => $ref->title,
+                    'subtitle' => $ref->subtitle,
+                ])),
             ])->setStatusCode(409);
         } else if ($service->hasReferenceExist($title, $publishYear, $authors, false, $bookId, $volume, $pagesRange)) {
             return response([
@@ -318,7 +328,8 @@ class ReferenceController extends Controller
             if (count($duplicates) > 0) {
                 return response([
                     'message' => 'Reference possibly duplicates',
-                    'data' => $duplicates,
+                    // 附上可綁定狀態，AI 匯入時重複文獻視窗據此停用不可綁定的選項
+                    'data' => $this->withAiStatus($duplicates),
                 ])->setStatusCode(409);
             }
         } 
@@ -459,14 +470,14 @@ class ReferenceController extends Controller
         $publishYears = $data->published->{'date-parts'} ?? [];
         $publishYear = $publishYears[0][0] ?? '';
         $authorPossible = [];
+        $authorCandidates = [];
 
         // 4. 作者比對邏輯 (去符號容錯 + 長度排序)
         foreach ($authors as $key => $author) {
             $given = $author->given ?? '';
             $family = $author->family ?? '';
 
-            $person = Person::matchFuzzyName($given, $family)->first();
-            $authorPossible[$key] = $person ? PersonCollection::collection([$person])[0] : null;
+            [$authorPossible[$key], $authorCandidates[$key]] = $this->matchAuthorCandidates($given, $family);
         }
 
         // 5. 整理其他書籍/期刊資訊
@@ -488,6 +499,7 @@ class ReferenceController extends Controller
             'type'                    => $type,
             'authors'                 => $authors,
             'authors_possible'        => $authorPossible,
+            'authors_candidates'      => $authorCandidates,
             'publish_year'            => $publishYear,
             'articleTitle'            => $articleTitle,
             'book_title'              => $bookTitle,
@@ -560,6 +572,18 @@ class ReferenceController extends Controller
             ], 400); 
         }
 
+        // 檢查API限制（建立檔案與 log 前先擋）
+        $today = date('Y-m-d');
+        $dailyKey = "gemini_api_calls:{$today}";
+        $currentCalls = Redis::get($dailyKey) ?? 0;
+
+        if ($currentCalls >= config('services.gemini.daily_limit', 1000)) {
+            return response()->json([
+                'message' => '今日 AI 辨識次數已達上限，請明天再試。',
+                'message_key' => 'aiImport.server.dailyLimit',
+            ], 429);
+        }
+
         // 檔案正常，繼續處理
         $filePath = $this->savePDF($file);
 
@@ -572,30 +596,26 @@ class ReferenceController extends Controller
             'file_path' => $filePath,
         ]);
 
-        // 檢查API限制
-        $today = date('Y-m-d');
-        $dailyKey = "gemini_api_calls:{$today}";
-        $currentCalls = Redis::get($dailyKey) ?? 0;
-        
-        if ($currentCalls >= config('services.gemini.daily_limit', 1000)) {
-            throw new \Exception('Daily API limit exceeded');
-        }
-
-        // 呼叫 python API
-
         $data = [];
 
         try {
             // 呼叫 Python API
-            $response = Http::timeout(600)->post(env('TAICOL_AI_API_ROOT') . '/process-reference', [
-                'file_path' => $filePath
-            ]);
-            
+            try {
+                $response = Http::timeout(600)->post(env('TAICOL_AI_API_ROOT') . '/process-reference', [
+                    'file_path' => $filePath
+                ]);
+            } catch (ConnectionException $e) {
+                // Python 服務掛掉 / 連線逾時
+                throw AiModelException::connection($e);
+            }
+
             if ($response->successful()) {
                 $result = $response->json();
-                
-                if ($result['success']) {
+
+                if ($result['success'] ?? false) {
                     $data = $result['result'] ?? [];
+                    // AI 偶爾會把沒有的欄位填成字串 "null"，統一清為空值
+                    $data = $this->cleanAiNulls($data);
                     $metadata = $result['metadata'] ?? [];
 
                     $jobLog->update([
@@ -603,25 +623,25 @@ class ReferenceController extends Controller
                         'completed_at' => now(),
                         'file_uri' => $result['file_uri'],
                         'metadata' => array_merge($jobLog->metadata ?? [], [
-                            'tokens_used' => $metadata['tokens_used'],
-                            'input_tokens' => $metadata['input_tokens'],
-                            'output_tokens' => $metadata['output_tokens']
+                            'tokens_used' => $metadata['tokens_used'] ?? null,
+                            'input_tokens' => $metadata['input_tokens'] ?? null,
+                            'output_tokens' => $metadata['output_tokens'] ?? null,
                         ])
                     ]);
 
                 } else {
-                    // Python API 回傳邏輯錯誤 (例如 parse 失敗)
                     throw new \Exception($result['error'] ?? 'Unknown error from Python service', 400);
                 }
-                
+
             } else {
-                // HTTP 請求失敗 (包含 500, 503 等等)
-                // *** 修改點 1: 將 response 的 status code 傳進 Exception ***
+                // AI 模型錯誤：轉成使用者看得懂的訊息
+                if ($aiError = AiModelException::fromResponse($response)) {
+                    throw $aiError;
+                }
                 throw new \Exception("Python API Error: " . $response->body(), $response->status());
             }
 
         } catch (\Exception $e) {
-            // 統一錯誤處理
             Log::error('Gemini processing failed', [
                 'error' => $e->getMessage(),
                 'code' => $e->getCode(),
@@ -634,24 +654,24 @@ class ReferenceController extends Controller
                 'error_message' => $e->getMessage()
             ]);
 
-            // *** 修改點 2: 根據錯誤代碼回傳給前端，並停止執行 ***
-            
-            $statusCode = $e->getCode();
-            // 確保 status code 是有效的 HTTP code (大於 0)，否則預設 500
-            $httpStatus = ($statusCode && $statusCode > 0) ? $statusCode : 500;
-            
-            $message = '檔案處理失敗';
-
-            // 特別針對 503 處理
-            if ($httpStatus === 503) {
-                $message = 'AI 服務目前忙碌中 (Service Unavailable)，請稍後再試。';
+            if ($e instanceof AiModelException) {
+                $httpStatus = 503;
+                $message = $e->getMessage();
+                $messageKey = 'aiImport.server.' . $e->messageKey;
+                $messageParams = $e->messageParams;
             } else {
-                 // 可以在這顯示更詳細錯誤，或保留通用訊息
+                $statusCode = (int) $e->getCode();
+                $httpStatus = ($statusCode >= 400 && $statusCode < 600) ? $statusCode : 500;
                 $message = '處理發生錯誤: ' . $e->getMessage();
+                $messageKey = 'aiImport.server.processError';
+                $messageParams = ['error' => $e->getMessage()];
             }
 
             return response()->json([
                 'message' => $message,
+                // 前端依語言顯示（aiImport.server.*）
+                'message_key' => $messageKey,
+                'message_params' => $messageParams,
             ], $httpStatus);
         }
 
@@ -675,7 +695,8 @@ class ReferenceController extends Controller
         if (!$dataType || !isset($typeMapping[$dataType])) {
             return response()->json([
                             'code' => 'UNKNOWN_TYPE',
-                            'message' => '不匯入資料（未知的文獻類型）'
+                            'message' => '不匯入資料（未知的文獻類型）',
+                            'message_key' => 'aiImport.server.unknownType'
                         ], 409);
         }
 
@@ -685,6 +706,7 @@ class ReferenceController extends Controller
         $dateParts = $publishedData['date-parts'] ?? [];
         $publishYear = isset($dateParts[0][0]) ? $dateParts[0][0] : '';
         $authorPossible = [];
+        $authorCandidates = [];
 
         foreach ($authors as $key => $author) {
             // 取得原始輸入值
@@ -702,11 +724,10 @@ class ReferenceController extends Controller
 
             // 2. 進行資料庫比對
             if ($rawGiven && $rawFamily) {
-                // 這裡會自動套用 Person::scopeMatchFuzzyName() 的邏輯
-                $person = Person::matchFuzzyName($rawGiven, $rawFamily)->first();
-                $authorPossible[$key] = $person ? PersonCollection::collection([$person])[0] : null;
+                [$authorPossible[$key], $authorCandidates[$key]] = $this->matchAuthorCandidates($rawGiven, $rawFamily);
             } else {
                 $authorPossible[$key] = null;
+                $authorCandidates[$key] = [];
             }
         }
 
@@ -723,8 +744,13 @@ class ReferenceController extends Controller
         $containerTitles = $data['container-title'] ?? [];
         $bookTitle = !empty($containerTitles) ? implode(';', $containerTitles) : '';
 
-        $book = $bookTitle ? Book::where('title', $bookTitle)->first() : null;
+        // 強化期刊/書籍比對：完全相符 → 縮寫 → 忽略大小寫與標點
+        $book = $this->findBookForAi($containerTitles);
         $bookAbbr = $book ? ($book->title_abbreviation ?? '') : '';
+        // 對到既有期刊時改用資料庫名稱，表單的期刊欄位才會選到同一筆
+        if ($book) {
+            $bookTitle = $book->title;
+        }
         $bookId = $book ? ($book->id ?? '') : '';
         $volume = $data['volume'] ?? '';
         $issue = $data['issue'] ?? '';
@@ -735,64 +761,73 @@ class ReferenceController extends Controller
 
         $service = new ReferenceService(new Reference());
 
+        // 完全相符的既有文獻（標題＋年份＋作者，含草稿）
+        // 原本會依狀態直接回 409 或自動寫入 PDF，改為併入相似文獻列表，由使用者確認後再綁定
+        $exactIds = [];
+
         $usageCheck = $service->hasReferenceWithUsage($articleTitle, $publishYear, $authorPossibleIds, true);
-        $fileCheck = $service->hasReferenceWithFile($articleTitle, $publishYear, $authorPossibleIds, true);
-        // $existingReferences = $service->hasReferenceExist($articleTitle, $publishYear, $authorPossibleIds, true, true);
-        $existingReferences = $service->hasReferenceExist($articleTitle, $publishYear, $authorPossibleIds, true, $bookId, $volume, $page, true);
-
         if ($usageCheck['exists']) {
-            // 有usage 不提供匯入
-            return response()->json([
-                'message' => 'Reference has usage',
-                'data' => [
-                    'code' => 'REF_HAS_USAGE', // 藏在這裡！
-                    'payload' => $usageCheck['reference'] // 真正的資料改名叫 payload
-                ]
-            ], 409);
-        } else if ($fileCheck['exists']) {
-            // 有文獻PDF 不提供匯入
-            return response()->json([
-                            'message' => 'Reference exists with file',
-                            'data' => [
-                                'code' => 'REF_WITH_FILE',
-                                'payload' => $fileCheck['reference']
-                            ]
-                        ], 409);
-        } else if ($existingReferences) {
-            // 有找到已建立的ref 提供匯入
-            // 這邊要存file的資料
-            $record =  $existingReferences->first();
-            $currentProperties = $record->properties ?? []; 
-            $currentProperties['file'] = $filePath;
-            $record->properties = $currentProperties;
-            $record->save();
-
-            $refData = ReferenceCollection::collection($existingReferences)->first();
-            return response()->json([
-                'message' => 'Reference exists',
-                'data' => [
-                    'code' => 'REF_EXISTS',
-                    'payload' => $refData
-                ]
-            ], 409);
-        } else if ($service->hasReferenceExist($articleTitle, $publishYear, $authorPossibleIds, false, $bookId, $volume, $page)) {
-            // 有文獻草稿 不提供匯入
-            return response()->json([
-                            'message' => '該筆資料已被建立為草稿，請到我的收藏裡的草稿確認並發布。',
-                            'data' => [
-                                        'code' => 'DRAFT_EXISTS',
-                                        'payload' => null // 這裡沒有資料物件
-                                    ]
-                        ], 409);
+            $exactIds[] = $usageCheck['reference']['id'];
         }
 
+        $fileCheck = $service->hasReferenceWithFile($articleTitle, $publishYear, $authorPossibleIds, true);
+        if ($fileCheck['exists']) {
+            $exactIds[] = $fileCheck['reference']['id'];
+        }
+
+        foreach ([true, false] as $isPublish) {
+            $matched = $service->hasReferenceExist($articleTitle, $publishYear, $authorPossibleIds, $isPublish, $bookId, $volume, $page, true);
+            if ($matched) {
+                foreach ($matched as $ref) {
+                    $exactIds[] = $ref->id;
+                }
+            }
+        }
+
+        $exactIds = array_values(array_unique($exactIds));
+
+        // 情形五：填入表單前先找出可能重複的文獻
+        // 作者只取「唯一候選」者，避免同名人選誤判
+        $unambiguousAuthorIds = [];
+        foreach ($authorCandidates as $list) {
+            if (is_array($list) && count($list) === 1) {
+                $unambiguousAuthorIds[] = $list[0]['id'];
+            }
+        }
+
+        $similarReferences = $service->getPotentialDuplicates([
+            'type'          => $type,
+            'publish_year'  => $publishYear,
+            'authors'       => $unambiguousAuthorIds,
+            'book_id'       => $bookId ?: null,
+            'volume'        => $volume,
+            'pages_range'   => $page,
+            'article_title' => $articleTitle,
+        ]);
+
+        // 完全相符者排在最前面並標示 exact，其餘為相似文獻；每筆標示可綁定狀態
+        $similarIds = collect($similarReferences)->pluck('id')->diff($exactIds);
+        $orderedIds = collect($exactIds)->merge($similarIds)->values();
+        $models = Reference::whereIn('id', $orderedIds)->get()->keyBy('id');
+
+        $similarReferences = $orderedIds->map(function ($id) use ($models, $filePath, $exactIds) {
+            $model = $models->get($id);
+            if (!$model) return null;
+            return array_merge(
+                $this->referenceAiPayload($model, $this->referenceAiStatus($model), $filePath),
+                ['exact' => in_array($id, $exactIds)]
+            );
+        })->filter()->values();
 
         return response()->json([
             'code' => 'SUCCESS',
             'data' => [
+                'aiLogId' => $jobLog->id,
+                'similarReferences' => $similarReferences,
                 'type' => $type,
                 'authors' => $authors,
                 'authorsPossible' => $authorPossible,
+                'authorsCandidates' => $authorCandidates,
                 'publishYear' => $publishYear,
                 'articleTitle' => $articleTitle,
                 'bookTitle' => $bookTitle,
@@ -805,8 +840,291 @@ class ReferenceController extends Controller
                 'url' => $URL,
                 'language' => $language,
                 'file' => $filePath,
+                'fileUrl' => $this->pdfUrl($filePath),
             ]
         ]);
+    }
+
+    /**
+     * 作者人名比對：回傳 [第一順位人選, 所有候選人]
+     * 第一順位仍供重複文獻檢查使用；有多筆候選時由前端讓使用者確認
+     */
+    private function matchAuthorCandidates(?string $given, ?string $family, int $limit = 10): array
+    {
+        if (!$given || !$family) {
+            return [null, []];
+        }
+
+        $persons = Person::with('country')
+            ->matchFuzzyName($given, $family)
+            ->reorder()
+            // 姓氏完全相符優先，其次名字長度較短（較接近）
+            ->orderByRaw('CASE WHEN LOWER(last_name) = ? THEN 0 ELSE 1 END', [mb_strtolower($family)])
+            ->orderByRaw("LENGTH(REPLACE(REPLACE(REPLACE(CONCAT(IFNULL(first_name,''), IFNULL(middle_name,'')), '-', ''), ' ', ''), '.', '')) ASC")
+            ->limit($limit)
+            ->get();
+
+        if ($persons->isEmpty()) {
+            return [null, []];
+        }
+
+        $candidates = PersonCollection::collection($persons)->resolve();
+
+        return [PersonCollection::collection([$persons->first()])[0], $candidates];
+    }
+
+    /**
+     * AI 解析出的期刊/書名比對既有 Book
+     * 1. 完全相符（整串或任一 container-title，含縮寫）
+     * 2. 忽略大小寫、空白、標點後相符
+     */
+    private function findBookForAi(array $containerTitles): ?Book
+    {
+        $candidates = array_values(array_filter(array_map('trim', $containerTitles)));
+        if (empty($candidates)) {
+            return null;
+        }
+
+        $candidatesWithJoined = array_unique(array_merge([implode(';', $candidates)], $candidates));
+
+        $book = Book::where(function ($q) use ($candidatesWithJoined) {
+                $q->whereIn('title', $candidatesWithJoined)
+                  ->orWhereIn('title_abbreviation', $candidatesWithJoined);
+            })
+            ->orderByDesc('is_publish')
+            ->first();
+
+        if ($book) {
+            return $book;
+        }
+
+        // 正規化：轉小寫，移除空白與常見標點
+        $chars = [' ', '.', ',', '-', '–', ':', ';', '&', '(', ')', "'"];
+        $normalize = fn($v) => str_replace($chars, '', mb_strtolower($v));
+        $sqlExpr = function ($column) use ($chars) {
+            $expr = "LOWER({$column})";
+            foreach ($chars as $c) {
+                $expr = "REPLACE({$expr}, " . DB::getPdo()->quote($c) . ", '')";
+            }
+            return $expr;
+        };
+
+        $normalized = array_values(array_filter(array_unique(array_map($normalize, $candidatesWithJoined))));
+        if (empty($normalized)) {
+            return null;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($normalized), '?'));
+
+        $book = Book::where(function ($q) use ($sqlExpr, $placeholders, $normalized) {
+                $q->whereRaw($sqlExpr('title') . " IN ({$placeholders})", $normalized)
+                  ->orWhereRaw($sqlExpr('title_abbreviation') . " IN ({$placeholders})", $normalized);
+            })
+            ->orderByDesc('is_publish')
+            ->first();
+
+        if ($book) {
+            return $book;
+        }
+
+        // 3. 並列題名：資料庫名稱如「Quarterly Journal of Forest Research = 林業研究季刊」
+        //    依 = 或 ; 拆段，任一段與 AI 解析的任一名稱相符即視為同一期刊
+        $splitTitles = fn($v) => array_filter(array_map('trim', preg_split('/\s*[=;]\s*/u', (string) $v)));
+
+        $segments = [];
+        foreach ($candidates as $c) {
+            foreach ($splitTitles($c) as $seg) {
+                $segments[] = $seg;
+            }
+        }
+        $segments = array_values(array_unique($segments));
+
+        $targetSet = array_flip(array_filter(array_map($normalize, $segments)));
+        if (empty($targetSet)) {
+            return null;
+        }
+
+        // 先用 LIKE 縮小範圍，再在 PHP 端逐段比對
+        $pool = Book::where(function ($q) use ($segments) {
+                foreach ($segments as $seg) {
+                    $like = '%' . addcslashes($seg, '%_\\') . '%';
+                    $q->orWhere('title', 'like', $like)
+                      ->orWhere('title_abbreviation', 'like', $like);
+                }
+            })
+            ->orderByDesc('is_publish')
+            ->limit(100)
+            ->get();
+
+        foreach ($pool as $b) {
+            $dbSegments = array_merge($splitTitles($b->title), $splitTitles($b->title_abbreviation));
+            foreach ($dbSegments as $seg) {
+                if (isset($targetSet[$normalize($seg)])) {
+                    return $b;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 情形四、五：使用者手動 / 從相似文獻選擇綁定，將 AI 上傳的 PDF 綁到既有文獻
+     */
+    public function bindReferenceAi(Request $request)
+    {
+        $request->validate([
+            'reference_id' => 'required|integer',
+            'ai_log_id' => 'required|integer',
+            'overwrite' => 'nullable|boolean',
+        ]);
+
+        // 只能使用自己這次上傳的 PDF
+        $jobLog = ImportAiLog::where('id', $request->input('ai_log_id'))
+            ->where('user_id', Auth::user()->id)
+            ->where('job_type', 'reference_gemini_url')
+            ->first();
+
+        if (!$jobLog || !$jobLog->file_path || !Storage::disk('pdfs')->exists($jobLog->file_path)) {
+            return response()->json([
+                'message' => '找不到本次上傳的 PDF，請重新上傳',
+                'message_key' => 'aiImport.server.uploadedPdfNotFound',
+            ], 400);
+        }
+
+        $reference = Reference::find($request->input('reference_id'));
+        if (!$reference) {
+            return response()->json([
+                'message' => '找不到此文獻',
+                'message_key' => 'aiImport.server.referenceNotFound',
+            ], 404);
+        }
+
+        $status = $this->referenceAiStatus($reference);
+        $payload = $this->referenceAiPayload($reference, $status, $jobLog->file_path);
+
+        // 草稿 / 已有學名使用 / 解析中 → 不可綁定
+        $blocked = [
+            'draft'      => ['DRAFT_EXISTS', '此文獻為草稿，請先至我的收藏確認並發布。'],
+            'has_usage'  => ['REF_HAS_USAGE', 'Reference has usage'],
+            'processing' => ['REF_PROCESSING', '此文獻的學名使用正在解析中，請待完成後再確認。'],
+        ];
+        if (isset($blocked[$status['status']])) {
+            [$code, $message] = $blocked[$status['status']];
+            return response()->json([
+                'message' => $message,
+                'data' => ['code' => $code, 'payload' => $payload],
+            ], 409);
+        }
+
+        // 已有 PDF 但沒有學名使用 → 需使用者確認覆蓋
+        if ($status['status'] === 'has_file' && !$request->boolean('overwrite')) {
+            return response()->json([
+                'message' => 'Reference exists with file',
+                'data' => ['code' => 'REF_WITH_FILE', 'payload' => $payload],
+            ], 409);
+        }
+
+        // 覆蓋時原有 PDF 檔案保留在磁碟，只更新文獻指向的檔案
+        $properties = $reference->properties ?? [];
+        $previousFile = $properties['file'] ?? null;
+        $properties['file'] = $jobLog->file_path;
+        $reference->properties = $properties;
+        $reference->save();
+
+        if ($previousFile) {
+            Log::info('AI import overwrote reference PDF', [
+                'reference_id' => $reference->id,
+                'previous_file' => $previousFile,
+                'new_file' => $jobLog->file_path,
+                'user_id' => Auth::user()->id,
+            ]);
+        }
+
+        return response()->json([
+            'data' => ReferenceCollection::collection(collect([$reference]))->first(),
+        ]);
+    }
+
+    /**
+     * AI 匯入時文獻的可綁定狀態
+     * draft：草稿 / has_usage：已有學名使用 / processing：學名使用解析中
+     * has_file：已有 PDF 但無學名使用（可確認覆蓋）/ bindable：可直接綁定
+     */
+    private function referenceAiStatus(Reference $reference): array
+    {
+        if (!$reference->is_publish) {
+            return ['status' => 'draft'];
+        }
+
+        $hasUsage = ReferenceUsage::where('reference_id', $reference->id)
+            ->whereNull('deleted_at')
+            ->exists();
+        if ($hasUsage) {
+            return ['status' => 'has_usage'];
+        }
+
+        $file = $reference->properties['file'] ?? null;
+        if (!empty($file)) {
+            $processing = ImportAiLog::where('job_type', 'usage_gemini_url')
+                ->where('status', 'processing')
+                ->where('file_path', $file)
+                ->exists();
+
+            return ['status' => $processing ? 'processing' : 'has_file', 'file' => $file];
+        }
+
+        return ['status' => 'bindable'];
+    }
+
+    /**
+     * 回傳給前端的文獻資訊（含原有 PDF 與本次上傳 PDF 的連結，供使用者比對）
+     */
+    private function referenceAiPayload(Reference $reference, array $status, ?string $newFile = null): array
+    {
+        return [
+            'id' => $reference->id,
+            'title' => $reference->title,
+            'subtitle' => $reference->subtitle,
+            'status' => $status['status'],
+            'file_url' => $this->pdfUrl($status['file'] ?? null),
+            'new_file_url' => $this->pdfUrl($newFile),
+        ];
+    }
+
+    /**
+     * 重複文獻清單附上可綁定狀態（status）
+     */
+    private function withAiStatus($duplicates)
+    {
+        $models = Reference::whereIn('id', collect($duplicates)->pluck('id'))->get()->keyBy('id');
+
+        return collect($duplicates)->map(function ($item) use ($models) {
+            $model = $models->get($item['id']);
+            if ($model) {
+                $item['status'] = $this->referenceAiStatus($model)['status'];
+            }
+            return $item;
+        })->values();
+    }
+
+    /**
+     * 將 AI 回傳的 "null"、"None"、"N/A" 等字串視為空值（遞迴處理）
+     */
+    private function cleanAiNulls($value)
+    {
+        if (is_array($value)) {
+            return array_map(fn($v) => $this->cleanAiNulls($v), $value);
+        }
+        if (is_string($value) && in_array(mb_strtolower(trim($value)), ['null', 'none', 'n/a', 'nan', 'undefined'], true)) {
+            return '';
+        }
+        return $value;
+    }
+
+    private function pdfUrl(?string $path): ?string
+    {
+        return $path ? '/pdfs/' . ltrim($path, '/') : null;
     }
 
     public function import(Request $request)

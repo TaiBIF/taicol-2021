@@ -79,6 +79,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::resource('references', 'ReferenceController')->except('index', 'show');
     Route::get('references/{id}/info', 'ReferenceController@info');
     Route::post('/fetch/reference/ai', 'ReferenceController@fetchReferenceAi');
+    Route::post('/fetch/reference/ai/bind', 'ReferenceController@bindReferenceAi');
 
     Route::resource('taxon-names', 'TaxonNameController')->except('index', 'show');
     Route::get('taxon-names/{id}/info', 'TaxonNameController@info');

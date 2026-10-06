@@ -435,6 +435,7 @@ export default {
             targetBook: this.presetData?.book || null,
             targetAuthors: this.presetData?.authors || [],
             targetLanguage: this.presetData?.language ? { id: this.presetData.language } : null,
+            aiLogId: null,
             errors: {},
             reference: this.presetData || {
                 coverPath: null,
@@ -470,8 +471,12 @@ export default {
             doi,
             url,
             language,
-            file
+            file,
+            aiLogId,
         }) {
+            // AI 匯入：保留本次上傳 PDF 的 log id，重複文獻時可直接綁定
+            if (aiLogId) this.aiLogId = aiLogId;
+
             this.reference.type = type;
             this.reference.publishYear = publishYear;
             this.reference.properties.volume = volume;
@@ -487,8 +492,10 @@ export default {
                 this.reference.properties.doi = doi;
             } else if (type === ReferenceTypes.TYPE_BOOK_ARTICLE) {
                 this.reference.properties.articleTitle = articleTitle;
-                this.reference.properties.url = url;
-            } else if (type === ReferenceTypes.TYPE_BOOK) {
+            }
+
+            // 連結欄位所有類型（名錄除外）都有，不限文獻類型帶入
+            if (url) {
                 this.reference.properties.url = url;
             }
 
@@ -496,12 +503,20 @@ export default {
                 this.reference.properties.file = file;
             }
 
+            // DOI 回傳短代碼（en），AI 回傳完整代碼（en-us），兩種都接受
             const lanMapping = {
                 en: 'en-us',
                 jp: 'jp-jp',
                 de: 'de-de',
                 fr: 'fr-fr',
                 lat: 'lat',
+                'en-us': 'en-us',
+                'zh-tw': 'zh-tw',
+                'jp-jp': 'jp-jp',
+                'zh-cn': 'zh-cn',
+                'de-de': 'de-de',
+                'fr-fr': 'fr-fr',
+                others: 'others',
             };
 
             if (language && !!lanMapping[language]) {
@@ -548,8 +563,18 @@ export default {
                     }
 
                 if (status === 409 &&  message === 'Reference exist') {
-                    openNotify(this.$t('reference.exist'), 'is-danger');
-                    // TODO 這邊需要判斷是不是從AI匯入工具來的 如果是的話要跳出是否繼續匯出異名表
+                    if (this.aiLogId && Array.isArray(data) && data.length) {
+                        // AI 匯入：文獻已存在，改為讓使用者直接綁定該文獻（不提供重複新增）
+                        this.$store.commit('openModal', {
+                            component: () => import('../modals/ConfirmReferenceDuplicatesModal.vue'),
+                            props: {
+                                duplicates: data,
+                                aiLogId: this.aiLogId,
+                            },
+                        });
+                    } else {
+                        openNotify(this.$t('reference.exist'), 'is-danger');
+                    }
 
                 } else if (status === 409 &&  message === 'Reference draft exist') {
                     this.$store.commit('openModal', {
@@ -567,6 +592,8 @@ export default {
                         component: () => import('../modals/ConfirmReferenceDuplicatesModal.vue'),
                         props: {
                             duplicates: data,
+                            // AI 匯入時可直接綁定相似文獻並進行學名使用解析
+                            aiLogId: this.aiLogId,
                             onForceSave: () => {
                                 this.submit(isPublish, true);
                             }

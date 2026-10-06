@@ -280,7 +280,8 @@ export default {
                 if (data.success) {
                     const importLogId = this.$route.query.import_log_id;
                     // Excel 用既有 importLogId；AI 用後端回傳的新 log_id
-                    const pollLogId = importLogId || data.log_id;
+                    // （axios 回應已轉為 camelCase，所以是 logId）
+                    const pollLogId = importLogId || data.logId;
                     this.$router.push({
                         name: 'namespace-usage-list',
                         params: { id: this.$route.params.id },
@@ -302,13 +303,14 @@ export default {
                 const url = `/namespaces/${this.$route.params.id}/names`
                         + (importLogId ? `?import_log_id=${importLogId}` : '');
                         
-                const { data: { data, nomenclatures, finished, log_id } } = await this.axios.get(url);
+                // axios 回應已轉為 camelCase（log_id → logId）
+                const { data: { data, nomenclatures, finished, logId } } = await this.axios.get(url);
 
                 if (finished) {
                     this.$router.push({
                         name: 'namespace-usage-list',
                         params: { id: this.$route.params.id },
-                        query: log_id ? { poll_log: log_id } : {},
+                        query: logId ? { poll_log: logId } : {},
                     });
                     return 200;
                 }

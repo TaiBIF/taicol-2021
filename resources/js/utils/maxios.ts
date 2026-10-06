@@ -49,6 +49,9 @@ vAxios.interceptors.response.use((response) => ({
 
     return Promise.reject({
         message,
+        // 後端提供 i18n key 時，前端可依語言顯示（見 utils/serverMessage.js）
+        messageKey: error.response.data.messageKey,
+        messageParams: error.response.data.messageParams,
         errors: status === 422 || status === 409 ? errors : {},
         data,
         status,

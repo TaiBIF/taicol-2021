@@ -285,7 +285,8 @@ class ReferenceService
                     // [關鍵] 只有 Type 1, 2 才比對頁碼，Type 3 (書籍) 忽略頁碼
                     if ($type != 3) {
                         $sub->where(function ($w) use ($pagesRange) {
-                            $w->where('properties->pages_range', $pagesRange);
+                            // 連字號（- – —）視為相同
+                            $w->whereIn('properties->pages_range', $this->pageRangeVariants($pagesRange));
                             if ($pagesRange === '') $w->orWhereNull('properties->pages_range');
                         });
                     }
@@ -327,88 +328,71 @@ class ReferenceService
 
             // 1. 正規化 (清理雜訊)
             $cleanInput = $this->normalizeString($inputTitle);
-            $byteLenInput = strlen($cleanInput); // Byte 長度 (配合 similar_text)
+            // 並列題名依「=」拆段（各段分別正規化）
+            $inputSegments = $this->titleSegments($inputTitle);
 
             // 防呆：清理雜訊後，至少要有 5 Bytes (約2個中文字或5個英文字) 才比對
-            if ($byteLenInput >= 5) {
+            if (strlen($cleanInput) >= 5) {
 
                 // 2. 撈取候選名單 (只撈同類型，不限年份以抓出售錯年份的資料)
                 $query = Reference::query()->where('type', $type);
                 if ($currentId) $query->where('id', '!=', $currentId);
-                
+
                 $candidates = $query->get();
 
                 // 3. 核心演算法
-                $fuzzyDuplicates = $candidates->map(function ($item) use ($cleanInput, $byteLenInput) {
-                    
-                    $dbTitleRaw = ($item->type == 1) 
-                        ? ($item->properties['articleTitle'] ?? $item->title ?? '') 
+                $fuzzyDuplicates = $candidates->map(function ($item) use ($cleanInput, $inputSegments) {
+
+                    // properties 實際存的是 snake_case（article_title），保留 articleTitle 相容舊資料
+                    $dbTitleRaw = ($item->type == 1)
+                        ? ($item->properties['article_title'] ?? $item->properties['articleTitle'] ?? $item->title ?? '')
                         : ($item->title ?? '');
 
                     $cleanDb = $this->normalizeString($dbTitleRaw);
-                    $byteLenDb = strlen($cleanDb); 
-                    
-                    if ($byteLenDb < 5) return null;
-
-                    $maxLen = max($byteLenInput, $byteLenDb);
-                    $minLen = min($byteLenInput, $byteLenDb);
-
-                    if ($minLen == 0) return null;
-
-                    // A. 取得相同位元組數 (similar_text 回傳值)
-                    $matchingBytes = similar_text($cleanInput, $cleanDb); 
-
-                    // B. 計算兩種包含率
-                    $overlapRatioMin = ($matchingBytes / $minLen) * 100; // 針對較短字串 (判斷並列)
-                    $overlapRatioMax = ($matchingBytes / $maxLen) * 100; // 針對較長字串 (判斷錯字)
-
-                    // C. 計算連續性 (LCS，使用 Char 長度)
-                    $lcsLengthChars = $this->getMultibyteLCSLength($cleanInput, $cleanDb);
-                    $charLenInput = mb_strlen($cleanInput);
-                    $charLenDb = mb_strlen($cleanDb);
-                    $minCharLen = min($charLenInput, $charLenDb);
-
-                    if ($minCharLen == 0) return null;
-                    $lcsRatio = ($lcsLengthChars / $minCharLen) * 100;
+                    if (strlen($cleanDb) < 5) return null;
 
                     $passed = false;
                     $score = 0;
 
                     // =========================================================
-                    // 雙重假設檢定 (完美分離並列題名與錯字)
+                    // 假設 1：並列題名（以「整段」為單位）
+                    // 任一方有「=」並列題名時，兩邊的段落兩兩比對，
+                    // 只要有一組段落「相同或僅有錯字」即成立。
+                    // 不再以「短字串被長字串包含」判斷，避免標題被停用詞
+                    // 過濾到只剩一兩個字（如 naturalized）時誤判。
                     // =========================================================
+                    $dbSegments = $this->titleSegments($dbTitleRaw);
 
-                    // 假設 1：這是「並列題名 / 子字串包含」嗎？
-                    // 條件：短字串的包含率極高 (>= 90%)
-                    if ($overlapRatioMin >= 90) {
-                        
-                        // 防禦機制：如果短標題非常短 (< 10 字元，例如 "hyphar" 或 "黑熊")
-                        // 必須「100% 完整連續」出現，防止短短的拉丁字根誤判成包含關係。
-                        if ($minCharLen < 10) {
-                            if ($lcsRatio == 100) {
-                                $passed = true;
-                                $score = 100;
-                            }
-                        } else {
-                            // 若標題夠長，容許稍微斷開或打錯字
-                            if ($lcsRatio >= 80) {
-                                $passed = true;
-                                $score = ($overlapRatioMin * 0.4) + ($lcsRatio * 0.6);
+                    if (count($inputSegments) > 1 || count($dbSegments) > 1) {
+                        foreach ($inputSegments as $segIn) {
+                            foreach ($dbSegments as $segDb) {
+                                if ($segIn === $segDb) {
+                                    $passed = true;
+                                    $score = 100;
+                                    break 2;
+                                }
+                                $segScore = $this->typoScore($segIn, $segDb);
+                                if ($segScore !== null && $segScore > $score) {
+                                    $passed = true;
+                                    $score = $segScore;
+                                }
                             }
                         }
                     }
 
-                    // 假設 2：這是「錯字 / 漏字」嗎？ (如果假設 1 失敗)
-                    // 條件：互相包含率都很高 (看 Max)，並允許 LCS 稍微斷開
+                    // =========================================================
+                    // 假設 2：錯字 / 漏字（整串比對，與原本相同）
+                    // =========================================================
                     if (!$passed) {
-                        if ($overlapRatioMax >= 80 && $lcsRatio >= 40) {
+                        $wholeScore = $this->typoScore($cleanInput, $cleanDb);
+                        if ($wholeScore !== null) {
                             $passed = true;
-                            $score = ($overlapRatioMax * 0.4) + ($lcsRatio * 0.6);
+                            $score = $wholeScore;
                         }
                     }
 
                     if ($passed) {
-                        $item->match_score = round($score, 1); 
+                        $item->match_score = round($score, 1);
                         $item->match_reason = 'Fuzzy Match';
                         return $item;
                     }
@@ -440,7 +424,58 @@ class ReferenceService
     /**
      * [國際化完美版] 清理字串：支援中、英、日、法、德、俄等多國語言
      */
-    private function normalizeString($str)
+    /**
+     * 將標題依並列題名分隔符「=」拆段，各段正規化並排除過短（< 5 bytes）的段落
+     */
+    private function titleSegments($title): array
+    {
+        $segments = preg_split('/\s*=\s*/u', (string) $title);
+
+        return array_values(array_filter(array_map(
+            fn($seg) => $this->normalizeString($seg),
+            $segments
+        ), fn($seg) => strlen($seg) >= 5));
+    }
+
+    /**
+     * 錯字 / 漏字判斷（原「假設 2」）：互相包含率 >= 80% 且連續比對 >= 40%
+     * 成立時回傳分數，否則回傳 null
+     */
+    private function typoScore(string $a, string $b): ?float
+    {
+        $maxLen = max(strlen($a), strlen($b));
+        $minCharLen = min(mb_strlen($a), mb_strlen($b));
+        if ($maxLen == 0 || $minCharLen == 0) return null;
+
+        $overlapRatioMax = (similar_text($a, $b) / $maxLen) * 100;
+        $lcsRatio = ($this->getMultibyteLCSLength($a, $b) / $minCharLen) * 100;
+
+        if ($overlapRatioMax >= 80 && $lcsRatio >= 40) {
+            return ($overlapRatioMax * 0.4) + ($lcsRatio * 0.6);
+        }
+        return null;
+    }
+
+    /**
+     * 頁碼的連字號變體（- – —），比對時視為相同
+     */
+    private function pageRangeVariants($pagesRange): array
+    {
+        $pagesRange = (string) $pagesRange;
+        $dashes = ['-', '–', '—'];
+
+        if ($pagesRange === '' || !preg_match('/[-–—]/u', $pagesRange)) {
+            return [$pagesRange];
+        }
+
+        $variants = [];
+        foreach ($dashes as $d) {
+            $variants[] = preg_replace('/\s*[-–—]\s*/u', $d, $pagesRange);
+        }
+        return array_values(array_unique($variants));
+    }
+
+        private function normalizeString($str)
     {
         // 1. 轉小寫 (mb_strtolower 支援將 É 轉為 é 等多國語言轉換)
         $str = mb_strtolower($str);
