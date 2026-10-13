@@ -8,6 +8,10 @@ use App\Reference;
 use Illuminate\Console\Command;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
+/**
+ * @deprecated 此邏輯已不符合現況
+ */
+
 class ImportReference extends Command
 {
     /**

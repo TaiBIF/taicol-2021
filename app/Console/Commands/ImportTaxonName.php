@@ -9,6 +9,10 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
+/**
+ * @deprecated 此邏輯已不符合現況
+ */
+
 class ImportTaxonName extends Command
 {
     /**
