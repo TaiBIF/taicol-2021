@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Services\TaicolApiService;
 use App\Http\Requests\TaxonNameRequest;
 use App\Http\Resources\PersonCollection;
 use App\Http\Resources\ReferenceCollection;
@@ -1028,12 +1029,10 @@ class TaxonNameController extends Controller
         }
 
         if ($rankId == 47) {
-            $nameUpdateAPI = env('TAICOL_API_ROOT') . '/update/name?hybrid_name_id=' . $id;
+            TaicolApiService::updateName(['hybrid_name_id' => $id]);
         } else {
-            $nameUpdateAPI = env('TAICOL_API_ROOT') . '/update/name?name_id=' . $id;
+            TaicolApiService::updateName(['name_id' => $id]);
         }
-
-        $resp = file_get_contents($nameUpdateAPI);
 
         return response([
             'id' => $taxonName->id,
@@ -1143,11 +1142,10 @@ class TaxonNameController extends Controller
         }
 
         if ($rankId == 47) {
-            $nameUpdateAPI = env('TAICOL_API_ROOT') . '/update/name?hybrid_name_id=' . $taxonName->id;
+            TaicolApiService::updateName(['hybrid_name_id' => $taxonName->id]);
         } else {
-            $nameUpdateAPI = env('TAICOL_API_ROOT') . '/update/name?name_id=' . $taxonName->id;
+            TaicolApiService::updateName(['name_id' => $taxonName->id]);
         }
-        $resp = file_get_contents($nameUpdateAPI);
 
         return response(TaxonNameCollection::collection([$taxonName])[0]);
     }

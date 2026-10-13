@@ -68,8 +68,7 @@ class TaxonNameAiImportService
             DB::commit();
 
             // 要commit之後才呼叫API
-            $nameUpdateAPI = env('TAICOL_API_ROOT') . '/update/name?min_taxon_name_id=' . $min_taxon_name_id;
-            $resp = file_get_contents($nameUpdateAPI);
+            TaicolApiService::updateName(['min_taxon_name_id' => $min_taxon_name_id]);
 
         } catch (\Exception $e) {
             DB::rollBack();

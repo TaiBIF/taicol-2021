@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Services\TaicolApiService;
 use App\Book;
 use App\Http\Requests\ReferenceRequest;
 use App\Http\Resources\PersonCollection;
@@ -242,8 +243,7 @@ class ReferenceController extends Controller
             $referenceLogService->saveUpdateLog($reference, $authors);
             DB::commit();
 
-            $referenceUpdateAPI = env('TAICOL_API_ROOT') . '/update/reference?reference_id=' . $id;
-            $resp = file_get_contents($referenceUpdateAPI);
+            TaicolApiService::updateReference(['reference_id' => $id]);
 
         } catch (Exception $e) {
             DB::rollback();
@@ -367,8 +367,7 @@ class ReferenceController extends Controller
             $logService->writeCreateLog(LogType::REFERENCE, $newReference->id);
             DB::commit();
 
-            $referenceUpdateAPI = env('TAICOL_API_ROOT') . '/update/reference?reference_id=' . $newReference->id;
-            $resp = file_get_contents($referenceUpdateAPI);
+            TaicolApiService::updateReference(['reference_id' => $newReference->id]);
 
         } catch (Exception $e) {
             DB::rollback();

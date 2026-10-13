@@ -107,8 +107,7 @@ class TaxonNameImportService
             $this->reportProgress('saving', $count);
         }
 
-        $nameUpdateAPI = env('TAICOL_API_ROOT') . '/update/name?min_taxon_name_id=' . $min_taxon_name_id;
-        @file_get_contents($nameUpdateAPI);
+        TaicolApiService::updateName(['min_taxon_name_id' => $min_taxon_name_id], silent: true);
 
         return $count;
     }

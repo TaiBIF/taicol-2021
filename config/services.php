@@ -34,4 +34,11 @@ return [
         'api_key' => env('GEMINI_API_KEY'),
         'daily_limit' => env('GEMINI_API_DAILY_LIMIT', 1000),
     ],
+
+    // TaiCOL API（root 依環境設定，正式 / 測試站各自指向不同 API）
+    'taicol_api' => [
+        'root' => env('TAICOL_API_ROOT', 'https://api.taicol.tw'),
+        // update/name、update/reference、generate_checklist 用的 Bearer token，需與 API 端 INTERNAL_API_TOKEN 相同
+        'token' => env('TAICOL_API_TOKEN'),
+    ],
 ];

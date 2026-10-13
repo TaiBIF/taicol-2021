@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Services\TaicolApiService;
 use App\Country;
 use App\Http\Requests\PersonRequest;
 use App\Http\Resources\PersonCollection;
@@ -222,11 +223,8 @@ class PersonController extends Controller
             'search_raw',
         ]);
 
-        $nameUpdateAPI = env('TAICOL_API_ROOT') . '/update/name?person_id=' . $id;
-        $resp = file_get_contents($nameUpdateAPI);
-
-        $referenceUpdateAPI = env('TAICOL_API_ROOT') . '/update/reference?person_id=' . $id;
-        $resp = file_get_contents($referenceUpdateAPI);
+        TaicolApiService::updateName(['person_id' => $id]);
+        TaicolApiService::updateReference(['person_id' => $id]);
 
         return response()->json([
             'id' => $person->id

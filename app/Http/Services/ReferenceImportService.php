@@ -263,8 +263,7 @@ class ReferenceImportService
 
         // 全部 commit 後才呼叫外部 API
         if ($minReferenceId > 0) {
-            $referenceUpdateAPI = env('TAICOL_API_ROOT') . '/update/reference?min_reference_id=' . $minReferenceId;
-            @file_get_contents($referenceUpdateAPI);
+            TaicolApiService::updateReference(['min_reference_id' => $minReferenceId], silent: true);
         }
 
         return $count;

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Services\TaicolApiService;
 use App\ImportUsageLog;
 use App\Http\Resources\PersonCollection;
 use App\Http\Resources\TaxonNameCollection;
@@ -718,7 +719,7 @@ class ReferenceUsageController extends Controller
 
     public function updateUsageCheck(Request $request) {
 
-        $url = env('TAICOL_API_ROOT') . "/update_check_usage";
+        $url = TaicolApiService::url('/update_check_usage');
 
         $curl = curl_init();
         curl_setopt($curl, CURLOPT_URL, $url);
@@ -791,7 +792,11 @@ class ReferenceUsageController extends Controller
         // method == 1 -> higherTaxa 串接 TaiCOL API
 
         if ( $method == 1)
-            $url = "https://api.taicol.tw/get_taxon_by_higher?only_in_taiwan=" . $onlyInTaiwan . '&exclude_cultured=' . $excludeCultured . '&higher_taxa=' . $higherTaxa ;
+            $url = TaicolApiService::url('/get_taxon_by_higher') . '?' . http_build_query([
+                'only_in_taiwan' => $onlyInTaiwan,
+                'exclude_cultured' => $excludeCultured,
+                'higher_taxa' => $higherTaxa,
+            ]);
 
         // method == 3 > Region 串接 TBIA API
 
@@ -963,7 +968,7 @@ class ReferenceUsageController extends Controller
                 
                 // API URL -> 要判斷在哪裡 不然會出錯
 
-                $usage_url = env('TAICOL_API_ROOT') . '/generate_checklist';
+                $usage_url = TaicolApiService::url('/generate_checklist');
 
                 $postData = [
                     'only_in_taiwan' => $onlyInTaiwan,
@@ -983,7 +988,7 @@ class ReferenceUsageController extends Controller
                 // 從這邊取得tmp_checklist_id 回傳給前端
                 // 前端再根據之前寫過的load usages 顯示出usage
 
-                $resp = Http::asJson()->post($usage_url, $postData)->json() ?? [];
+                $resp = TaicolApiService::client(30)->asJson()->post($usage_url, $postData)->json() ?? [];
                 $tmp_checklist_id = $resp['tmp_checklist_id'] ?? null;
 
                 // 即使 HTTP 200 但沒拿到 tmp_checklist_id 也視為錯誤
