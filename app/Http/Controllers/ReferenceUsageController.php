@@ -707,24 +707,37 @@ class ReferenceUsageController extends Controller
 
     public function getUncheckedUsage(Request $request) {
 
+        // 0 是填充值：有 reference_usage_id 時，從 reference_usages 補上 taxon_name_id / accepted_taxon_name_id / reference_id
+        $taxonNameId    = 'COALESCE(NULLIF(c.taxon_name_id, 0), ru.taxon_name_id)';
+        $acceptedNameId = 'COALESCE(NULLIF(c.accepted_taxon_name_id, 0), ru.accepted_taxon_name_id)';
+        $referenceId    = 'COALESCE(NULLIF(c.reference_id, 0), ru.reference_id)';
+
         $rows = DB::table('api_usage_check as c')
-            ->leftJoin('taxon_names as tn', 'tn.id', '=', 'c.taxon_name_id')
-            ->leftJoin('taxon_names as atn', 'atn.id', '=', 'c.accepted_taxon_name_id')
             ->leftJoin('reference_usages as ru', 'ru.id', '=', 'c.reference_usage_id')
+            ->leftJoin('taxon_names as tn', 'tn.id', '=', DB::raw($taxonNameId))
+            ->leftJoin('taxon_names as atn', 'atn.id', '=', DB::raw($acceptedNameId))
             ->where('c.is_checked', 0)
             ->where('c.error_type', '!=', 11)
-            ->select('c.*', 'tn.name as name', 'atn.name as accepted_name', 'ru.group as group')
+            ->select(
+                'c.*',
+                // 同名欄位放在 c.* 之後，會覆蓋原本的 0
+                DB::raw("{$taxonNameId} as taxon_name_id"),
+                DB::raw("{$acceptedNameId} as accepted_taxon_name_id"),
+                DB::raw("{$referenceId} as reference_id"),
+                'tn.name as name',
+                'atn.name as accepted_name',
+                'ru.group as group'
+            )
             ->get();
-
         $lastUpdated = DB::table('api_usage_check')->where('error_type','=',11)->max('updated_at');
 
         return response()->json([
             'usages' => $rows,
             'last_updated' => $lastUpdated
         ]);
-        
     }
 
+    
     public function updateUsageCheck(Request $request) {
 
         $url = TaicolApiService::url('/update_check_usage');
