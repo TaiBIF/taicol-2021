@@ -707,7 +707,15 @@ class ReferenceUsageController extends Controller
 
     public function getUncheckedUsage(Request $request) {
 
-        $rows = DB::table('api_usage_check')->where('is_checked',0)->where('error_type','!=',11)->get();
+        $rows = DB::table('api_usage_check as c')
+            ->leftJoin('taxon_names as tn', 'tn.id', '=', 'c.taxon_name_id')
+            ->leftJoin('taxon_names as atn', 'atn.id', '=', 'c.accepted_taxon_name_id')
+            ->leftJoin('reference_usages as ru', 'ru.id', '=', 'c.reference_usage_id')
+            ->where('c.is_checked', 0)
+            ->where('c.error_type', '!=', 11)
+            ->select('c.*', 'tn.name as name', 'atn.name as accepted_name', 'ru.group as group')
+            ->get();
+
         $lastUpdated = DB::table('api_usage_check')->where('error_type','=',11)->max('updated_at');
 
         return response()->json([

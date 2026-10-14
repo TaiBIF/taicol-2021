@@ -37,7 +37,10 @@
                 <div class="p-4">
                     <p class="mb-3">上次檢查時間：{{ lastUpdated }}</p>
                     <p class="mb-3">尚未確認的 usage 👇（可直接勾選 is_checked 並更新表格）</p>
-                    <div class="max-h-[350px] overflow-auto shadow-sm border">
+                    <div v-if="isLoading" class="max-h-[350px] border">
+                        <loading-section></loading-section>
+                    </div>
+                    <div v-else class="max-h-[350px] overflow-auto shadow-sm border">
                         <table class="table text-[13px] has-text-grey whitespace-nowrap">
                             <thead class="font-bold sticky top-0 bg-white z-10">
                             <tr>
@@ -45,8 +48,11 @@
                                 <th class="has-text-grey">錯誤類型</th>
                                 <th class="has-text-grey">reference_usage_id</th>
                                 <th class="has-text-grey">accepted_taxon_name_id</th>
+                                <th class="has-text-grey">accepted_name</th>
                                 <th class="has-text-grey">taxon_name_id</th>
+                                <th class="has-text-grey">name</th>
                                 <th class="has-text-grey">reference_id</th>
+                                <th class="has-text-grey">group</th>
                                 <th class="has-text-grey">autonym_group</th>
                                 <th class="has-text-grey">object_group</th>
                                 <th class="has-text-grey">更新時間</th>
@@ -61,8 +67,17 @@
                                 </td>
                                 <td>{{ usage.referenceUsageId }}</td>
                                 <td>{{ usage.acceptedTaxonNameId }}</td>
-                                <td>{{ usage.taxonNameId }}</td>
-                                <td>{{ usage.referenceId }}</td>
+                                <td>{{ usage.acceptedName }}</td>
+                                <td>
+                                    <a :href="`https://nametool.taicol.tw/zh-tw/taxon-names/${usage.taxonNameId}`"
+                                       target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">{{ usage.taxonNameId }}</a>
+                                </td>
+                                <td>{{ usage.name }}</td>
+                                <td>
+                                    <a :href="`https://nametool.taicol.tw/zh-tw/references/${usage.referenceId}`"
+                                       target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">{{ usage.referenceId }}</a>
+                                </td>
+                                <td>{{ usage.group }}</td>
                                 <td>{{ usage.autonymGroup }}</td>
                                 <td>{{ usage.objectGroup }}</td>
                                 <td>{{ usage.updatedAt }}</td>
@@ -79,10 +94,6 @@
                     <button :disabled="isLoading" class="button mt-3" v-on:click="saveChecked">確認完畢更新表格</button>
                 </div>
 
-            </div>
-
-            <div v-if="isLoading" class="grow">
-                <loading-section></loading-section>
             </div>
         </div>
     </div>
