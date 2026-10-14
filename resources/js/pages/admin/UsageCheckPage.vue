@@ -65,21 +65,24 @@
                                 <td :title="errorTypeMap[usage.errorType]">
                                     {{ usage.errorType }}
                                 </td>
-                                <td>{{ usage.referenceUsageId }}</td>
-                                <td>{{ usage.acceptedTaxonNameId }}</td>
+                                <td>{{ display(usage.referenceUsageId) }}</td>
+                                <td>
+                                    <a v-if="hasValue(usage.acceptedTaxonNameId)" :href="`https://nametool.taicol.tw/zh-tw/taxon-names/${usage.acceptedTaxonNameId}`"
+                                       target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">{{ usage.acceptedTaxonNameId }}</a>
+                                </td>
                                 <td>{{ usage.acceptedName }}</td>
                                 <td>
-                                    <a :href="`https://nametool.taicol.tw/zh-tw/taxon-names/${usage.taxonNameId}`"
+                                    <a v-if="hasValue(usage.taxonNameId)" :href="`https://nametool.taicol.tw/zh-tw/taxon-names/${usage.taxonNameId}`"
                                        target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">{{ usage.taxonNameId }}</a>
                                 </td>
                                 <td>{{ usage.name }}</td>
                                 <td>
-                                    <a :href="`https://nametool.taicol.tw/zh-tw/references/${usage.referenceId}`"
+                                    <a v-if="hasValue(usage.referenceId)" :href="`https://nametool.taicol.tw/zh-tw/references/${usage.referenceId}`"
                                        target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">{{ usage.referenceId }}</a>
                                 </td>
                                 <td>{{ usage.group }}</td>
-                                <td>{{ usage.autonymGroup }}</td>
-                                <td>{{ usage.objectGroup }}</td>
+                                <td>{{ display(usage.autonymGroup) }}</td>
+                                <td>{{ display(usage.objectGroup) }}</td>
                                 <td>{{ usage.updatedAt }}</td>
                                 <td class="text-center">
                                     <input type="checkbox"
@@ -128,6 +131,13 @@ export default {
         this.getUncheckedUsage();
     },
     methods: {
+        // 0 只是避免錯誤的填充值，前端不顯示
+        hasValue(v) {
+            return v !== null && v !== undefined && v !== '' && Number(v) !== 0;
+        },
+        display(v) {
+            return this.hasValue(v) ? v : '';
+        },
         getUncheckedUsage(){
             this.axios.get('/get-unchecked-usage', {
             })
