@@ -6,10 +6,9 @@
                 <div class="py-3 flex items-center">
                     <p class="ml-4 font-bold text-3xl inline">{{ $t('header.adminMenu.usageCheck') }}</p>
                 </div>
-                <div class="flex px-4 mb-4 gap-1">
-                    <div class="w-full">
-                        <button :disabled="isLoading" class="button" v-on:click="onSubmit">開始檢查</button>
-                    </div>
+                <div class="flex items-center px-4 mb-4 gap-3">
+                    <button :disabled="isLoading" class="button" v-on:click="onSubmit">開始檢查</button>
+                    <p>上次檢查時間：{{ lastUpdated }}</p>
                 </div>
 
                 <div class="px-4 mb-4">
@@ -35,8 +34,10 @@
                 </div>
 
                 <div class="p-4">
-                    <p class="mb-3">上次檢查時間：{{ lastUpdated }}</p>
-                    <p class="mb-3">尚未確認的 usage 👇（可直接勾選 is_checked 並更新表格）</p>
+                    <div class="flex items-center justify-between mb-3">
+                        <p>尚未確認的 usage 👇（可直接勾選 is_checked 並更新表格）</p>
+                        <button :disabled="isLoading" class="button" v-on:click="saveChecked">確認完畢更新表格</button>
+                    </div>
                     <div v-if="isLoading" class="max-h-[350px] border">
                         <loading-section></loading-section>
                     </div>
@@ -94,7 +95,6 @@
                             </tbody>
                         </table>
                     </div>
-                    <button :disabled="isLoading" class="button mt-3" v-on:click="saveChecked">確認完畢更新表格</button>
                 </div>
 
             </div>

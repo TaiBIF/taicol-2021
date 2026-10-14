@@ -20,7 +20,7 @@ class AdminRoutes
         if ($request->user()->role_id !== User::ROLE_ADMIN) {
             return response([
                 'messages' => 'Permission deny.',
-            ])->setStatusCode(401);
+            ])->setStatusCode(403);
         }
 
         return $next($request);

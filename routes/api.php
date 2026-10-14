@@ -112,6 +112,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('namespaces/{namespaceId}/usages-properties', 'MyNamespaceUsageController@updateUsageProperties');
 
     Route::post('/import/namespaces/{id}/usages', 'MyNamespaceUsageController@import');
+    Route::get('/import/logs/latest', 'ImportLogController@latest');
+    Route::get('/import/logs/{id}', 'ImportLogController@show');
+    Route::post('/import/logs/{id}/dismiss', 'ImportLogController@dismiss');
+    Route::post('/import/logs/{id}/cancel', 'ImportLogController@cancel');
     Route::post('/import/checklist/usages', 'MyNamespaceUsageController@importChecklist');
     Route::post('/clear/checklist/usages', 'MyNamespaceUsageController@clearChecklist');
     Route::post('/fetch/namespace/usage/ai', 'MyNamespaceUsageController@fetchUsageAi');
@@ -126,10 +130,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/import/persons', 'PersonController@import');
         Route::post('/import/references', 'ReferenceController@import');
         Route::post('/import/taxon-names', 'TaxonNameController@import');
-        Route::get('/import/logs/latest', 'ImportLogController@latest');
-        Route::get('/import/logs/{id}', 'ImportLogController@show');
-        Route::post('/import/logs/{id}/dismiss', 'ImportLogController@dismiss');
-        Route::post('/import/logs/{id}/cancel', 'ImportLogController@cancel');
     });
 
     Route::resource('/favorite-folders', 'FavoriteFolderController');
