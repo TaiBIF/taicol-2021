@@ -6,10 +6,9 @@
                 <div class="py-3 flex items-center">
                     <p class="ml-4 font-bold text-3xl inline">{{ $t('header.adminMenu.usageCheck') }}</p>
                 </div>
-                <div class="flex px-4 mb-4 gap-1">
-                    <div class="w-full">
-                        <button :disabled="isLoading" class="button" v-on:click="onSubmit">開始檢查</button>
-                    </div>
+                <div class="flex items-center px-4 mb-4 gap-3">
+                    <button :disabled="isLoading" class="button" v-on:click="onSubmit">開始檢查</button>
+                    <p>上次檢查時間：{{ lastUpdated }}</p>
                 </div>
 
                 <div class="px-4 mb-4">
@@ -35,9 +34,14 @@
                 </div>
 
                 <div class="p-4">
-                    <p class="mb-3">上次檢查時間：{{ lastUpdated }}</p>
-                    <p class="mb-3">尚未確認的 usage 👇（可直接勾選 is_checked 並更新表格）</p>
-                    <div class="max-h-[350px] overflow-auto shadow-sm border">
+                    <div class="flex items-center justify-between mb-3">
+                        <p>尚未確認的 usage 👇（可直接勾選 is_checked 並更新表格）</p>
+                        <button :disabled="isLoading" class="button" v-on:click="saveChecked">確認完畢更新表格</button>
+                    </div>
+                    <div v-if="isLoading" class="max-h-[350px] border">
+                        <loading-section></loading-section>
+                    </div>
+                    <div v-else class="max-h-[350px] overflow-auto shadow-sm border">
                         <table class="table text-[13px] has-text-grey whitespace-nowrap">
                             <thead class="font-bold sticky top-0 bg-white z-10">
                             <tr>
@@ -45,8 +49,11 @@
                                 <th class="has-text-grey">錯誤類型</th>
                                 <th class="has-text-grey">reference_usage_id</th>
                                 <th class="has-text-grey">accepted_taxon_name_id</th>
+                                <th class="has-text-grey">accepted_name</th>
                                 <th class="has-text-grey">taxon_name_id</th>
+                                <th class="has-text-grey">name</th>
                                 <th class="has-text-grey">reference_id</th>
+                                <th class="has-text-grey">group</th>
                                 <th class="has-text-grey">autonym_group</th>
                                 <th class="has-text-grey">object_group</th>
                                 <th class="has-text-grey">更新時間</th>
@@ -59,12 +66,24 @@
                                 <td :title="errorTypeMap[usage.errorType]">
                                     {{ usage.errorType }}
                                 </td>
-                                <td>{{ usage.referenceUsageId }}</td>
-                                <td>{{ usage.acceptedTaxonNameId }}</td>
-                                <td>{{ usage.taxonNameId }}</td>
-                                <td>{{ usage.referenceId }}</td>
-                                <td>{{ usage.autonymGroup }}</td>
-                                <td>{{ usage.objectGroup }}</td>
+                                <td>{{ display(usage.referenceUsageId) }}</td>
+                                <td>
+                                    <a v-if="hasValue(usage.acceptedTaxonNameId)" :href="`https://nametool.taicol.tw/zh-tw/taxon-names/${usage.acceptedTaxonNameId}`"
+                                       target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">{{ usage.acceptedTaxonNameId }}</a>
+                                </td>
+                                <td>{{ usage.acceptedName }}</td>
+                                <td>
+                                    <a v-if="hasValue(usage.taxonNameId)" :href="`https://nametool.taicol.tw/zh-tw/taxon-names/${usage.taxonNameId}`"
+                                       target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">{{ usage.taxonNameId }}</a>
+                                </td>
+                                <td>{{ usage.name }}</td>
+                                <td>
+                                    <a v-if="hasValue(usage.referenceId)" :href="`https://nametool.taicol.tw/zh-tw/references/${usage.referenceId}`"
+                                       target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">{{ usage.referenceId }}</a>
+                                </td>
+                                <td>{{ usage.group }}</td>
+                                <td>{{ display(usage.autonymGroup) }}</td>
+                                <td>{{ display(usage.objectGroup) }}</td>
                                 <td>{{ usage.updatedAt }}</td>
                                 <td class="text-center">
                                     <input type="checkbox"
@@ -76,13 +95,8 @@
                             </tbody>
                         </table>
                     </div>
-                    <button :disabled="isLoading" class="button mt-3" v-on:click="saveChecked">確認完畢更新表格</button>
                 </div>
 
-            </div>
-
-            <div v-if="isLoading" class="grow">
-                <loading-section></loading-section>
             </div>
         </div>
     </div>
@@ -117,6 +131,13 @@ export default {
         this.getUncheckedUsage();
     },
     methods: {
+        // 0 只是避免錯誤的填充值，前端不顯示
+        hasValue(v) {
+            return v !== null && v !== undefined && v !== '' && Number(v) !== 0;
+        },
+        display(v) {
+            return this.hasValue(v) ? v : '';
+        },
         getUncheckedUsage(){
             this.axios.get('/get-unchecked-usage', {
             })

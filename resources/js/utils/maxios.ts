@@ -36,6 +36,8 @@ vAxios.interceptors.response.use((response) => ({
     const { data: { message, errors, data }, status, config } = error.response;
     if (status === 401) {
         store.dispatch('auth/clearAuth');
+    } else if (status === 403) {
+        openNotify('沒有權限', 'is-danger');
     } else if (status === 422) {
         openNotify(msg.i18n('validation.inputsInvalid'), 'is-danger');
     } else if (status === 500) {
