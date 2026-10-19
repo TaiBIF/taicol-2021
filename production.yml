@@ -9,6 +9,9 @@ services:
     image: traefik:v3.6
     container_name: taicol-traefik
     restart: always
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     ports:
       - "80:80"
       - "443:443"
