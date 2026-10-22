@@ -41,4 +41,11 @@ return [
         // update/name、update/reference、generate_checklist 用的 Bearer token，需與 API 端 INTERNAL_API_TOKEN 相同
         'token' => env('TAICOL_API_TOKEN'),
     ],
+
+    // TaiCOL 更新服務（/update/name、/update/reference 改打這裡）
+    // root 沒設定時沿用上面的 TaiCOL API（切換前的行為），要退回舊版只要把 UPDATE_SERVICE_ROOT 拿掉
+    'update_service' => [
+        'root' => env('UPDATE_SERVICE_ROOT'), 
+        'key' => env('UPDATE_SERVICE_API_KEY'),     // 與更新服務 .env 的 UPDATE_SERVICE_API_KEY 相同
+    ],
 ];
