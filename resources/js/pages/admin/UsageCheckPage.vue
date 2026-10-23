@@ -37,7 +37,7 @@
                 <div class="p-4">
                     <div class="flex items-center justify-between mb-3">
                         <p>尚未確認的 usage 👇（可直接勾選 is_checked 並更新表格）
-                            <span class="ml-2 text-xs text-gray-500">灰底「已不再檢出」：上次檢查已沒有這個問題，確認後勾選即可</span>
+                            <span class="ml-2 text-xs text-gray-500">灰底：上次檢查時已沒有這個問題（多半已修正），但還沒勾選。未勾選的列都會擋下名錄更新，包含灰底的列。</span>
                         </p>
                         <button :disabled="isLoading" class="button" v-on:click="saveChecked">確認完畢更新表格</button>
                     </div>
@@ -69,7 +69,8 @@
                                 <td>
                                     {{ usage.id }}
                                     <span v-if="usage.isStale == 1"
-                                          class="ml-1 px-1 rounded text-[11px] bg-gray-300 text-gray-700">已不再檢出</span>
+                                          :title="staleHint"
+                                          class="ml-1 px-1 rounded text-[11px] bg-gray-300 text-gray-700 cursor-help">上次檢查未再出現</span>
                                 </td>
                                 <td :title="errorTypeMap[usage.errorType]">
                                     {{ usage.errorType }}
@@ -136,6 +137,12 @@ export default {
                 12: '同學名/同模有多個reference_id且無法決定出最新文獻，需補充publish_date'
             }
         };
+    },
+    computed: {
+        staleHint() {
+            return `上次檢查（${this.lastUpdated || ''}）已沒有檢出這個問題，通常是資料已修正。`
+                + '確認沒問題後勾選 is_checked 即可；不勾的話，名錄更新仍會被擋下。';
+        },
     },
     mounted() {
         this.getUncheckedUsage();
