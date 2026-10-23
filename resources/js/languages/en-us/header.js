@@ -16,6 +16,7 @@ export default {
         referenceImport: 'Reference Import',
         taxonNameImport: 'Taxon Name Import',
         usageCheck: 'Usage Check',
+        updateService: 'Catalogue Update',
     },
     import: 'Import Tool',
     importMenu: {

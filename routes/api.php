@@ -59,10 +59,9 @@ Route::get('/selected-references', 'ReferenceUsageController@references');
 Route::get('/biota', 'MyNamespaceUsageController@biota');
 // Route::get('/usage/preview', 'MyNamespaceUsageController@usage_preview');
 
-// 檢查usage
-Route::get('/get-unchecked-usage', 'ReferenceUsageController@getUncheckedUsage');
-Route::get('/update-usage-check', 'ReferenceUsageController@updateUsageCheck');
-Route::post('/update-usage-checked', 'ReferenceUsageController@updateUsageChecked');
+// 更新服務通知（job blocked／failed），用 X-Notify-Token 驗證，不走登入
+Route::post('/update-service/notify', 'UpdateServiceController@notify');
+
 Route::get('/export/namespaces/{id}/usages', 'MyNamespaceUsageController@export');
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -130,6 +129,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/import/persons', 'PersonController@import');
         Route::post('/import/references', 'ReferenceController@import');
         Route::post('/import/taxon-names', 'TaxonNameController@import');
+
+        // 檢查usage（勾 is_checked 會影響名錄更新的把關，只開放管理員）
+        Route::get('/get-unchecked-usage', 'ReferenceUsageController@getUncheckedUsage');
+        Route::get('/update-usage-check', 'ReferenceUsageController@updateUsageCheck');
+        Route::post('/update-usage-checked', 'ReferenceUsageController@updateUsageChecked');
+
+        // 名錄更新（更新服務）
+        Route::get('/update-service/jobs', 'UpdateServiceController@index');
+        Route::post('/update-service/jobs', 'UpdateServiceController@store');
+        Route::get('/update-service/jobs/{id}', 'UpdateServiceController@show')->whereNumber('id');
+        Route::get('/update-service/jobs/{id}/log', 'UpdateServiceController@log')->whereNumber('id');
+        Route::get('/update-service/jobs/{id}/export', 'UpdateServiceController@export')->whereNumber('id');
     });
 
     Route::resource('/favorite-folders', 'FavoriteFolderController');

@@ -47,5 +47,7 @@ return [
     'update_service' => [
         'root' => env('UPDATE_SERVICE_ROOT'), 
         'key' => env('UPDATE_SERVICE_API_KEY'),     // 與更新服務 .env 的 UPDATE_SERVICE_API_KEY 相同
+        // 更新服務 job blocked／failed 時呼叫 /api/update-service/notify 用的 token，與更新服務 .env 的 UPDATE_NOTIFY_TOKEN 相同
+        'notify_token' => env('UPDATE_NOTIFY_TOKEN'),
     ],
 ];

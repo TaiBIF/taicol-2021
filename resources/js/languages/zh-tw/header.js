@@ -16,6 +16,7 @@ export default {
         referenceImport: '文獻匯入',
         taxonNameImport: '學名匯入',
         usageCheck: '學名使用檢查',
+        updateService: '名錄更新',
     },
     import: '匯入工具',
     importMenu: {

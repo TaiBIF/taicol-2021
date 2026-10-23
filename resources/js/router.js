@@ -347,6 +347,16 @@ const routes = [
                 },
             },
             {
+                name: 'admin-update-service',
+                path: 'update-service',
+                component: () => import(
+                    /* webpackChunkName: "update-service-page" */ './pages/admin/UpdateServicePage.vue'
+                ),
+                meta: {
+                    backgroundColor: 'grey',
+                },
+            },
+            {
                 name: 'admin-references-import',
                 path: 'references-import',
                 component: () => import(

@@ -9,6 +9,7 @@
                 <div class="flex items-center px-4 mb-4 gap-3">
                     <button :disabled="isLoading" class="button" v-on:click="onSubmit">開始檢查</button>
                     <p>上次檢查時間：{{ lastUpdated }}</p>
+                    <p v-if="checkJobId" class="text-gray-500">檢查中（job #{{ checkJobId }}），完成後會自動更新</p>
                 </div>
 
                 <div class="px-4 mb-4">
@@ -35,7 +36,9 @@
 
                 <div class="p-4">
                     <div class="flex items-center justify-between mb-3">
-                        <p>尚未確認的 usage 👇（可直接勾選 is_checked 並更新表格）</p>
+                        <p>尚未確認的 usage 👇（可直接勾選 is_checked 並更新表格）
+                            <span class="ml-2 text-xs text-gray-500">灰底「已不再檢出」：上次檢查已沒有這個問題，確認後勾選即可</span>
+                        </p>
                         <button :disabled="isLoading" class="button" v-on:click="saveChecked">確認完畢更新表格</button>
                     </div>
                     <div v-if="isLoading" class="max-h-[350px] border">
@@ -61,8 +64,13 @@
                             </tr>
                             </thead>
                             <tbody>
-                            <tr v-for="usage in usages" :key="usage.id">
-                                <td>{{ usage.id }}</td>
+                            <tr v-for="usage in usages" :key="usage.id"
+                                :class="{'bg-gray-100 text-gray-400': usage.isStale == 1}">
+                                <td>
+                                    {{ usage.id }}
+                                    <span v-if="usage.isStale == 1"
+                                          class="ml-1 px-1 rounded text-[11px] bg-gray-300 text-gray-700">已不再檢出</span>
+                                </td>
                                 <td :title="errorTypeMap[usage.errorType]">
                                     {{ usage.errorType }}
                                 </td>
@@ -111,6 +119,8 @@ export default {
         return {
             lastUpdated: null,
             isLoading: false,
+            checkJobId: null,
+            pollTimer: null,
             usages: [],
             errorTypeMap: { // 2 & 3 合併 , 6 & 9 合併, 5 & 10 合併 
                 1: 'fixed usage_id 被刪除',
@@ -129,6 +139,9 @@ export default {
     },
     mounted() {
         this.getUncheckedUsage();
+    },
+    beforeDestroy() {
+        this.stopPolling();
     },
     methods: {
         // 0 只是避免錯誤的填充值，前端不顯示
@@ -152,9 +165,17 @@ export default {
             })
             .then(({data}) => {
 
+                // 更新服務：已排入（或已有 usage_check 在跑）→ 輪詢到結束
+                if (data['message'] == 'queued' || (data['message'] == 'busy' && data['job'] == 'usage_check')) {
+                    this.pollCheckJob(data['jobId']);
+                    return;
+                }
+
                 this.isLoading = false;
 
-                if ( data['message'] == 'done'){
+                if (data['message'] == 'busy') {
+                    openNotify(`已有其他更新任務執行中（${data['job']} #${data['jobId']}），請稍後再試`, 'is-danger');
+                } else if ( data['message'] == 'done'){
                     this.lastUpdated = data['lastUpdated'];
                     openNotify(this.$t('common.checkSuccess'));
                     this.getUncheckedUsage();
@@ -163,6 +184,41 @@ export default {
                 }
 
             });
+        },
+        pollCheckJob(jobId) {
+            this.checkJobId = jobId;
+            this.stopPolling();
+            const check = () => {
+                this.axios.get(`/update-service/jobs/${jobId}`)
+                    .then(({data}) => {
+                        if (['queued', 'running'].includes(data.status)) {
+                            return;
+                        }
+                        this.stopPolling();
+                        this.checkJobId = null;
+                        this.isLoading = false;
+                        // blocked＝有未勾的問題，是正常的檢查結果
+                        if (data.status == 'success' || data.status == 'blocked') {
+                            openNotify(this.$t('common.checkSuccess'));
+                        } else {
+                            openNotify(`檢查失敗：${data.message || ''}`, 'is-danger');
+                        }
+                        this.getUncheckedUsage();
+                    })
+                    .catch(() => {
+                        this.stopPolling();
+                        this.checkJobId = null;
+                        this.isLoading = false;
+                        openNotify('無法取得檢查狀態', 'is-danger');
+                    });
+            };
+            this.pollTimer = setInterval(check, 5000);
+        },
+        stopPolling() {
+            if (this.pollTimer) {
+                clearInterval(this.pollTimer);
+                this.pollTimer = null;
+            }
         },
         saveChecked(){
             const ids = this.usages.filter(u => u.isChecked == 1).map(u => u.id);
