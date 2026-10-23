@@ -9,19 +9,22 @@
                 <!-- 觸發 -->
                 <div class="px-4 mb-4 flex flex-wrap items-center gap-4">
                     <button :disabled="isBusy || submitting" class="button" v-on:click="onStart('taxon')">執行名錄更新</button>
-                    <span class="text-gray-300">|</span>
-                    <button :disabled="isBusy || submitting" class="button" v-on:click="onStart('release')">產生版本名錄</button>
-                    <label class="flex items-center gap-1 text-sm">
-                        <input type="checkbox" v-model="force" :disabled="isBusy || submitting">
-                        force（略過 high issue 把關）
-                    </label>
+                    <!-- force 只用於版本名錄，放在同一個框裡 -->
+                    <div class="flex items-center gap-3 border rounded px-2 py-1">
+                        <button :disabled="isBusy || submitting" class="button" v-on:click="onStart('release')">產生版本名錄</button>
+                        <label class="flex items-center gap-1 text-sm">
+                            <input type="checkbox" v-model="force" :disabled="isBusy || submitting">
+                            force：略過 high issue 把關
+                        </label>
+                    </div>
                     <span v-if="activeJob" class="text-sm text-gray-500">
                         執行中：{{ jobLabel(activeJob.job) }} #{{ activeJob.id }}（{{ activeJob.currentStep || '排隊中' }}）
                     </span>
                 </div>
                 <ul class="px-4 mb-4 text-sm text-gray-600">
-                    <li>名錄更新：usage check → 文獻 → 學名 → 名錄（issue 不擋更新）。usage check 有未勾的問題時會停下。</li>
-                    <li>版本名錄：usage check → 全表檢核 → 產生三個下載檔。有未處理的 high issue 時會停下，可下載 high_issues.csv；確認可略過時勾 force 再執行。</li>
+                    <li>名錄更新：usage check → 文獻 → 學名 → 名錄。檢核的 issue 一律不擋更新（已是 force），所以沒有 force 選項；
+                        只有 usage check 有未勾的問題、或更新邏輯預檢發現無法自動判斷的資料時會停下，這兩種要處理後重新執行，不能略過。</li>
+                    <li>版本名錄：usage check → 全表檢核 → 產生三個下載檔。有未處理的 high issue 時會停下，可下載 taxon_issues.csv（所有未解決的 issue，blocks_release=1 是擋下的那些）；確認可略過時勾 force 再執行。</li>
                     <li>停下（blocked）或失敗（failed）時會寄信給所有管理員。</li>
                 </ul>
 
@@ -74,7 +77,7 @@
                                         <button class="button is-small" v-on:click="toggleLog(job)">{{ openLogId === job.id ? '收合 log' : 'log' }}</button>
                                         <button v-if="job.exportPath && job.status !== 'running'" class="button is-small"
                                                 :disabled="downloadingId === job.id" v-on:click="onDownload(job)">
-                                            {{ job.status === 'success' ? '下載檔' : '下載 CSV' }}
+                                            {{ job.status === 'success' ? '下載版本名錄檔' : '下載 issue CSV' }}
                                         </button>
                                     </td>
                                 </tr>

@@ -115,12 +115,12 @@ class UpdateJobNotifier
             }
             if ($step === 'audit') {
                 return '版本名錄把關未通過：有未處理的 high issue，這次沒有產出下載檔。'
-                    . '請到' . $link($pageUrl, '名錄更新頁') . '下載 high_issues.csv 處理；'
+                    . '請到' . $link($pageUrl, '名錄更新頁') . '下載 taxon_issues.csv（blocks_release=1 是擋下的那些）處理；'
                     . '確認可以略過時，勾選 force 重新產生。';
             }
             if ($step === 'taxon') {
                 return '更新邏輯預檢發現需要確認的問題，這次沒有更新 DB 與 Solr。'
-                    . '請到' . $link($pageUrl, '名錄更新頁') . '下載 CSV（issues.csv、issue_rows.csv）確認，處理後重新執行。';
+                    . '請到' . $link($pageUrl, '名錄更新頁') . '按「下載 issue CSV」（issues.csv、issue_rows.csv）確認，處理後重新執行。';
             }
             return '這次沒有完成，請到' . $link($pageUrl, '名錄更新頁') . '查看。';
         }
