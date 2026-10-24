@@ -68,7 +68,7 @@
                                         <button class="button is-small" v-on:click="toggleLog(job)">{{ openLogId === job.id ? '收合 log' : 'log' }}</button>
                                         <button v-if="job.exportPath && job.status !== 'running'" class="button is-small"
                                                 :disabled="downloadingId === job.id" v-on:click="onDownload(job)">
-                                            {{ job.status === 'success' ? '下載檔' : '下載 CSV' }}
+                                            {{ job.status === 'success' ? '下載版本名錄檔' : '下載 issue CSV' }}
                                         </button>
                                     </td>
                                 </tr>
