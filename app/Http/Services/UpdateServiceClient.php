@@ -40,12 +40,15 @@ class UpdateServiceClient
         ], $extra));
     }
 
-    public static function jobs(int $limit = 30, ?string $lane = 'main'): Response
+    /** 符合條件的總筆數在 header X-Total-Count */
+    public static function jobs(int $limit = 20, ?string $lane = 'main', ?string $job = null, int $offset = 0): Response
     {
         return self::client()->get(self::url('/jobs'), array_filter([
             'limit' => $limit,
+            'offset' => $offset,
             'lane' => $lane,
-        ]));
+            'job' => $job,
+        ], fn ($v) => $v !== null && $v !== ''));
     }
 
     public static function job(int $id): Response

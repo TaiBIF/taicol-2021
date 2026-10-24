@@ -7,23 +7,58 @@
                 </div>
 
                 <!-- 觸發 -->
-                <div class="px-4 mb-4 flex flex-wrap items-center gap-4">
+                <div class="px-4 mb-2 flex items-center gap-4">
                     <button :disabled="isBusy || submitting" class="button" v-on:click="onStart('taxon')">執行名錄更新</button>
-                    <span class="text-gray-300">|</span>
+                    <span v-if="activeJob" class="text-sm text-gray-500">
+                        執行中：{{ jobLabel(activeJob.job) }} #{{ activeJob.id }}（{{ activeJob.currentStep ? stepLabel(activeJob.currentStep) : '排隊中' }}）
+                    </span>
+                </div>
+                <div class="px-4 mb-4 flex items-center gap-4">
                     <button :disabled="isBusy || submitting" class="button" v-on:click="onStart('release')">產生版本名錄</button>
                     <label class="flex items-center gap-1 text-sm">
                         <input type="checkbox" v-model="force" :disabled="isBusy || submitting">
-                        force（略過 high issue 把關）
+                        force：略過 high issue 把關
                     </label>
-                    <span v-if="activeJob" class="text-sm text-gray-500">
-                        執行中：{{ jobLabel(activeJob.job) }} #{{ activeJob.id }}（{{ activeJob.currentStep || '排隊中' }}）
-                    </span>
                 </div>
+
+                <!-- job 與步驟說明 -->
+                <div class="px-4 mb-4">
+                    <details class="bg-gray-50 border rounded-md p-3 text-sm">
+                        <summary class="font-bold cursor-pointer text-gray-700">任務與步驟說明</summary>
+                        <div class="mt-2 border-t pt-2 grid md:grid-cols-2 gap-4">
+                            <table class="w-full text-xs text-left text-gray-600 border-collapse">
+                                <thead><tr class="border-b bg-gray-100"><th class="p-1.5 w-40">任務</th><th class="p-1.5">說明</th></tr></thead>
+                                <tbody>
+                                <tr v-for="j in labels.jobs" :key="j.key" class="border-b">
+                                    <td class="p-1.5 font-bold border-r">{{ j.label }}</td>
+                                    <td class="p-1.5">{{ j.description }}</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                            <table class="w-full text-xs text-left text-gray-600 border-collapse">
+                                <thead><tr class="border-b bg-gray-100"><th class="p-1.5 w-32">步驟</th><th class="p-1.5">說明</th></tr></thead>
+                                <tbody>
+                                <tr v-for="s in labels.steps" :key="s.key" class="border-b">
+                                    <td class="p-1.5 font-bold border-r">{{ s.label }}</td>
+                                    <td class="p-1.5">{{ s.description }}</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                </div>
+
                 <!-- 執行紀錄 -->
                 <div class="px-4">
-                    <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center justify-between mb-2 gap-3">
                         <p class="font-bold">執行紀錄</p>
-                        <button :disabled="isLoading" class="button is-small" v-on:click="loadJobs">重新整理</button>
+                        <div class="flex items-center gap-2">
+                            <select v-model="jobFilter" class="border rounded px-2 py-1 text-sm" v-on:change="onFilter">
+                                <option value="">全部任務</option>
+                                <option v-for="j in labels.jobs" :key="j.key" :value="j.key">{{ j.label }}</option>
+                            </select>
+                            <button :disabled="isLoading" class="button is-small" v-on:click="loadJobs">重新整理</button>
+                        </div>
                     </div>
                     <div v-if="isLoading && !jobs.length" class="border">
                         <loading-section></loading-section>
@@ -33,7 +68,7 @@
                             <thead class="font-bold sticky top-0 bg-white z-10">
                             <tr>
                                 <th>#</th>
-                                <th>job</th>
+                                <th>任務</th>
                                 <th>狀態</th>
                                 <th>步驟</th>
                                 <th>訊息</th>
@@ -48,9 +83,14 @@
                             <template v-for="job in jobs">
                                 <tr :key="job.id">
                                     <td>{{ job.id }}</td>
-                                    <td>{{ jobLabel(job.job) }}<span v-if="job.params && job.params.force" class="text-red-500"> force</span></td>
+                                    <td :title="jobDescription(job.job)" class="cursor-help">
+                                        {{ jobLabel(job.job) }}<span v-if="job.params && job.params.force" class="text-red-500"> force</span>
+                                    </td>
                                     <td><span :class="statusClass(job.status)" class="px-1.5 rounded">{{ statusLabel(job.status) }}</span></td>
-                                    <td>{{ job.currentStep }}</td>
+                                    <td :title="job.status === 'success' ? '' : stepDescription(job.currentStep)"
+                                        :class="{'cursor-help': job.status !== 'success' && job.currentStep}">
+                                        {{ job.status === 'success' ? '—' : stepLabel(job.currentStep) }}
+                                    </td>
                                     <td class="whitespace-normal min-w-[240px]">
                                         {{ job.message }}
                                         <span v-if="job.result && job.result.nameCount !== undefined" class="text-gray-500">
@@ -62,14 +102,17 @@
                                     <td>{{ job.finishedAt }}</td>
                                     <td>
                                         <span v-if="job.notifiedAt" :title="job.notifiedAt">已寄</span>
-                                        <span v-else-if="job.notifyError" class="text-red-500" :title="job.notifyError">寄送失敗</span>
+                                        <span v-else-if="job.notifyError" class="text-red-500 cursor-help" :title="job.notifyError">寄送失敗</span>
                                     </td>
-                                    <td class="flex gap-1">
-                                        <button class="button is-small" v-on:click="toggleLog(job)">{{ openLogId === job.id ? '收合 log' : 'log' }}</button>
-                                        <button v-if="job.exportPath && job.status !== 'running'" class="button is-small"
-                                                :disabled="downloadingId === job.id" v-on:click="onDownload(job)">
-                                            {{ job.status === 'success' ? '下載版本名錄檔' : '下載 issue CSV' }}
-                                        </button>
+                                    <td>
+                                        <!-- 按鈕包在 div 裡：td 本身改成 flex 會讓這格的格線斷掉 -->
+                                        <div class="flex gap-1">
+                                            <button class="button is-small" v-on:click="toggleLog(job)">{{ openLogId === job.id ? '收合 log' : 'log' }}</button>
+                                            <button v-if="job.exportPath && job.status !== 'running'" class="button is-small"
+                                                    :disabled="downloadingId === job.id" v-on:click="onDownload(job)">
+                                                {{ job.status === 'success' ? '下載版本名錄檔' : '下載 issue CSV' }}
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                                 <tr v-if="openLogId === job.id" :key="`log-${job.id}`">
@@ -80,6 +123,16 @@
                             </template>
                             <tr v-if="!jobs.length">
                                 <td colspan="10" class="text-center text-gray-400">{{ loadError || '沒有執行紀錄' }}</td>
+                            </tr>
+                            <tr v-if="total > 0">
+                                <td class="text-center has-text-weight-bold has-text-grey" colspan="10">
+                                    <pagination :key="`${jobFilter}-${pageKey}`"
+                                                :current-page="currentPage"
+                                                :per-page="perPage"
+                                                :total="total"
+                                                v-on:change="onChangePage"/>
+                                    <span class="caption" v-text="$t('common.totalRowsNumber', { total })"></span>
+                                </td>
                             </tr>
                             </tbody>
                         </table>
@@ -93,17 +146,9 @@
 import { defineComponent, inject, ref, computed, onMounted, onBeforeUnmount } from '@vue/composition-api';
 import Cookies from 'js-cookie';
 import LoadingSection from '../../components/LoadingSection.vue';
+import Pagination from '../../components/Pagination.vue';
 import { openNotify } from '../../utils';
 
-const JOB_LABELS = {
-    base: '每日文獻／學名更新',
-    taxon: '名錄更新',
-    release: '版本名錄',
-    usage_check: 'usage check',
-    ref: '文獻更新',
-    name: '學名更新',
-    taxon_tool: '名錄更新（管理工具）',
-};
 const STATUS = {
     queued: ['排隊中', 'bg-gray-200 text-gray-700'],
     running: ['執行中', 'bg-blue-100 text-blue-700'],
@@ -113,11 +158,14 @@ const STATUS = {
 };
 
 export default defineComponent({
-    components: { LoadingSection },
+    components: { LoadingSection, Pagination },
     setup() {
         const axios: any = inject('axios');
 
         const jobs = ref<any[]>([]);
+        const activeJob = ref<any>(null);
+        // 任務與步驟的名稱、說明由後端提供（與通知信同一份）
+        const labels = ref<any>({ jobs: [], steps: [] });
         const isLoading = ref(false);
         const loadError = ref('');
         const submitting = ref(false);
@@ -126,8 +174,14 @@ export default defineComponent({
         const logText = ref('');
         const downloadingId = ref<number | null>(null);
 
-        const activeJob = computed(() => jobs.value.find((j) => ['queued', 'running'].includes(j.status)));
+        const jobFilter = ref('');
+        const currentPage = ref(1);
+        const perPage = 20;
+        const total = ref(0);
+        const pageKey = ref(0);   // 改篩選時讓分頁元件回到第 1 頁
+
         const isBusy = computed(() => !!activeJob.value);
+        const find = (list, key) => (list || []).find((x) => x.key === key);
 
         let timer: any = null;
         const clearTimer = () => { if (timer) { clearInterval(timer); timer = null; } };
@@ -138,22 +192,42 @@ export default defineComponent({
 
         const loadJobs = () => {
             isLoading.value = true;
-            return axios.get('/update-service/jobs', { params: { limit: 30 } })
+            return axios.get('/update-service/jobs', {
+                params: { page: currentPage.value, per_page: perPage, job: jobFilter.value || undefined },
+            })
                 .then(({ data }) => {
                     jobs.value = data.jobs || [];
+                    total.value = data.total || 0;
+                    activeJob.value = data.active || null;
+                    if (data.labels) labels.value = data.labels;
                     loadError.value = '';
                     // 有任務在跑：每 10 秒更新；展開中的 log 一起更新
                     if (isBusy.value && !timer) timer = setInterval(loadJobs, 10000);
                     if (!isBusy.value) clearTimer();
-                    if (openLogId.value && jobs.value.some((j) => j.id === openLogId.value
-                        && ['queued', 'running'].includes(j.status))) loadLog(openLogId.value);
+                    if (activeJob.value && openLogId.value === activeJob.value.id) loadLog(openLogId.value);
                 })
                 .catch(({ message }) => { loadError.value = message || '無法取得執行紀錄'; clearTimer(); })
                 .finally(() => { isLoading.value = false; });
         };
 
+        const onFilter = () => {
+            currentPage.value = 1;
+            pageKey.value += 1;
+            openLogId.value = null;
+            loadJobs();
+        };
+
+        const onChangePage = (p) => {
+            if (p === currentPage.value) return;
+            currentPage.value = p;
+            openLogId.value = null;
+            loadJobs();
+        };
+
+        const jobLabel = (j) => (find(labels.value.jobs, j) || {}).label || j;
+
         const onStart = (job) => {
-            const label = JOB_LABELS[job];
+            const label = jobLabel(job);
             const forceText = job === 'release' && force.value ? '（force：略過 high issue 把關）' : '';
             if (!window.confirm(`確定要執行「${label}」${forceText}？`)) return;
             submitting.value = true;
@@ -211,10 +285,13 @@ export default defineComponent({
         onBeforeUnmount(clearTimer);
 
         return {
-            jobs, isLoading, loadError, submitting, force, openLogId, logText, downloadingId,
-            activeJob, isBusy,
-            loadJobs, onStart, toggleLog, onDownload,
-            jobLabel: (j) => JOB_LABELS[j] || j,
+            jobs, activeJob, labels, isLoading, loadError, submitting, force, openLogId, logText, downloadingId,
+            jobFilter, currentPage, perPage, total, pageKey, isBusy,
+            loadJobs, onFilter, onChangePage, onStart, toggleLog, onDownload,
+            jobLabel,
+            jobDescription: (j) => (find(labels.value.jobs, j) || {}).description || '',
+            stepLabel: (s) => (s ? (find(labels.value.steps, s) || {}).label || s : ''),
+            stepDescription: (s) => (find(labels.value.steps, s) || {}).description || '',
             statusLabel: (s) => (STATUS[s] || [s])[0],
             statusClass: (s) => (STATUS[s] || ['', ''])[1],
         };

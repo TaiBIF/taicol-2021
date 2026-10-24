@@ -13,15 +13,58 @@ use Illuminate\Support\Facades\Mail;
  */
 class UpdateJobNotifier
 {
+    /** job 的名稱與說明（通知信、名錄更新頁共用） */
     const JOB_LABELS = [
-        'base' => '每日文獻／學名更新（base）',
-        'taxon' => '名錄更新（taxon）',
-        'release' => '版本名錄（release）',
-        'usage_check' => 'usage check',
-        'ref' => '文獻更新（ref）',
-        'name' => '學名更新（name）',
-        'taxon_tool' => '名錄更新管理工具（taxon_tool）',
+        'base' => '每日文獻／學名更新',
+        'taxon' => '名錄更新',
+        'release' => '版本名錄',
+        'usage_check' => '學名使用檢查',
+        'ref' => '文獻更新',
+        'name' => '學名更新',
+        'taxon_tool' => '名錄更新（管理工具）',
     ];
+
+    const JOB_DESCRIPTIONS = [
+        'base' => '依序：文獻更新 → 學名更新。每天由排程執行。',
+        'taxon' => '依序：學名使用檢查 → 文獻更新 → 學名更新 → 名錄更新。',
+        'release' => '依序：學名使用檢查 → 全表檢核 → 產生下載檔（每兩個月一次）。',
+        'usage_check' => '只跑學名使用檢查（學名使用檢查頁的「開始檢查」）。',
+        'ref' => '只跑文獻更新，開發人員補跑用。',
+        'name' => '只跑學名更新，開發人員補跑用。',
+        'taxon_tool' => '只跑名錄更新（可指定分類群、只預檢等），開發人員補跑用。',
+    ];
+
+    /** 步驟（服務的 current_step）的名稱與說明 */
+    const STEP_LABELS = [
+        'usage_check' => '學名使用檢查',
+        'ref' => '文獻更新',
+        'name' => '學名更新',
+        'taxon' => '名錄更新',
+        'audit' => '全表檢核',
+        'download' => '產生下載檔',
+    ];
+
+    const STEP_DESCRIPTIONS = [
+        'usage_check' => '檢查文獻中學名使用（usage）的設定問題；有尚未勾選確認的問題就停下。',
+        'ref' => '把有異動的文獻整理成網站使用的文獻資料（api_citations）。',
+        'name' => '把有異動的學名整理成網站使用的學名資料（api_names）。',
+        'taxon' => '依最新文獻重新決定分類群、接受名與同物異名，更新名錄資料與網站搜尋（Solr）。',
+        'audit' => '對所有分類群跑資料檢核（api_taxon_issue）；有未處理的 high issue 時擋下版本名錄。',
+        'download' => '產生學名、物種、新舊學名編碼對照三個下載檔。',
+    ];
+
+    /** 給前端的名稱與說明（陣列：前端會把物件的 key 轉成 camelCase，用陣列保留原本的 key） */
+    public static function labels(): array
+    {
+        $rows = fn ($labels, $descs) => array_map(
+            fn ($k) => ['key' => $k, 'label' => $labels[$k], 'description' => $descs[$k] ?? ''],
+            array_keys($labels)
+        );
+        return [
+            'jobs' => $rows(self::JOB_LABELS, self::JOB_DESCRIPTIONS),
+            'steps' => $rows(self::STEP_LABELS, self::STEP_DESCRIPTIONS),
+        ];
+    }
 
     const STATUS_LABELS = [
         'blocked' => '已中止，需要處理',
@@ -75,7 +118,7 @@ class UpdateJobNotifier
             '環境' => ($job['env'] ?? '') === 'prod' ? '正式站' : '測試站',
             'job' => '#' . $job['id'] . ' ' . (self::JOB_LABELS[$job['job']] ?? $job['job']),
             '狀態' => self::STATUS_LABELS[$job['status']] ?? $job['status'],
-            '停在哪一步' => $job['current_step'] ?? '',
+            '停在哪一步' => self::STEP_LABELS[$job['current_step'] ?? ''] ?? ($job['current_step'] ?? ''),
             '訊息' => $job['message'] ?? '',
             '觸發方式' => ($job['trigger_by'] ?? '') === 'cron' ? '排程' : '手動',
             '開始／結束' => ($job['started_at'] ?? '') . ' ～ ' . ($job['finished_at'] ?? ''),

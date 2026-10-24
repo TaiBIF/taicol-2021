@@ -35,13 +35,32 @@ class UpdateServiceController extends Controller
         if (!UpdateServiceClient::enabled()) {
             return $this->unavailable();
         }
-        $limit = min(max((int) $request->get('limit', 30), 1), 200);
+        $perPage = min(max((int) $request->get('per_page', 20), 1), 100);
+        $page = max((int) $request->get('page', 1), 1);
+        $job = $request->get('job');
+        if ($job !== null && $job !== '' && !array_key_exists($job, UpdateJobNotifier::JOB_LABELS)) {
+            return response()->json(['message' => 'invalid job'], 422);
+        }
+
         try {
-            $res = UpdateServiceClient::jobs($limit, 'main');
+            $res = UpdateServiceClient::jobs($perPage, 'main', $job ?: null, ($page - 1) * $perPage);
+            // 執行中的任務不一定在這一頁／這個篩選裡：main 一次只跑一個，最新一筆就是
+            $latest = UpdateServiceClient::jobs(1, 'main')->json()[0] ?? null;
         } catch (\Throwable $e) {
             return $this->serviceError($e, 'GET /jobs');
         }
-        return response()->json(['jobs' => $res->json() ?? []], $res->status());
+        if (!$res->successful()) {
+            return response()->json(['message' => '更新服務回應錯誤'], 502);
+        }
+
+        return response()->json([
+            'jobs' => $res->json() ?? [],
+            'total' => (int) $res->header('X-Total-Count'),
+            'page' => $page,
+            'per_page' => $perPage,
+            'active' => $latest && in_array($latest['status'], ['queued', 'running'], true) ? $latest : null,
+            'labels' => UpdateJobNotifier::labels(),
+        ]);
     }
 
     public function show(int $id)
