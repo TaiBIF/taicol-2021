@@ -25,8 +25,8 @@ class UpdateJobNotifier
     ];
 
     const JOB_DESCRIPTIONS = [
-        'base' => '依序：文獻更新 → 學名更新。每天由排程執行。',
-        'taxon' => '依序：學名使用檢查 → 文獻更新 → 學名更新 → 名錄更新。',
+        'base' => '依序：文獻更新 → 學名更新。名錄更新已包含這兩步，這裡給手動補跑用。',
+        'taxon' => '依序：文獻更新 → 學名更新 → 學名使用檢查 → 名錄更新。每天凌晨 2 點由排程執行，也可手動執行。',
         'release' => '依序：學名使用檢查 → 全表檢核 → 產生下載檔（每兩個月一次）。',
         'usage_check' => '只跑學名使用檢查（學名使用檢查頁的「開始檢查」）。',
         'ref' => '只跑文獻更新，開發人員補跑用。',
@@ -42,6 +42,7 @@ class UpdateJobNotifier
         'taxon' => '名錄更新',
         'audit' => '全表檢核',
         'download' => '產生下載檔',
+        'schedule' => '排程等候',
     ];
 
     const STEP_DESCRIPTIONS = [
@@ -51,6 +52,7 @@ class UpdateJobNotifier
         'taxon' => '依最新文獻重新決定分類群、接受名與同物異名，更新名錄資料與網站搜尋（Solr）。',
         'audit' => '對所有分類群跑資料檢核（api_taxon_issue）；有未處理的 high issue 時擋下版本名錄。',
         'download' => '產生學名、物種、新舊學名編碼對照三個下載檔。',
+        'schedule' => '排程觸發時已有其他任務在執行；等到上限（2 小時）仍未結束，當天的排程略過。',
     ];
 
     /** 給前端的名稱與說明（陣列：前端會把物件的 key 轉成 camelCase，用陣列保留原本的 key） */
@@ -153,7 +155,7 @@ class UpdateJobNotifier
 
         if ($job['status'] === 'blocked') {
             if ($step === 'usage_check') {
-                return 'usage check 有尚未確認的問題，這次沒有更新。請到'
+                return 'usage check 有尚未確認的問題，這次名錄沒有更新（文獻、學名已更新）。請到'
                     . $link($usageUrl, '學名使用檢查') . '處理並勾選 is_checked，再重新執行。';
             }
             if ($step === 'audit') {
@@ -169,6 +171,11 @@ class UpdateJobNotifier
         }
 
         // failed
+        if ($step === 'schedule') {
+            return '排程觸發時一直有其他任務在執行，今天的排程略過，資料沒有更新（訊息裡寫了是哪個任務）。'
+                . '確認該任務結束後，到' . $link($pageUrl, '名錄更新頁') . '按「執行名錄更新」；'
+                . '或等明天的排程，會一併補上。';
+        }
         $hint = '程式執行失敗，請看下方 log 找出原因，修正後重新執行。';
         if (in_array($step, ['ref', 'name'], true)) {
             $hint .= '文獻／學名更新有失敗時水位不會推進，下次執行會重撈同一段，不會漏資料。';
