@@ -6,19 +6,64 @@
                     <p class="ml-4 font-bold text-3xl inline">{{ $t('header.adminMenu.updateService') }}</p>
                 </div>
 
+                <!-- 分頁：名錄更新／學名使用檢查 -->
+                <div class="px-4 mb-4 flex border-b">
+                    <button v-for="t in TABS" :key="t.key" v-on:click="setTab(t.key)"
+                            :class="tab === t.key ? 'border-blue-600 text-blue-700 font-bold' : 'border-transparent text-gray-500'"
+                            class="px-4 py-2 -mb-px border-b-2">
+                        {{ t.key === 'usage-check' ? $t('header.adminMenu.usageCheck') : t.label }}
+                        <span v-if="t.key === 'usage-check' && uncheckedCount" class="ml-1 px-1.5 rounded bg-red-100 text-red-700 text-xs">{{ uncheckedCount }}</span>
+                    </button>
+                </div>
+
+                <usage-check-tab v-if="tab === 'usage-check'" v-on:changed="loadStatus"/>
+
+                <template v-else>
+                <!-- 目前狀態 -->
+                <div class="px-4 mb-4">
+                    <div class="grid md:grid-cols-3 gap-3 text-sm">
+                        <div class="border rounded-md p-3">
+                            <p class="text-gray-500 mb-1">最後一次增量更新成功</p>
+                            <p v-if="status.incremental" class="font-bold">{{ status.incremental.at }}
+                                <span class="font-normal text-gray-500">（{{ jobLabel(status.incremental.job) }} #{{ status.incremental.jobId }}）</span></p>
+                            <p v-else class="text-gray-400">沒有紀錄</p>
+                        </div>
+                        <div class="border rounded-md p-3">
+                            <p class="text-gray-500 mb-1">上一次版本名錄檢核</p>
+                            <template v-if="status.audit">
+                                <p><span class="font-bold">{{ status.audit.finishedAt }}</span>
+                                    <span class="text-gray-500">（{{ jobLabel(status.audit.job) }} #{{ status.audit.jobId }}）</span></p>
+                                <p>{{ auditText(status.audit) }}</p>
+                                <p v-if="status.audit.stale" class="text-yellow-700">之後又跑過增量更新，檢核結果可能已過時</p>
+                            </template>
+                            <p v-else class="text-gray-400">還沒有檢核紀錄</p>
+                        </div>
+                        <div class="border rounded-md p-3">
+                            <p class="text-gray-500 mb-1">學名使用檢查未確認</p>
+                            <p v-if="status.usageCheck">
+                                <a href="#" v-on:click.prevent="setTab('usage-check')"
+                                   :class="status.usageCheck.unchecked ? 'text-red-600' : 'text-green-700'"
+                                   class="font-bold hover:underline">{{ status.usageCheck.unchecked }} 筆</a>
+                                <span class="text-gray-500">（上次檢查 {{ status.usageCheck.lastCheckedAt || '—' }}）</span>
+                            </p>
+                            <p v-if="status.usageCheck && status.usageCheck.unchecked" class="text-red-600">
+                                未確認時，增量更新與產生版本名錄會停在學名使用檢查</p>
+                        </div>
+                    </div>
+                    <p v-if="status.serviceError" class="text-red-600 text-sm mt-2">{{ status.serviceError }}</p>
+                </div>
+
                 <!-- 觸發 -->
-                <div class="px-4 mb-2 flex items-center gap-4">
-                    <button :disabled="isBusy || submitting" class="button" v-on:click="onStart('taxon')">執行名錄更新</button>
-                    <span v-if="activeJob" class="text-sm text-gray-500">
+                <div class="px-4 mb-2 flex flex-wrap items-center gap-3">
+                    <button :disabled="isBusy || submitting" class="button" v-on:click="onStart('taxon')">增量更新</button>
+                    <button :disabled="isBusy || submitting" class="button" v-on:click="onStart('audit')">版本名錄檢核</button>
+                    <button :disabled="isBusy || submitting" class="button" v-on:click="onStart('release')">產生版本名錄</button>
+                    <span :class="releaseHint.warn ? 'text-yellow-700' : 'text-gray-500'" class="text-sm">{{ releaseHint.text }}</span>
+                </div>
+                <div class="px-4 mb-4 text-sm text-gray-500 min-h-[1.25rem]">
+                    <span v-if="activeJob">
                         執行中：{{ jobLabel(activeJob.job) }} #{{ activeJob.id }}（{{ activeJob.currentStep ? stepLabel(activeJob.currentStep) : '排隊中' }}）
                     </span>
-                </div>
-                <div class="px-4 mb-4 flex items-center gap-4">
-                    <button :disabled="isBusy || submitting" class="button" v-on:click="onStart('release')">產生版本名錄</button>
-                    <label class="flex items-center gap-1 text-sm">
-                        <input type="checkbox" v-model="force" :disabled="isBusy || submitting">
-                        force：略過 high issue 把關
-                    </label>
                 </div>
 
                 <!-- job 與步驟說明 -->
@@ -94,7 +139,13 @@
                                     <td class="whitespace-normal min-w-[240px]">
                                         {{ job.message }}
                                         <span v-if="job.result && job.result.nameCount !== undefined" class="text-gray-500">
+                                            <template v-if="job.job === 'publish'">{{ job.result.month }}：</template>
                                             學名 {{ job.result.nameCount }}、物種 {{ job.result.taxonCount }}、臺灣存在 {{ job.result.taiwanSpeciesCount }} 種
+                                            <template v-if="job.job === 'release' && job.result.fileSizes">（{{ formatSizes(job.result.fileSizes) }}）</template>
+                                        </span>
+                                        <span v-if="job.result && job.result.audit"
+                                              :class="job.result.audit.blockingHigh ? 'text-yellow-700' : 'text-gray-500'">
+                                            檢核：{{ auditText(job.result.audit) }}
                                         </span>
                                     </td>
                                     <td>{{ job.triggerBy === 'cron' ? '排程' : '手動' }}</td>
@@ -110,8 +161,10 @@
                                             <button class="button is-small" v-on:click="toggleLog(job)">{{ openLogId === job.id ? '收合 log' : 'log' }}</button>
                                             <button v-if="job.exportPath && job.status !== 'running'" class="button is-small"
                                                     :disabled="downloadingId === job.id" v-on:click="onDownload(job)">
-                                                {{ job.status === 'success' ? '下載版本名錄檔' : '下載 issue CSV' }}
+                                                {{ exportLabel(job) }}
                                             </button>
+                                            <button v-if="job.job === 'release' && job.status === 'success'" class="button is-small"
+                                                    :disabled="isBusy || submitting" v-on:click="openPublish(job)">發佈到網站</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -138,16 +191,78 @@
                         </table>
                     </div>
                 </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- 發佈到網站：先看統計與這次檢核的 high 筆數再確認（high issue 的人工把關在這一步） -->
+        <div v-if="publishModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div class="bg-white rounded-md shadow-lg w-full max-w-2xl p-6 text-sm">
+                <p class="font-bold text-xl mb-3">發佈版本名錄到網站</p>
+                <div v-if="!preview" class="py-6"><loading-section></loading-section></div>
+                <template v-else>
+                    <p class="mb-3">
+                        版本名錄 job #{{ preview.releaseJobId }}　月份 <b>{{ preview.month }}</b>（檔名日期 {{ preview.date }}）
+                        <span v-if="preview.target">　發佈到 <b>{{ preview.target }}</b></span>
+                    </p>
+                    <table class="w-full border-collapse mb-3">
+                        <thead><tr class="border-b bg-gray-100"><th class="p-1.5 text-left">檔案</th><th class="p-1.5 text-right">大小</th></tr></thead>
+                        <tbody>
+                        <tr v-for="f in preview.files" :key="f.kind" class="border-b">
+                            <td class="p-1.5">{{ f.name }}</td><td class="p-1.5 text-right">{{ formatBytes(f.size) }}</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                    <table class="w-full border-collapse mb-3">
+                        <thead>
+                        <tr class="border-b bg-gray-100">
+                            <th class="p-1.5 text-left">統計</th>
+                            <th class="p-1.5 text-right">本次</th>
+                            <th class="p-1.5 text-right">上一次發佈<span v-if="preview.previous">（{{ preview.previous.month }}）</span></th>
+                            <th class="p-1.5 text-right">差異</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr v-for="row in statRows" :key="row.key" class="border-b">
+                            <td class="p-1.5">{{ row.label }}</td>
+                            <td class="p-1.5 text-right font-bold">{{ formatNumber(row.current) }}</td>
+                            <td class="p-1.5 text-right">{{ row.previous === null ? '—' : formatNumber(row.previous) }}</td>
+                            <td class="p-1.5 text-right">{{ row.diff }}</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                    <p v-if="!preview.previous" class="text-gray-500 mb-2">沒有上一次發佈的紀錄可以比較。</p>
+                    <div v-if="preview.audit" :class="preview.audit.blockingHigh ? 'bg-red-50 border-red-300 text-red-700' : 'bg-green-50 border-green-300 text-green-800'"
+                         class="border rounded-md p-3 mb-3">
+                        <p>這次檢核（{{ preview.audit.finishedAt }}）：<b>{{ auditText(preview.audit) }}</b></p>
+                        <p v-if="preview.audit.blockingHigh" class="mt-1">
+                            有未 ignore 的 high issue。請先確認 taxon_issues.csv（blocks_release=1 的列）可以接受，再發佈。
+                            <button class="button is-small ml-1" :disabled="downloadingId === publishFor.id"
+                                    v-on:click="onDownload(publishFor)">下載版本名錄檔（含 taxon_issues.csv）</button>
+                        </p>
+                    </div>
+                    <p v-else class="text-gray-500 mb-2">這次版本名錄沒有檢核筆數紀錄（修訂前產生的）。</p>
+                    <p v-if="preview.alreadyPublishedJobId" class="text-red-600 mb-2">這次版本名錄已發佈過（job #{{ preview.alreadyPublishedJobId }}），不能重複發佈。</p>
+                    <p class="text-gray-600 mb-4">網站已有同月份的下載紀錄時不會覆蓋，任務會停下並寄信通知。</p>
+                </template>
+                <div class="flex justify-end gap-2">
+                    <button class="button" :disabled="submitting" v-on:click="closePublish">取消</button>
+                    <button class="button is-primary" :disabled="!preview || !!preview.alreadyPublishedJobId || submitting"
+                            v-on:click="onPublish">確認發佈</button>
+                </div>
             </div>
         </div>
     </div>
 </template>
 <script lang="ts">
-import { defineComponent, inject, ref, computed, onMounted, onBeforeUnmount } from '@vue/composition-api';
+import { defineComponent, inject, ref, computed, watch, onMounted, onBeforeUnmount } from '@vue/composition-api';
 import Cookies from 'js-cookie';
 import LoadingSection from '../../components/LoadingSection.vue';
 import Pagination from '../../components/Pagination.vue';
 import { openNotify } from '../../utils';
+import UsageCheckTab from './UsageCheckTab.vue';
+
+const TABS = [{ key: 'update', label: '名錄更新' }, { key: 'usage-check', label: '' }];
 
 const STATUS = {
     queued: ['排隊中', 'bg-gray-200 text-gray-700'],
@@ -158,9 +273,37 @@ const STATUS = {
 };
 
 export default defineComponent({
-    components: { LoadingSection, Pagination },
-    setup() {
+    components: { LoadingSection, Pagination, UsageCheckTab },
+    setup(props, { root }) {
         const axios: any = inject('axios');
+
+        // 分頁：網址 ?tab=usage-check（舊的 /admin/usage-check 也轉到這裡）
+        const tabOf = (q) => (q === 'usage-check' ? 'usage-check' : 'update');
+        const tab = ref(tabOf(root.$route.query.tab));
+        const setTab = (t) => {
+            if (t === tab.value) return;
+            tab.value = t;
+            root.$router.replace({ query: { ...root.$route.query, tab: t === 'update' ? undefined : t } });
+        };
+        watch(() => root.$route.query.tab, (q) => { tab.value = tabOf(q); });
+
+        // 目前狀態：最後一次增量更新、上一次檢核、學名使用檢查未確認筆數
+        const status = ref<any>({});
+        const uncheckedCount = computed(() => (status.value.usageCheck || {}).unchecked || 0);
+        const loadStatus = () => axios.get('/update-service/status')
+            .then(({ data }) => { status.value = data || {}; })
+            .catch(() => { status.value = { serviceError: '無法取得目前狀態' }; });
+        const auditText = (a) => (a
+            ? `high ${a.high} 筆（未 ignore、原本會擋版本名錄 ${a.blockingHigh} 筆）、medium ${a.medium}、low ${a.low}`
+            : '');
+        // 「產生版本名錄」旁與確認視窗的提醒：沒跑過檢核、或檢核後又跑過增量更新
+        const releaseHint = computed(() => {
+            const a = status.value.audit;
+            if (!a) return { warn: true, text: '還沒有版本名錄檢核紀錄，建議先跑「版本名錄檢核」並處理 high issue' };
+            const base = `上一次檢核 ${a.finishedAt}：high ${a.high} 筆（未 ignore ${a.blockingHigh} 筆）`;
+            if (a.stale) return { warn: true, text: `${base}；之後又跑過增量更新，結果可能已過時` };
+            return { warn: !!a.blockingHigh, text: base };
+        });
 
         const jobs = ref<any[]>([]);
         const activeJob = ref<any>(null);
@@ -169,7 +312,6 @@ export default defineComponent({
         const isLoading = ref(false);
         const loadError = ref('');
         const submitting = ref(false);
-        const force = ref(false);
         const openLogId = ref<number | null>(null);
         const logText = ref('');
         const downloadingId = ref<number | null>(null);
@@ -181,6 +323,29 @@ export default defineComponent({
         const pageKey = ref(0);   // 改篩選時讓分頁元件回到第 1 頁
 
         const isBusy = computed(() => !!activeJob.value);
+
+        // 發佈到網站（Step 10）
+        const publishModal = ref(false);
+        const publishFor = ref<any>(null);
+        const preview = ref<any>(null);
+        const STAT_LABELS = [['nameCount', '學名筆數'], ['taxonCount', '物種筆數'], ['taiwanSpeciesCount', '臺灣存在種數']];
+        const formatNumber = (n) => (typeof n === 'number' ? n.toLocaleString() : '—');
+        const formatBytes = (n) => (typeof n === 'number' ? `${(n / 1024 / 1024).toFixed(1)} MB` : '—');
+        const formatSizes = (sizes) => ['name', 'taxon', 'namecode']
+            .filter((k) => sizes[k] !== undefined).map((k) => `${k} ${formatBytes(sizes[k])}`).join('、');
+        const statRows = computed(() => {
+            if (!preview.value) return [];
+            const cur = preview.value.stats || {};
+            const prev = preview.value.previous;
+            return STAT_LABELS.map(([key, label]) => {
+                const p = prev ? prev[key] : null;
+                const d = typeof p === 'number' && typeof cur[key] === 'number' ? cur[key] - p : null;
+                return {
+                    key, label, current: cur[key], previous: typeof p === 'number' ? p : null,
+                    diff: d === null ? '—' : `${d > 0 ? '+' : ''}${d.toLocaleString()}`,
+                };
+            });
+        });
         const find = (list, key) => (list || []).find((x) => x.key === key);
 
         let timer: any = null;
@@ -196,9 +361,11 @@ export default defineComponent({
                 params: { page: currentPage.value, per_page: perPage, job: jobFilter.value || undefined },
             })
                 .then(({ data }) => {
+                    const wasBusy = isBusy.value;
                     jobs.value = data.jobs || [];
                     total.value = data.total || 0;
                     activeJob.value = data.active || null;
+                    if (wasBusy && !isBusy.value) loadStatus(); // 任務剛結束：更新目前狀態
                     if (data.labels) labels.value = data.labels;
                     loadError.value = '';
                     // 有任務在跑：每 10 秒更新；展開中的 log 一起更新
@@ -226,21 +393,53 @@ export default defineComponent({
 
         const jobLabel = (j) => (find(labels.value.jobs, j) || {}).label || j;
 
+        const START_NOTES = {
+            taxon: '步驟：文獻 → 學名 → 學名使用檢查 → 名錄。',
+            audit: '只跑全表檢核，結果寫入 api_taxon_issue 並匯出 taxon_issues.csv；有 high issue 也不會擋下。',
+            release: '步驟：增量更新 → 全表檢核（不擋）→ 產生三個下載檔。high issue 在「發佈到網站」時再確認。',
+        };
         const onStart = (job) => {
             const label = jobLabel(job);
-            const forceText = job === 'release' && force.value ? '（force：略過 high issue 把關）' : '';
-            if (!window.confirm(`確定要執行「${label}」${forceText}？`)) return;
+            const lines = [`確定要執行「${label}」？`, START_NOTES[job]];
+            if (job === 'release') lines.push('', releaseHint.value.text);
+            if (!window.confirm(lines.join('\n'))) return;
             submitting.value = true;
-            const body: any = { job };
-            if (job === 'release') body.force = force.value;
-            axios.post('/update-service/jobs', body)
+            axios.post('/update-service/jobs', { job })
                 .then(({ data }) => {
                     openNotify(`已排入 ${label}（job #${data.id}）`);
-                    force.value = false;
                     return loadJobs();
                 })
                 .catch(({ status, message }) => {
                     if (status !== 403 && status !== 422) openNotify(message || '觸發失敗', 'is-danger');
+                    loadJobs();
+                })
+                .finally(() => { submitting.value = false; });
+        };
+
+        const openPublish = (job) => {
+            publishFor.value = job;
+            preview.value = null;
+            publishModal.value = true;
+            axios.get(`/update-service/jobs/${job.id}/publish-preview`)
+                .then(({ data }) => { preview.value = data; })
+                .catch(({ message }) => {
+                    publishModal.value = false;
+                    openNotify(message || '無法取得發佈資訊', 'is-danger');
+                });
+        };
+
+        const closePublish = () => { publishModal.value = false; };
+
+        const onPublish = () => {
+            submitting.value = true;
+            axios.post('/update-service/jobs', { job: 'publish', release_job_id: publishFor.value.id })
+                .then(({ data }) => {
+                    openNotify(`已排入版本名錄發佈（job #${data.id}）`);
+                    publishModal.value = false;
+                    return loadJobs();
+                })
+                .catch(({ status, message }) => {
+                    if (status !== 403 && status !== 422) openNotify(message || '發佈失敗', 'is-danger');
                     loadJobs();
                 })
                 .finally(() => { submitting.value = false; });
@@ -281,13 +480,20 @@ export default defineComponent({
             }
         };
 
-        onMounted(loadJobs);
+        const exportLabel = (job) => {
+            if (job.status !== 'success') return '下載 issue CSV';
+            return job.job === 'audit' ? '下載檢核結果' : '下載版本名錄檔';
+        };
+
+        onMounted(() => { loadJobs(); loadStatus(); });
         onBeforeUnmount(clearTimer);
 
         return {
-            jobs, activeJob, labels, isLoading, loadError, submitting, force, openLogId, logText, downloadingId,
+            TABS, tab, setTab, status, uncheckedCount, loadStatus, auditText, releaseHint, exportLabel, publishFor,
+            jobs, activeJob, labels, isLoading, loadError, submitting, openLogId, logText, downloadingId,
             jobFilter, currentPage, perPage, total, pageKey, isBusy,
             loadJobs, onFilter, onChangePage, onStart, toggleLog, onDownload,
+            publishModal, preview, statRows, openPublish, closePublish, onPublish, formatNumber, formatBytes, formatSizes,
             jobLabel,
             jobDescription: (j) => (find(labels.value.jobs, j) || {}).description || '',
             stepLabel: (s) => (s ? (find(labels.value.steps, s) || {}).label || s : ''),

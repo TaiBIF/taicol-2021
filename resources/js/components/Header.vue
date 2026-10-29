@@ -62,8 +62,6 @@
                                      v-text="$t('header.adminMenu.referenceImport')"/>
                         <router-link :to="{name: 'admin-taxon-names-import'}" class="item"
                                      v-text="$t('header.adminMenu.taxonNameImport')"/>
-                        <router-link :to="{name: 'admin-usage-check'}" class="item"
-                                     v-text="$t('header.adminMenu.usageCheck')"/>
                         <router-link :to="{name: 'admin-update-service'}" class="item"
                                      v-text="$t('header.adminMenu.updateService')"/>
                     </div>

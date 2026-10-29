@@ -6,18 +6,20 @@ use App\Http\Services\UpdateJobNotifier;
 use App\Http\Services\UpdateServiceClient;
 use App\UpdateJobNotification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 /**
- * 名錄更新（Step 07）
- * - 管理員：觸發 taxon／release、執行紀錄、log、下載匯出檔（auth.admin）
+ * 名錄更新（Step 07、Step 10）
+ * - 管理員：觸發 taxon（增量更新）／audit（版本名錄檢核）／release（產生版本名錄）／publish（發佈到網站）、
+ *   目前狀態、執行紀錄、log、下載匯出檔、發佈前預覽（auth.admin）
  * - 更新服務：job blocked／failed 時呼叫 notify，由這裡寄信給管理員（X-Notify-Token）
  */
 class UpdateServiceController extends Controller
 {
-    /** 後台可以觸發的 job；base 由排程跑，usage_check 在學名使用檢查頁 */
-    const TRIGGERABLE = ['taxon', 'release'];
+    /** 後台可以觸發的 job；usage_check 在學名使用檢查分頁（ReferenceUsageController）；publish 要帶 release_job_id */
+    const TRIGGERABLE = ['taxon', 'audit', 'release', 'publish'];
 
     private function unavailable()
     {
@@ -60,6 +62,45 @@ class UpdateServiceController extends Controller
             'per_page' => $perPage,
             'active' => $latest && in_array($latest['status'], ['queued', 'running'], true) ? $latest : null,
             'labels' => UpdateJobNotifier::labels(),
+        ]);
+    }
+
+    /**
+     * 名錄更新頁上方的「目前狀態」：最後一次增量更新成功時間、上一次版本名錄檢核（更新服務），
+     * 學名使用檢查未確認筆數（直接查 DB，條件同 ReferenceUsageController::getUncheckedUsage）。
+     * 更新服務連不到時，學名使用檢查的筆數照樣回傳，service_error 說明原因。
+     */
+    public function status()
+    {
+        $usage = [
+            'unchecked' => DB::table('api_usage_check')->where('is_checked', 0)->where('error_type', '!=', 11)->count(),
+            'last_checked_at' => DB::table('api_usage_check')->where('error_type', '=', 11)->max('updated_at'),
+        ];
+
+        $service = [];
+        $error = null;
+        if (!UpdateServiceClient::enabled()) {
+            $error = '尚未設定更新服務（UPDATE_SERVICE_ROOT）';
+        } else {
+            try {
+                $res = UpdateServiceClient::status();
+                if ($res->successful()) {
+                    $service = $res->json() ?? [];
+                } else {
+                    Log::error('[Update Service] GET /status ' . $res->status() . ' ' . $res->body());
+                    $error = '更新服務回應錯誤';
+                }
+            } catch (\Throwable $e) {
+                Log::error("[Update Service] GET /status failed: {$e->getMessage()}");
+                $error = '連不到更新服務';
+            }
+        }
+
+        return response()->json([
+            'incremental' => $service['incremental'] ?? null,
+            'audit' => $service['audit'] ?? null,
+            'usage_check' => $usage,
+            'service_error' => $error,
         ]);
     }
 
@@ -114,11 +155,18 @@ class UpdateServiceController extends Controller
         if (!UpdateServiceClient::enabled()) {
             return $this->unavailable();
         }
+        // 前端可能送 release_job_id 或 releaseJobId
+        if (!$request->has('release_job_id') && $request->has('releaseJobId')) {
+            $request->merge(['release_job_id' => $request->input('releaseJobId')]);
+        }
         $data = $request->validate([
             'job' => 'required|in:' . implode(',', self::TRIGGERABLE),
-            'force' => 'boolean',
+            'release_job_id' => 'required_if:job,publish|nullable|integer|min:1',
         ]);
-        $extra = $data['job'] === 'release' ? ['force' => (bool) ($data['force'] ?? false)] : [];
+        $extra = [];
+        if ($data['job'] === 'publish') {
+            $extra = ['release_job_id' => (int) $data['release_job_id']];
+        }
 
         try {
             $res = UpdateServiceClient::createJob($data['job'], $request->user()->id, $extra);
@@ -129,6 +177,14 @@ class UpdateServiceController extends Controller
         if ($res->status() === 202) {
             return response()->json(['id' => $res->json('id'), 'status' => 'queued'], 202);
         }
+        if ($res->status() === 409 && $res->json('detail')) {
+            // publish：這次版本名錄已發佈或正在發佈
+            return response()->json(['message' => $res->json('detail')], 409);
+        }
+        if (in_array($res->status(), [422, 503], true) && is_string($res->json('detail'))) {
+            // publish：只能發佈成功的版本名錄、找不到檔案、此環境未設定發佈
+            return response()->json(['message' => $res->json('detail')], $res->status());
+        }
         if ($res->status() === 409) {
             $active = $res->json('job') ?? [];
             return response()->json([
@@ -138,6 +194,24 @@ class UpdateServiceController extends Controller
         }
         Log::error('[Update Service] POST /jobs ' . $res->status() . ' ' . $res->body());
         return response()->json(['message' => $res->json('detail') ?? '更新服務回應錯誤'], $res->status() === 403 ? 403 : 502);
+    }
+
+    /** 發佈前預覽：月份、三個檔案與大小、本次統計、上一次發佈的統計（id 是成功的 release job） */
+    public function publishPreview(int $id)
+    {
+        if (!UpdateServiceClient::enabled()) {
+            return $this->unavailable();
+        }
+        try {
+            $res = UpdateServiceClient::publishPreview($id);
+        } catch (\Throwable $e) {
+            return $this->serviceError($e, "GET /jobs/{$id}/publish-preview");
+        }
+        if (!$res->successful()) {
+            $detail = $res->json('detail');
+            return response()->json(['message' => is_string($detail) ? $detail : '更新服務回應錯誤'], $res->status());
+        }
+        return response()->json($res->json());
     }
 
     /**

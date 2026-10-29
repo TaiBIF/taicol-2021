@@ -136,11 +136,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/update-usage-checked', 'ReferenceUsageController@updateUsageChecked');
 
         // 名錄更新（更新服務）
+        Route::get('/update-service/status', 'UpdateServiceController@status');
         Route::get('/update-service/jobs', 'UpdateServiceController@index');
         Route::post('/update-service/jobs', 'UpdateServiceController@store');
         Route::get('/update-service/jobs/{id}', 'UpdateServiceController@show')->whereNumber('id');
         Route::get('/update-service/jobs/{id}/log', 'UpdateServiceController@log')->whereNumber('id');
         Route::get('/update-service/jobs/{id}/export', 'UpdateServiceController@export')->whereNumber('id');
+        Route::get('/update-service/jobs/{id}/publish-preview', 'UpdateServiceController@publishPreview')->whereNumber('id');
     });
 
     Route::resource('/favorite-folders', 'FavoriteFolderController');

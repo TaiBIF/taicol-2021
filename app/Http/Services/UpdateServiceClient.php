@@ -56,6 +56,18 @@ class UpdateServiceClient
         return self::client()->get(self::url("/jobs/{$id}"));
     }
 
+    /** GET /status：最後一次增量更新、上一次版本名錄檢核（時間、筆數、之後是否又跑過增量更新） */
+    public static function status(): Response
+    {
+        return self::client()->get(self::url('/status'));
+    }
+
+    /** GET /jobs/{id}/publish-preview：發佈前的月份、檔案大小、本次與上一次發佈的統計（id 是 release job） */
+    public static function publishPreview(int $id): Response
+    {
+        return self::client()->get(self::url("/jobs/{$id}/publish-preview"));
+    }
+
     public static function log(int $id, int $tail = 200): Response
     {
         return self::client()->get(self::url("/jobs/{$id}/log"), ['tail' => $tail]);
