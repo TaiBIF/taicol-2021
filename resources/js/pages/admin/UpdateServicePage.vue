@@ -196,8 +196,13 @@
         </div>
 
         <!-- 發佈到網站：先看統計與這次檢核的 high 筆數再確認（high issue 的人工把關在這一步） -->
-        <div v-if="publishModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-            <div class="bg-white rounded-md shadow-lg w-full max-w-2xl p-6 text-sm">
+        <!-- 遮罩與層級用 inline style：不依賴 Tailwind 有沒有產生 bg-opacity／z-index 的 class -->
+        <div v-if="publishModal" v-on:click.self="!submitting && closePublish()"
+             style="position: fixed; inset: 0; z-index: 1000; background: rgba(17, 24, 39, 0.6);
+                    display: flex; align-items: center; justify-content: center; padding: 24px;">
+            <div class="bg-white rounded-md w-full max-w-2xl p-6 text-sm"
+                 style="max-height: calc(100vh - 48px); overflow-y: auto;
+                        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35); border-top: 4px solid #2563eb;">
                 <p class="font-bold text-xl mb-3">發佈版本名錄到網站</p>
                 <div v-if="!preview" class="py-6"><loading-section></loading-section></div>
                 <template v-else>
