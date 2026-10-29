@@ -278,14 +278,16 @@ export default defineComponent({
         const axios: any = inject('axios');
 
         // 分頁：網址 ?tab=usage-check（舊的 /admin/usage-check 也轉到這裡）
+        // root 的型別沒有 vue-router 的 $route／$router，轉成 any 使用
+        const vm: any = root;
         const tabOf = (q) => (q === 'usage-check' ? 'usage-check' : 'update');
-        const tab = ref(tabOf(root.$route.query.tab));
+        const tab = ref(tabOf(vm.$route.query.tab));
         const setTab = (t) => {
             if (t === tab.value) return;
             tab.value = t;
-            root.$router.replace({ query: { ...root.$route.query, tab: t === 'update' ? undefined : t } });
+            vm.$router.replace({ query: { ...vm.$route.query, tab: t === 'update' ? undefined : t } });
         };
-        watch(() => root.$route.query.tab, (q) => { tab.value = tabOf(q); });
+        watch(() => vm.$route.query.tab, (q) => { tab.value = tabOf(q); });
 
         // 目前狀態：最後一次增量更新、上一次檢核、學名使用檢查未確認筆數
         const status = ref<any>({});
