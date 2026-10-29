@@ -193,7 +193,8 @@ class UpdateServiceController extends Controller
             ], 409);
         }
         Log::error('[Update Service] POST /jobs ' . $res->status() . ' ' . $res->body());
-        return response()->json(['message' => $res->json('detail') ?? '更新服務回應錯誤'], $res->status() === 403 ? 403 : 502);
+        // 服務的 403 是「此環境未開放這個 job（ALLOWED_JOBS）」，不是使用者權限：改回 503，前端才會顯示服務的訊息
+        return response()->json(['message' => $res->json('detail') ?? '更新服務回應錯誤'], $res->status() === 403 ? 503 : 502);
     }
 
     /** 發佈前預覽：月份、三個檔案與大小、本次統計、上一次發佈的統計（id 是成功的 release job） */
