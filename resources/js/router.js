@@ -337,10 +337,20 @@ const routes = [
                 },
             },
             {
+                // 學名使用檢查已併入名錄更新頁的分頁；舊網址（含通知信、書籤）轉過去
                 name: 'admin-usage-check',
                 path: 'usage-check',
+                redirect: (to) => ({
+                    name: 'admin-update-service',
+                    params: { lang: to.params.lang },
+                    query: { tab: 'usage-check' },
+                }),
+            },
+            {
+                name: 'admin-update-service',
+                path: 'update-service',
                 component: () => import(
-                    /* webpackChunkName: "usage-check-page" */ './pages/admin/UsageCheckPage.vue'
+                    /* webpackChunkName: "update-service-page" */ './pages/admin/UpdateServicePage.vue'
                 ),
                 meta: {
                     backgroundColor: 'grey',

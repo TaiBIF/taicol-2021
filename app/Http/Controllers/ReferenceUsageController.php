@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Services\TaicolApiService;
+use App\Http\Services\UpdateServiceClient;
 use App\ImportUsageLog;
 use App\Http\Resources\PersonCollection;
 use App\Http\Resources\TaxonNameCollection;
@@ -731,6 +732,11 @@ class ReferenceUsageController extends Controller
             ->get();
         $lastUpdated = DB::table('api_usage_check')->where('error_type','=',11)->max('updated_at');
 
+        // 同一次檢查的所有列 updated_at 都等於 type 11 的時間；比它早的就是這次已不再檢出（修好了但還沒勾）
+        foreach ($rows as $row) {
+            $row->is_stale = $lastUpdated && $row->updated_at && $row->updated_at < $lastUpdated ? 1 : 0;
+        }
+
         return response()->json([
             'usages' => $rows,
             'last_updated' => $lastUpdated
@@ -739,6 +745,29 @@ class ReferenceUsageController extends Controller
 
     
     public function updateUsageCheck(Request $request) {
+
+        // 有設定更新服務：排入 usage_check job，前端輪詢 /update-service/jobs/{id}
+        if (UpdateServiceClient::enabled()) {
+            try {
+                $res = UpdateServiceClient::createJob('usage_check', $request->user()->id);
+            } catch (\Throwable $e) {
+                Log::error("[Update Service] POST /jobs usage_check failed: {$e->getMessage()}");
+                return response()->json(['message' => 'fail']);
+            }
+            if ($res->status() === 202) {
+                return response()->json(['message' => 'queued', 'job_id' => $res->json('id')]);
+            }
+            if ($res->status() === 409) {
+                $active = $res->json('job') ?? [];
+                return response()->json([
+                    'message' => 'busy',
+                    'job_id' => $active['id'] ?? null,
+                    'job' => $active['job'] ?? null,
+                ]);
+            }
+            Log::error('[Update Service] POST /jobs usage_check ' . $res->status() . ' ' . $res->body());
+            return response()->json(['message' => 'fail']);
+        }
 
         $url = TaicolApiService::url('/update_check_usage');
 
