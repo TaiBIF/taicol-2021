@@ -301,7 +301,7 @@ export default defineComponent({
             .then(({ data }) => { status.value = data || {}; })
             .catch(() => { status.value = { serviceError: '無法取得目前狀態' }; });
         const auditText = (a) => (a
-            ? `high ${a.high} 筆（未 ignore、原本會擋版本名錄 ${a.blockingHigh} 筆）、medium ${a.medium}、low ${a.low}`
+            ? `high ${a.high} 筆（未 ignore ${a.blockingHigh} 筆）、medium ${a.medium}、low ${a.low}`
             : '');
         // 「產生版本名錄」旁與確認視窗的提醒：沒跑過檢核、或檢核後又跑過增量更新
         const releaseHint = computed(() => {
