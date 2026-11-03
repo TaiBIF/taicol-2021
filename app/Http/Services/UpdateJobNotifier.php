@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 /**
- * 更新服務 job blocked／failed 的通知信：寄給所有啟用中的管理員
+ * 更新服務 job blocked／failed，或完成但有警告（warning）的通知信：寄給所有啟用中的管理員
  * 信裡寫清楚卡在哪一步、要做什麼，管理員不用先去看 log
  */
 class UpdateJobNotifier
@@ -24,7 +24,14 @@ class UpdateJobNotifier
         'ref' => '文獻更新',
         'name' => '學名更新',
         'taxon_tool' => '名錄更新（管理工具）',
+        'nomenmatch' => '重新觸發 NomenMatch',
+        'solr_resync' => '補同步 Solr',
+        'links' => '重跑相關連結',
+        'web_stats' => '重跑網站統計',
     ];
+
+    /** 名錄更新頁的任務篩選與說明只列這些（base、ref、name、taxon_tool 只有開發人員用 API 執行，不列） */
+    const LISTED_JOBS = ['taxon', 'audit', 'release', 'publish', 'usage_check', 'nomenmatch', 'solr_resync', 'links', 'web_stats'];
 
     const JOB_DESCRIPTIONS = [
         'base' => '依序：文獻更新 → 學名更新。名錄更新已包含這兩步，這裡給手動補跑用。',
@@ -36,6 +43,10 @@ class UpdateJobNotifier
         'ref' => '只跑文獻更新，開發人員補跑用。',
         'name' => '只跑學名更新，開發人員補跑用。',
         'taxon_tool' => '只跑名錄更新（可指定分類群、只預檢等），開發人員補跑用。',
+        'nomenmatch' => '增量更新完成後要通知 NomenMatch 更新，通知失敗時在該筆紀錄按「重新觸發 NomenMatch」。NomenMatch 會處理上次成功之後的所有更新，按一次就補齊。',
+        'solr_resync' => '名錄資料已更新、但網站搜尋（Solr）沒同步完時，按「補同步 Solr」把剩下的補上；可重複執行。',
+        'links' => '相關連結更新失敗時，在該筆紀錄按「重跑相關連結」，只處理那次更新到的分類群。',
+        'web_stats' => '網站統計更新失敗時，在該筆紀錄按「重跑網站統計」。',
     ];
 
     /** 步驟（服務的 current_step）的名稱與說明 */
@@ -48,6 +59,10 @@ class UpdateJobNotifier
         'download' => '產生下載檔',
         'schedule' => '排程等候',
         'publish' => '發佈到網站',
+        'nomenmatch' => '觸發 NomenMatch',
+        'solr_resync' => '補同步 Solr',
+        'links' => '相關連結',
+        'web_stats' => '網站統計',
     ];
 
     const STEP_DESCRIPTIONS = [
@@ -59,6 +74,10 @@ class UpdateJobNotifier
         'download' => '產生學名、物種、新舊學名編碼對照三個下載檔。',
         'schedule' => '排程觸發時已有其他任務在執行；等到上限（2 小時）仍未結束，當天的排程略過。',
         'publish' => '把三個下載檔上傳到網站後台，並新增三筆下載紀錄；網站已有這個月份時不會覆蓋。',
+        'nomenmatch' => '通知 NomenMatch 更新學名比對的資料（NomenMatch 在背景執行）。',
+        'solr_resync' => '把還沒同步到網站搜尋（Solr）的分類群補上。',
+        'links' => '更新分類群的相關連結。',
+        'web_stats' => '更新網站首頁的統計數字。',
     ];
 
     /** 給前端的名稱與說明（陣列：前端會把物件的 key 轉成 camelCase，用陣列保留原本的 key） */
@@ -69,7 +88,7 @@ class UpdateJobNotifier
             array_keys($labels)
         );
         return [
-            'jobs' => $rows(self::JOB_LABELS, self::JOB_DESCRIPTIONS),
+            'jobs' => $rows(array_intersect_key(self::JOB_LABELS, array_flip(self::LISTED_JOBS)), self::JOB_DESCRIPTIONS),
             'steps' => $rows(self::STEP_LABELS, self::STEP_DESCRIPTIONS),
         ];
     }
@@ -77,6 +96,15 @@ class UpdateJobNotifier
     const STATUS_LABELS = [
         'blocked' => '已中止，需要處理',
         'failed' => '執行失敗',
+        'warning' => '已完成，有項目需要處理',
+    ];
+
+    /** 警告的補救方式（code → 名錄更新頁的按鈕）；沒列的警告沒有按鈕，下次執行會自動重試 */
+    const WARNING_ACTION_LABELS = [
+        'nomenmatch' => '重新觸發 NomenMatch',
+        'solr_resync' => '補同步 Solr',
+        'links' => '重跑相關連結',
+        'web_stats' => '重跑網站統計',
     ];
 
     /** 啟用中的管理員 email；一個都沒有時退回 TAICOL_EMAIL */
@@ -131,14 +159,26 @@ class UpdateJobNotifier
             '觸發方式' => ($job['trigger_by'] ?? '') === 'cron' ? '排程' : '手動',
             '開始／結束' => ($job['started_at'] ?? '') . ' ～ ' . ($job['finished_at'] ?? ''),
         ];
+        if ($job['status'] === 'warning') {
+            unset($rows['停在哪一步']);   // 已跑完，沒有停下
+        }
         $table = '<table cellpadding="4" style="border-collapse:collapse">';
         foreach ($rows as $k => $v) {
             $table .= '<tr><td style="color:#666;white-space:nowrap">' . $e($k) . '</td><td>' . $e($v) . '</td></tr>';
         }
         $table .= '</table>';
 
-        $html = '更新服務的 job 沒有完成：<br><br>' . $table
-            . '<br><b>要處理的事</b><br>' . self::advice($job, $pageUrl, $usageUrl);
+        $warnings = $job['warnings'] ?? [];
+        if ($job['status'] === 'warning') {
+            $html = '更新服務的 job 已完成，主要資料都已更新，但有以下項目需要處理：<br><br>' . $table
+                . '<br>' . self::warningList($warnings, $pageUrl);
+        } else {
+            $html = '更新服務的 job 沒有完成：<br><br>' . $table
+                . '<br><b>要處理的事</b><br>' . self::advice($job, $pageUrl, $usageUrl);
+            if ($warnings) {
+                $html .= '<br><br>另外，執行過程中還有以下警告：<br>' . self::warningList($warnings, $pageUrl);
+            }
+        }
 
         if (!empty($job['log_tail'])) {
             $html .= '<br><br><b>log 最後幾行</b>'
@@ -147,6 +187,28 @@ class UpdateJobNotifier
         }
         $html .= '<br>執行紀錄與完整 log：<a href="' . $e($pageUrl) . '">' . $e($pageUrl) . '</a>';
         return $html;
+    }
+
+    /** 警告清單：每項寫明要按哪個按鈕，或沒有按鈕時怎麼辦 */
+    public static function warningList(array $warnings, string $pageUrl): string
+    {
+        $link = '<a href="' . e($pageUrl) . '">名錄更新頁</a>';
+        $items = '';
+        foreach ($warnings as $w) {
+            $text = '<b>' . e($w['message'] ?? $w['code'] ?? '') . '</b><br>';
+            $action = $w['action'] ?? null;
+            if ($action && isset(self::WARNING_ACTION_LABELS[$action])) {
+                $text .= "請到{$link}，在這筆紀錄按「" . e(self::WARNING_ACTION_LABELS[$action]) . '」。';
+            } else {
+                $text .= '下次執行會自動重試，不需要手動處理；如果連續幾天都出現，請把這封信轉給開發人員。';
+            }
+            if (!empty($w['ids_preview'])) {
+                $more = ($w['count'] ?? 0) > count($w['ids_preview']) ? ' 等，共 ' . (int) $w['count'] . ' 筆' : '';
+                $text .= '<br><span style="color:#666">' . e(implode(', ', $w['ids_preview'])) . e($more) . '</span>';
+            }
+            $items .= '<li style="margin-bottom:8px">' . $text . '</li>';
+        }
+        return '<ul>' . $items . '</ul>';
     }
 
     /** 依停下的步驟說明下一步要做什麼 */

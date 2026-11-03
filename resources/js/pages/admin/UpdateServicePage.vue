@@ -70,25 +70,25 @@
                 <div class="px-4 mb-4">
                     <details class="bg-gray-50 border rounded-md p-3 text-sm">
                         <summary class="font-bold cursor-pointer text-gray-700">任務與步驟說明</summary>
-                        <div class="mt-2 border-t pt-2 grid md:grid-cols-2 gap-4">
-                            <table class="w-full text-xs text-left text-gray-600 border-collapse">
-                                <thead><tr class="border-b bg-gray-100"><th class="p-1.5 w-40">任務</th><th class="p-1.5">說明</th></tr></thead>
-                                <tbody>
-                                <tr v-for="j in labels.jobs" :key="j.key" class="border-b">
-                                    <td class="p-1.5 font-bold border-r">{{ j.label }}</td>
-                                    <td class="p-1.5">{{ j.description }}</td>
-                                </tr>
-                                </tbody>
-                            </table>
-                            <table class="w-full text-xs text-left text-gray-600 border-collapse">
-                                <thead><tr class="border-b bg-gray-100"><th class="p-1.5 w-32">步驟</th><th class="p-1.5">說明</th></tr></thead>
-                                <tbody>
-                                <tr v-for="s in labels.steps" :key="s.key" class="border-b">
-                                    <td class="p-1.5 font-bold border-r">{{ s.label }}</td>
-                                    <td class="p-1.5">{{ s.description }}</td>
-                                </tr>
-                                </tbody>
-                            </table>
+                        <div class="mt-2 border-t pt-2 grid md:grid-cols-2 gap-6 text-xs text-gray-600">
+                            <div>
+                                <p class="font-bold text-gray-700 mb-1">任務</p>
+                                <dl>
+                                    <div v-for="j in labels.jobs" :key="j.key" class="flex gap-3 py-1.5 border-b last:border-b-0">
+                                        <dt class="w-36 shrink-0 font-bold">{{ j.label }}</dt>
+                                        <dd class="flex-1 min-w-0">{{ j.description }}</dd>
+                                    </div>
+                                </dl>
+                            </div>
+                            <div>
+                                <p class="font-bold text-gray-700 mb-1">步驟</p>
+                                <dl>
+                                    <div v-for="st in labels.steps" :key="st.key" class="flex gap-3 py-1.5 border-b last:border-b-0">
+                                        <dt class="w-28 shrink-0 font-bold">{{ st.label }}</dt>
+                                        <dd class="flex-1 min-w-0">{{ st.description }}</dd>
+                                    </div>
+                                </dl>
+                            </div>
                         </div>
                     </details>
                 </div>
@@ -131,7 +131,7 @@
                                     <td :title="jobDescription(job.job)" class="cursor-help">
                                         {{ jobLabel(job.job) }}<span v-if="job.params && job.params.force" class="text-red-500"> force</span>
                                     </td>
-                                    <td><span :class="statusClass(job.status)" class="px-1.5 rounded">{{ statusLabel(job.status) }}</span></td>
+                                    <td><span :class="statusClass(displayStatus(job))" class="px-1.5 rounded">{{ statusLabel(displayStatus(job)) }}</span></td>
                                     <td :title="job.status === 'success' ? '' : stepDescription(job.currentStep)"
                                         :class="{'cursor-help': job.status !== 'success' && job.currentStep}">
                                         {{ job.status === 'success' ? '—' : stepLabel(job.currentStep) }}
@@ -147,6 +147,15 @@
                                               :class="job.result.audit.blockingHigh ? 'text-yellow-700' : 'text-gray-500'">
                                             檢核：{{ auditText(job.result.audit) }}
                                         </span>
+                                        <ul v-if="warningsOf(job).length" class="mt-1 space-y-1">
+                                            <li v-for="(w, i) in warningsOf(job)" :key="i" class="text-yellow-800">
+                                                ⚠ {{ w.message }}
+                                                <button v-if="WARNING_ACTIONS[w.code]" class="button is-small ml-1"
+                                                        :disabled="isBusy || submitting"
+                                                        v-on:click="onRemedy(job, WARNING_ACTIONS[w.code])">{{ jobLabel(WARNING_ACTIONS[w.code]) }}</button>
+                                                <span v-else class="text-gray-500">（下次執行會自動重試；連續出現請轉給開發人員）</span>
+                                            </li>
+                                        </ul>
                                     </td>
                                     <td>{{ job.triggerBy === 'cron' ? '排程' : '手動' }}</td>
                                     <td>{{ job.startedAt }}</td>
@@ -275,6 +284,15 @@ const STATUS = {
     success: ['完成', 'bg-green-100 text-green-700'],
     blocked: ['已中止', 'bg-yellow-100 text-yellow-800'],
     failed: ['失敗', 'bg-red-100 text-red-700'],
+    warning: ['完成（有警告）', 'bg-yellow-100 text-yellow-800'],
+};
+
+// 警告 code → 補救任務（與更新服務 service/jobs.py 的 WARNING_ACTIONS 相同）
+const WARNING_ACTIONS = {
+    nomenmatch_trigger_failed: 'nomenmatch',
+    solr_sync_pending: 'solr_resync',
+    links_failed: 'links',
+    web_stats_failed: 'web_stats',
 };
 
 export default defineComponent({
@@ -404,14 +422,18 @@ export default defineComponent({
             taxon: '步驟：文獻 → 學名 → 學名使用檢查 → 名錄。',
             audit: '只跑全表檢核，結果寫入 api_taxon_issue 並匯出 taxon_issues.csv；有 high issue 也不會擋下。',
             release: '步驟：增量更新 → 全表檢核（不擋）→ 產生三個下載檔。high issue 在「發佈到網站」時再確認。',
+            nomenmatch: '通知 NomenMatch 更新；它會處理上次成功之後的所有更新。',
+            solr_resync: '把還沒同步到網站搜尋（Solr）的分類群補上。',
+            links: '重跑這次更新到的分類群的相關連結。',
+            web_stats: '重跑網站統計。',
         };
-        const onStart = (job) => {
+        const onStart = (job, extra = {}) => {
             const label = jobLabel(job);
             const lines = [`確定要執行「${label}」？`, START_NOTES[job]];
             if (job === 'release') lines.push('', releaseHint.value.text);
             if (!window.confirm(lines.join('\n'))) return;
             submitting.value = true;
-            axios.post('/update-service/jobs', { job })
+            axios.post('/update-service/jobs', { job, ...extra })
                 .then(({ data }) => {
                     openNotify(`已排入 ${label}（job #${data.id}）`);
                     return loadJobs();
@@ -422,6 +444,11 @@ export default defineComponent({
                 })
                 .finally(() => { submitting.value = false; });
         };
+
+        // 完成但有警告：result.warnings；補救按鈕（重跑相關連結要帶來源 job，從它的警告取分類群）
+        const warningsOf = (job) => ((job.result && job.result.warnings) || []);
+        const displayStatus = (job) => (job.status === 'success' && warningsOf(job).length ? 'warning' : job.status);
+        const onRemedy = (job, action) => onStart(action, action === 'links' ? { source_job_id: job.id } : {});
 
         const openPublish = (job) => {
             publishFor.value = job;
@@ -501,7 +528,7 @@ export default defineComponent({
             jobFilter, currentPage, perPage, total, pageKey, isBusy,
             loadJobs, onFilter, onChangePage, onStart, toggleLog, onDownload,
             publishModal, preview, statRows, openPublish, closePublish, onPublish, formatNumber, formatBytes, formatSizes,
-            jobLabel,
+            jobLabel, WARNING_ACTIONS, warningsOf, displayStatus, onRemedy,
             jobDescription: (j) => (find(labels.value.jobs, j) || {}).description || '',
             stepLabel: (s) => (s ? (find(labels.value.steps, s) || {}).label || s : ''),
             stepDescription: (s) => (find(labels.value.steps, s) || {}).description || '',

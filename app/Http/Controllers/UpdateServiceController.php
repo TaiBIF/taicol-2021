@@ -13,13 +13,14 @@ use Illuminate\Support\Facades\Validator;
 /**
  * 名錄更新（Step 07、Step 10）
  * - 管理員：觸發 taxon（增量更新）／audit（版本名錄檢核）／release（產生版本名錄）／publish（發佈到網站）、
+ *   完成但有警告時的補救（nomenmatch、solr_resync、links、web_stats，Step 13）、
  *   目前狀態、執行紀錄、log、下載匯出檔、發佈前預覽（auth.admin）
- * - 更新服務：job blocked／failed 時呼叫 notify，由這裡寄信給管理員（X-Notify-Token）
+ * - 更新服務：job blocked／failed，或完成但有警告（warning）時呼叫 notify，由這裡寄信給管理員（X-Notify-Token）
  */
 class UpdateServiceController extends Controller
 {
     /** 後台可以觸發的 job；usage_check 在學名使用檢查分頁（ReferenceUsageController）；publish 要帶 release_job_id */
-    const TRIGGERABLE = ['taxon', 'audit', 'release', 'publish'];
+    const TRIGGERABLE = ['taxon', 'audit', 'release', 'publish', 'nomenmatch', 'solr_resync', 'links', 'web_stats'];
 
     private function unavailable()
     {
@@ -155,17 +156,22 @@ class UpdateServiceController extends Controller
         if (!UpdateServiceClient::enabled()) {
             return $this->unavailable();
         }
-        // 前端可能送 release_job_id 或 releaseJobId
-        if (!$request->has('release_job_id') && $request->has('releaseJobId')) {
-            $request->merge(['release_job_id' => $request->input('releaseJobId')]);
+        // 前端可能送 release_job_id 或 releaseJobId（source_job_id 同理）
+        foreach (['release_job_id' => 'releaseJobId', 'source_job_id' => 'sourceJobId'] as $snake => $camel) {
+            if (!$request->has($snake) && $request->has($camel)) {
+                $request->merge([$snake => $request->input($camel)]);
+            }
         }
         $data = $request->validate([
             'job' => 'required|in:' . implode(',', self::TRIGGERABLE),
             'release_job_id' => 'required_if:job,publish|nullable|integer|min:1',
+            'source_job_id' => 'required_if:job,links|nullable|integer|min:1',
         ]);
         $extra = [];
         if ($data['job'] === 'publish') {
             $extra = ['release_job_id' => (int) $data['release_job_id']];
+        } elseif ($data['job'] === 'links') {
+            $extra = ['source_job_id' => (int) $data['source_job_id']];
         }
 
         try {
@@ -181,7 +187,7 @@ class UpdateServiceController extends Controller
             // publish：這次版本名錄已發佈或正在發佈
             return response()->json(['message' => $res->json('detail')], 409);
         }
-        if (in_array($res->status(), [422, 503], true) && is_string($res->json('detail'))) {
+        if (in_array($res->status(), [404, 422, 503], true) && is_string($res->json('detail'))) {
             // publish：只能發佈成功的版本名錄、找不到檔案、此環境未設定發佈
             return response()->json(['message' => $res->json('detail')], $res->status());
         }
@@ -231,7 +237,7 @@ class UpdateServiceController extends Controller
             'env' => 'required|string|max:10',
             'id' => 'required|integer',
             'job' => 'required|string|max:32',
-            'status' => 'required|in:blocked,failed',
+            'status' => 'required|in:blocked,failed,warning',
             'current_step' => 'nullable|string|max:32',
             'exit_code' => 'nullable|integer',
             'message' => 'nullable|string',
@@ -241,6 +247,12 @@ class UpdateServiceController extends Controller
             'finished_at' => 'nullable|string|max:19',
             'has_export' => 'nullable|boolean',
             'log_tail' => 'nullable|string',
+            'warnings' => 'nullable|array',
+            'warnings.*.code' => 'nullable|string|max:64',
+            'warnings.*.message' => 'nullable|string',
+            'warnings.*.action' => 'nullable|string|max:32',
+            'warnings.*.count' => 'nullable|integer',
+            'warnings.*.ids_preview' => 'nullable|array',
         ]);
         if ($validator->fails()) {
             return response()->json(['message' => 'invalid payload', 'errors' => $validator->errors()], 422);
