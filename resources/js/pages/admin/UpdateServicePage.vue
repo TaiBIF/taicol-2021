@@ -290,6 +290,7 @@ const STATUS = {
 // 警告 code → 補救任務（與更新服務 service/jobs.py 的 WARNING_ACTIONS 相同）
 const WARNING_ACTIONS = {
     nomenmatch_trigger_failed: 'nomenmatch',
+    nomenmatch_last_run_failed: 'nomenmatch',
     solr_sync_pending: 'solr_resync',
     links_failed: 'links',
     web_stats_failed: 'web_stats',
@@ -422,7 +423,7 @@ export default defineComponent({
             taxon: '步驟：文獻 → 學名 → 學名使用檢查 → 名錄。',
             audit: '只跑全表檢核，結果寫入 api_taxon_issue 並匯出 taxon_issues.csv；有 high issue 也不會擋下。',
             release: '步驟：增量更新 → 全表檢核（不擋）→ 產生三個下載檔。high issue 在「發佈到網站」時再確認。',
-            nomenmatch: '通知 NomenMatch 更新；它會處理上次成功之後的所有更新。',
+            nomenmatch: '通知 NomenMatch 更新並等它跑完（通常十幾分鐘，最多等 1 小時）；它會處理上次成功之後的所有更新。',
             solr_resync: '把還沒同步到網站搜尋（Solr）的分類群補上。',
             links: '重跑這次更新到的分類群的相關連結。',
             web_stats: '重跑網站統計。',

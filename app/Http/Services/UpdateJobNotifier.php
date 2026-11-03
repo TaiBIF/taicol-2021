@@ -43,7 +43,7 @@ class UpdateJobNotifier
         'ref' => '只跑文獻更新，開發人員補跑用。',
         'name' => '只跑學名更新，開發人員補跑用。',
         'taxon_tool' => '只跑名錄更新（可指定分類群、只預檢等），開發人員補跑用。',
-        'nomenmatch' => '增量更新完成後要通知 NomenMatch 更新，通知失敗時在該筆紀錄按「重新觸發 NomenMatch」。NomenMatch 會處理上次成功之後的所有更新，按一次就補齊。',
+        'nomenmatch' => '通知 NomenMatch 更新並等它跑完，成功才算完成。NomenMatch 會處理上次成功之後的所有更新，按一次就補齊。增量更新時通知失敗、或上次 NomenMatch 更新失敗時，在該筆紀錄按「重新觸發 NomenMatch」。',
         'solr_resync' => '名錄資料已更新、但網站搜尋（Solr）沒同步完時，按「補同步 Solr」把剩下的補上；可重複執行。',
         'links' => '相關連結更新失敗時，在該筆紀錄按「重跑相關連結」，只處理那次更新到的分類群。',
         'web_stats' => '網站統計更新失敗時，在該筆紀錄按「重跑網站統計」。',
@@ -74,7 +74,7 @@ class UpdateJobNotifier
         'download' => '產生學名、物種、新舊學名編碼對照三個下載檔。',
         'schedule' => '排程觸發時已有其他任務在執行；等到上限（2 小時）仍未結束，當天的排程略過。',
         'publish' => '把三個下載檔上傳到網站後台，並新增三筆下載紀錄；網站已有這個月份時不會覆蓋。',
-        'nomenmatch' => '通知 NomenMatch 更新學名比對的資料（NomenMatch 在背景執行）。',
+        'nomenmatch' => '通知 NomenMatch 更新學名比對的資料，並等它跑完（最多 1 小時）。',
         'solr_resync' => '把還沒同步到網站搜尋（Solr）的分類群補上。',
         'links' => '更新分類群的相關連結。',
         'web_stats' => '更新網站首頁的統計數字。',
@@ -242,6 +242,11 @@ class UpdateJobNotifier
             return '排程觸發時一直有其他任務在執行，今天的排程略過，資料沒有更新（訊息裡寫了是哪個任務）。'
                 . '確認該任務結束後，到' . $link($pageUrl, '名錄更新頁') . '按「增量更新」；'
                 . '或等明天的排程，會一併補上。';
+        }
+        if ($step === 'nomenmatch') {
+            return 'NomenMatch 這次沒有更新成功（原因見下方 log）。名錄本身已經更新，只有學名比對工具的資料還沒跟上。'
+                . '如果是暫時的問題（例如 NomenMatch 的 Solr 一時連不上），稍後到' . $link($pageUrl, '名錄更新頁') . '再按一次「重新觸發 NomenMatch」；'
+                . '再失敗就把信轉給開發人員。';
         }
         if ($step === 'publish') {
             return '發佈到網站失敗（網站後台沒有收到，或回傳錯誤），網站上的下載紀錄沒有新增。'
