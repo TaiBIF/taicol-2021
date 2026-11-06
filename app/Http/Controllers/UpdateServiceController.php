@@ -13,14 +13,14 @@ use Illuminate\Support\Facades\Validator;
 /**
  * 名錄更新（Step 07、Step 10）
  * - 管理員：觸發 taxon（增量更新）／audit（版本名錄檢核）／release（產生版本名錄）／publish（發佈到網站）、
- *   完成但有警告時的補救（nomenmatch、solr_resync、links、web_stats，Step 13）、
+ *   完成但有警告時的補救（nomenmatch、solr_resync、links、web_stats，Step 13）、更新生命大百科（taieol，Step 14）、
  *   目前狀態、執行紀錄、log、下載匯出檔、發佈前預覽（auth.admin）
  * - 更新服務：job blocked／failed，或完成但有警告（warning）時呼叫 notify，由這裡寄信給管理員（X-Notify-Token）
  */
 class UpdateServiceController extends Controller
 {
     /** 後台可以觸發的 job；usage_check 在學名使用檢查分頁（ReferenceUsageController）；publish 要帶 release_job_id */
-    const TRIGGERABLE = ['taxon', 'audit', 'release', 'publish', 'nomenmatch', 'solr_resync', 'links', 'web_stats'];
+    const TRIGGERABLE = ['taxon', 'audit', 'release', 'publish', 'nomenmatch', 'solr_resync', 'links', 'web_stats', 'taieol'];
 
     private function unavailable()
     {
