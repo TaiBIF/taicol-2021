@@ -28,10 +28,11 @@ class UpdateJobNotifier
         'solr_resync' => '補同步 Solr',
         'links' => '重跑相關連結',
         'web_stats' => '重跑網站統計',
+        'taieol' => '更新生命大百科',
     ];
 
     /** 名錄更新頁的任務篩選與說明只列這些（base、ref、name、taxon_tool 只有開發人員用 API 執行，不列） */
-    const LISTED_JOBS = ['taxon', 'audit', 'release', 'publish', 'usage_check', 'nomenmatch', 'solr_resync', 'links', 'web_stats'];
+    const LISTED_JOBS = ['taxon', 'audit', 'release', 'publish', 'usage_check', 'nomenmatch', 'solr_resync', 'links', 'web_stats', 'taieol'];
 
     const JOB_DESCRIPTIONS = [
         'base' => '依序：文獻更新 → 學名更新。名錄更新已包含這兩步，這裡給手動補跑用。',
@@ -47,6 +48,7 @@ class UpdateJobNotifier
         'solr_resync' => '名錄資料已更新、但網站搜尋（Solr）沒同步完時，按「補同步 Solr」把剩下的補上；可重複執行。',
         'links' => '相關連結更新失敗時，在該筆紀錄按「重跑相關連結」，只處理那次更新到的分類群。',
         'web_stats' => '網站統計更新失敗時，在該筆紀錄按「重跑網站統計」。',
+        'taieol' => '更新各分類群的生命大百科圖片。每季（2、5、8、11 月 1 號晚上 8 點）開始新的一輪，沒跑完的部分每晚 8 點由排程接續；也可手動執行。上一輪沒跑完時，手動執行會接續，不會從頭開始。',
     ];
 
     /** 步驟（服務的 current_step）的名稱與說明 */
@@ -63,6 +65,7 @@ class UpdateJobNotifier
         'solr_resync' => '補同步 Solr',
         'links' => '相關連結',
         'web_stats' => '網站統計',
+        'taieol' => '生命大百科圖片',
     ];
 
     const STEP_DESCRIPTIONS = [
@@ -78,6 +81,7 @@ class UpdateJobNotifier
         'solr_resync' => '把還沒同步到網站搜尋（Solr）的分類群補上。',
         'links' => '更新分類群的相關連結。',
         'web_stats' => '更新網站首頁的統計數字。',
+        'taieol' => '逐一查詢生命大百科，更新分類群的圖片資料。一次最多跑 5 小時，並在凌晨 1:30 前停下，進度會保留。',
     ];
 
     /** 給前端的名稱與說明（陣列：前端會把物件的 key 轉成 camelCase，用陣列保留原本的 key） */

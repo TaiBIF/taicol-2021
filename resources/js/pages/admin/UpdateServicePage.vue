@@ -58,6 +58,7 @@
                     <button :disabled="isBusy || submitting" class="button" v-on:click="onStart('taxon')">增量更新</button>
                     <button :disabled="isBusy || submitting" class="button" v-on:click="onStart('audit')">版本名錄檢核</button>
                     <button :disabled="isBusy || submitting" class="button" v-on:click="onStart('release')">產生版本名錄</button>
+                    <button :disabled="isBusy || submitting" class="button" v-on:click="onStart('taieol')">更新生命大百科</button>
                     <span :class="releaseHint.warn ? 'text-yellow-700' : 'text-gray-500'" class="text-sm">{{ releaseHint.text }}</span>
                 </div>
                 <div class="px-4 mb-4 text-sm text-gray-500 min-h-[1.25rem]">
@@ -427,6 +428,7 @@ export default defineComponent({
             solr_resync: '把還沒同步到網站搜尋（Solr）的分類群補上。',
             links: '重跑這次更新到的分類群的相關連結。',
             web_stats: '重跑網站統計。',
+            taieol: '一次最多跑 5 小時，並在凌晨 1:30 前停下，沒跑完的部分每晚 8 點由排程接續；上一輪沒跑完時會接續，不會從頭開始。執行中無法使用其他更新按鈕。',
         };
         const onStart = (job, extra = {}) => {
             const label = jobLabel(job);
