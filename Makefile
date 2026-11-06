@@ -12,6 +12,17 @@ STAG_WORKER := taicol-nametool-stag-worker
 PROD_APP    := taicol-nametool-app
 PROD_WORKER := taicol-nametool-worker
 
+.PHONY: dev-up dev-down dev-build stag-build stag-up stag-down stag-reload prod-build prod-up prod-down prod-reload
+
+# 換了 PHP／Blade／routes 或跑完 ./deploy.sh 之後，讓變更生效（不重建、不重啟 app）
+# 參數：$(1) app 容器、$(2) worker 容器
+define reload
+	docker exec $(1) php artisan optimize:clear
+	docker exec $(1) php artisan route:cache
+	docker exec $(1) php artisan view:cache
+	docker restart $(2)
+endef
+
 # 開發環境只清快取、不重建（改 route 時才不用一直重跑 route:cache）
 dev-up:
 	docker compose up -d
@@ -29,10 +40,10 @@ stag-build:
 
 stag-up:
 	docker compose -f staging.yml up -d
-	docker exec $(STAG_APP) php artisan optimize:clear
-	docker exec $(STAG_APP) php artisan route:cache
-	docker exec $(STAG_APP) php artisan view:cache
-	docker restart $(STAG_WORKER)
+	$(call reload,$(STAG_APP),$(STAG_WORKER))
+
+stag-reload:
+	$(call reload,$(STAG_APP),$(STAG_WORKER))
 
 stag-down:
 	docker compose -f staging.yml down
@@ -42,10 +53,10 @@ prod-build:
 
 prod-up:
 	docker compose -f production.yml up -d
-	docker exec $(PROD_APP) php artisan optimize:clear
-	docker exec $(PROD_APP) php artisan route:cache
-	docker exec $(PROD_APP) php artisan view:cache
-	docker restart $(PROD_WORKER)
+	$(call reload,$(PROD_APP),$(PROD_WORKER))
+
+prod-reload:
+	$(call reload,$(PROD_APP),$(PROD_WORKER))
 
 prod-down:
 	docker compose -f production.yml down
