@@ -1025,6 +1025,12 @@ class MyNamespaceUsageController extends Controller
         // 1 - 重新判斷一次需要新增的學名 並回傳給前端
 
         $jobLog = ImportAiLog::where('import_to_id', $namespaceId)->first();
+
+        // 已匯入過（例如使用者按瀏覽器上一頁回到此頁）：不再重新判斷、也不再 dispatch，直接回名錄編輯區
+        if (!$jobLog || $this->isAiUsageImported($jobLog)) {
+            return response(['finished' => true]);
+        }
+
         $fileUri = $jobLog->file_uri;
         $usageJson = json_decode(file_get_contents(public_path('usage_results/' . $fileUri . '.json')), true);
 
@@ -1101,6 +1107,18 @@ class MyNamespaceUsageController extends Controller
             // index() 靠這筆 AI log 的 status='added' 判斷是否還要導去補學名頁，收尾時由 Job 設回
             $aiLog = ImportAiLog::where('import_to_id', $namespaceId)->first();
 
+            // 防重複送出：已匯入完成，或同名錄已有匯入在處理中
+            $inProgress = ImportLog::where('type', 'namespace_usage_ai')
+                ->whereIn('status', ['pending', 'processing'])
+                ->where('context->namespace_id', (int) $namespaceId)
+                ->exists();
+            if (($aiLog && $this->isAiUsageImported($aiLog)) || $inProgress) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '此名錄的 AI 解析結果已匯入或正在匯入中，請勿重複送出',
+                ], 409);
+            }
+
             // 建名 + 匯入 usage 全部移到背景 Job，立即返回
             $log = ImportLog::create([
                 'type'              => 'namespace_usage_ai',
@@ -1126,6 +1144,20 @@ class MyNamespaceUsageController extends Controller
         }
     }
 
+    /**
+     * AI 解析結果是否已匯入名錄編輯區
+     * - status = added：經補學名流程由 Job 匯入完成
+     * - unmatched_name_count = 0：ProcessAiUsageRequest 解析完當下已直接匯入
+     */
+    private function isAiUsageImported(ImportAiLog $aiLog): bool
+    {
+        if ($aiLog->status === 'added') {
+            return true;
+        }
+        $unmatched = $aiLog->metadata['unmatched_name_count'] ?? null;
+        return $aiLog->status === 'completed' && $unmatched !== null && (int) $unmatched === 0;
+    }
+
     private function addNameAndUsageFromExcel(Request $request, $namespaceId, int $importLogId)
     {
         try {
@@ -1133,6 +1165,14 @@ class MyNamespaceUsageController extends Controller
                 ->where('user_id', $request->user()->id)
                 ->where('type', 'namespace_usage')
                 ->firstOrFail();
+
+            // 防重複送出：只有等待補學名的狀態才能送（舊分頁 / 上一頁快取的頁面再按送出會被擋）
+            if ($log->status !== 'awaiting_names') {
+                return response()->json([
+                    'success' => false,
+                    'message' => '此匯入已送出或已完成，請勿重複送出',
+                ], 409);
+            }
 
             $submitData = json_decode($request->getContent(), true) ?? [];
 

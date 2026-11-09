@@ -429,34 +429,32 @@ class ReferenceController extends Controller
             'doi' => 'required'
         ], ['required' => '必填']);
 
-        $doi = $request->get('doi');
-        $url = "https://api.crossref.org/works/$doi";
+        // 使用者可能貼完整網址，只留 DOI 本體
+        $doi = trim($request->get('doi'));
+        $doi = preg_replace('#^(https?://)?(dx\.)?doi\.org/|^doi:\s*#i', '', $doi);
 
-        // 2. 使用 Laravel Http Client 取代原生的 cURL (程式碼更簡潔、好讀)
-        $response = Http::timeout(120)->get($url);
+        // 2. 改用 doi.org content negotiation（CSL-JSON）：Crossref 以外，DataCite、JaLC 等註冊的 DOI 也查得到
+        $response = Http::timeout(120)
+            ->withHeaders(['Accept' => 'application/vnd.citationstyles.csl+json'])
+            ->get('https://doi.org/' . $doi);
 
-        // 如果找不到資源或解析失敗
-        if ($response->notFound() || $response->object() === null) {
+        // 找不到 DOI，或註冊機構不支援（回 HTML 頁面）
+        $data = $response->successful() ? $response->object() : null;
+        if (!$data || !isset($data->type)) {
             return response([
                 'message' => 'resourceNotFound',
             ])->setStatusCode(404);
         }
 
-        $jsonResult = $response->object();
-
-        // 檢查 API 狀態
-        if ($jsonResult->status !== 'ok') {
-            throw new \Exception('API 請求失敗或狀態異常');
-        }
-
-        // 3. 類型映射與檢查
+        // 3. 類型映射與檢查（CSL 類型名稱；保留 Crossref 原名以防萬一）
         $typeMapping = [
+            'article-journal' => Reference::TYPE_JOURNAL,
             'journal-article' => Reference::TYPE_JOURNAL,
+            'chapter'         => Reference::TYPE_BOOK_ARTICLE,
             'book-chapter'    => Reference::TYPE_BOOK_ARTICLE,
             'book'            => Reference::TYPE_BOOK,
+            'monograph'       => Reference::TYPE_BOOK,
         ];
-
-        $data = $jsonResult->message;
 
         if (!isset($typeMapping[$data->type])) {
             return response()->json([
@@ -466,8 +464,12 @@ class ReferenceController extends Controller
 
         $type = $typeMapping[$data->type];
         $authors = $data->author ?? [];
-        $publishYears = $data->published->{'date-parts'} ?? [];
-        $publishYear = $publishYears[0][0] ?? '';
+        // CSL 用 issued；其他欄位作為備援
+        $publishYear = '';
+        foreach (['issued', 'published-print', 'published-online', 'published'] as $dateKey) {
+            $publishYear = $data->{$dateKey}->{'date-parts'}[0][0] ?? '';
+            if ($publishYear) break;
+        }
         $authorPossible = [];
         $authorCandidates = [];
 
@@ -477,11 +479,18 @@ class ReferenceController extends Controller
             $family = $author->family ?? '';
 
             [$authorPossible[$key], $authorCandidates[$key]] = $this->matchAuthorCandidates($given, $family);
+
+            // 比對用原值；回傳給前端（顯示、新增作者預填）時把全大寫轉為字首大寫
+            $authors[$key]->given = $this->formatNameCase($given);
+            $authors[$key]->family = $this->formatNameCase($family);
         }
 
         // 5. 整理其他書籍/期刊資訊
-        $articleTitle = $data->title[0] ?? '';
-        $bookTitle = isset($data->{'container-title'}) ? implode(';', $data->{'container-title'}) : '';
+        // CSL 的 title / container-title 是字串（Crossref API 是陣列），兩種都接受
+        $toArray = fn($v) => is_array($v) ? $v : (($v ?? '') !== '' ? [$v] : []);
+        $articleTitle = $toArray($data->title ?? null)[0] ?? '';
+        $articleTitle = trim(html_entity_decode(strip_tags($articleTitle))); // 去掉 <i> 等標籤
+        $bookTitle = implode(';', $toArray($data->{'container-title'} ?? null));
 
         $book = Book::where('title', $bookTitle)->first();
         $bookAbbr = $book->title_abbreviation ?? '';
@@ -616,12 +625,16 @@ class ReferenceController extends Controller
                     // AI 偶爾會把沒有的欄位填成字串 "null"，統一清為空值
                     $data = $this->cleanAiNulls($data);
                     $metadata = $result['metadata'] ?? [];
+                    // 來源：doi（PDF 抽到 DOI 並查 DOI API 成功，未呼叫 Gemini）/ gemini
+                    $source = $result['source'] ?? 'gemini';
 
                     $jobLog->update([
                         'status' => 'completed',
                         'completed_at' => now(),
-                        'file_uri' => $result['file_uri'],
+                        'file_uri' => $result['file_uri'] ?? null,
                         'metadata' => array_merge($jobLog->metadata ?? [], [
+                            'source' => $source,
+                            'doi_lookup' => $metadata['doi_lookup'] ?? null,
                             'tokens_used' => $metadata['tokens_used'] ?? null,
                             'input_tokens' => $metadata['input_tokens'] ?? null,
                             'output_tokens' => $metadata['output_tokens'] ?? null,
@@ -675,9 +688,11 @@ class ReferenceController extends Controller
         }
 
 
-        // 更新API計數
-        Redis::incr($dailyKey);
-        Redis::expire($dailyKey, 86400);
+        // 更新API計數（DOI 來源沒有用到 Gemini，不計次）
+        if (($source ?? 'gemini') !== 'doi') {
+            Redis::incr($dailyKey);
+            Redis::expire($dailyKey, 86400);
+        }
 
         // 更新JobLog為成功
 
@@ -712,14 +727,9 @@ class ReferenceController extends Controller
             $rawGiven = $author['given'] ?? '';
             $rawFamily = $author['family'] ?? '';
 
-            // 1. 處理要回傳給前端的資料格式 (保留你原本的邏輯)
-            $displayGiven = $rawGiven ? 
-                ucwords(strtolower(str_replace(['.', ' '], '', $rawGiven)), '-') : '';
-            $displayFamily = $rawFamily ? 
-                ucwords(strtolower($rawFamily), '-') : '';
-            
-            $authors[$key]['given'] = $displayGiven;
-            $authors[$key]['family'] = $displayFamily;
+            // 1. 回傳給前端的姓名：與 DOI 匯入同一套規則（只把全大寫轉字首大寫，不移除空格與句點）
+            $authors[$key]['given'] = $this->formatNameCase($rawGiven);
+            $authors[$key]['family'] = $this->formatNameCase($rawFamily);
 
             // 2. 進行資料庫比對
             if ($rawGiven && $rawFamily) {
@@ -842,6 +852,19 @@ class ReferenceController extends Controller
                 'fileUrl' => $this->pdfUrl($filePath),
             ]
         ]);
+    }
+
+    /**
+     * 全大寫的姓名轉為字首大寫（LI → Li、HSIEN-EN → Hsien-En）
+     * 已有大小寫混合的（如 McDonald）維持原樣，避免改壞
+     */
+    private function formatNameCase(?string $name): string
+    {
+        $name = trim((string) $name);
+        if ($name === '' || mb_strtoupper($name) !== $name || mb_strtolower($name) === $name) {
+            return $name;
+        }
+        return mb_convert_case(mb_strtolower($name), MB_CASE_TITLE);
     }
 
     /**

@@ -74,6 +74,17 @@ class CreateNamesAndImportUsagesFromAiJob implements ShouldQueue
                 ? ImportAiLog::find($aiLogId)
                 : ImportAiLog::where('import_to_id', $namespaceId)->first();
 
+            // 最後一道防線：已匯入過就不再建名/匯入（避免重複送出造成重複 usage）
+            if ($aiLog && $aiLog->status === 'added') {
+                $log->update([
+                    'status'        => 'failed',
+                    'phase'         => null,
+                    'completed_at'  => now(),
+                    'error_message' => '此 AI 解析結果已匯入過，未重複匯入',
+                ]);
+                return;
+            }
+
             // 要跳過的 original_name
             $skipNames = collect($submitData)
                 ->filter(fn($item) => $item['skip'] ?? false)

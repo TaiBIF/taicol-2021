@@ -59,7 +59,6 @@
                     <button :disabled="isBusy || submitting" class="button" v-on:click="onStart('audit')">版本名錄檢核</button>
                     <button :disabled="isBusy || submitting" class="button" v-on:click="onStart('release')">產生版本名錄</button>
                     <button :disabled="isBusy || submitting" class="button" v-on:click="onStart('taieol')">更新生命大百科</button>
-                    <span :class="releaseHint.warn ? 'text-yellow-700' : 'text-gray-500'" class="text-sm">{{ releaseHint.text }}</span>
                 </div>
                 <div class="px-4 mb-4 text-sm text-gray-500 min-h-[1.25rem]">
                     <span v-if="activeJob">

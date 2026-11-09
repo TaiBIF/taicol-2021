@@ -282,7 +282,8 @@ export default {
                     // Excel 用既有 importLogId；AI 用後端回傳的新 log_id
                     // （axios 回應已轉為 camelCase，所以是 logId）
                     const pollLogId = importLogId || data.logId;
-                    this.$router.push({
+                    // 用 replace：不在歷史紀錄留下補學名頁，按上一頁不會再回到這裡
+                    this.$router.replace({
                         name: 'namespace-usage-list',
                         params: { id: this.$route.params.id },
                         query: pollLogId ? { poll_log: pollLogId } : {},
@@ -307,7 +308,8 @@ export default {
                 const { data: { data, nomenclatures, finished, logId } } = await this.axios.get(url);
 
                 if (finished) {
-                    this.$router.push({
+                    // 用 replace：不在歷史紀錄留下補學名頁，按上一頁不會再回到這裡
+                    this.$router.replace({
                         name: 'namespace-usage-list',
                         params: { id: this.$route.params.id },
                         query: logId ? { poll_log: logId } : {},

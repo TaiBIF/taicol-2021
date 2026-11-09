@@ -66,7 +66,7 @@
                         :multiple="false"
                         :errors="errors"
                         :value="isOutsideCandidates(key) ? [value[key]] : []"
-                        :authorData="{ given: author.given, family: author.family, index: key }"
+                        :authorData="{ given: author.given, family: author.family, index: key, year: publishYear }"
                         @input="(v) => select(key, Array.isArray(v) ? v[0] : v)"
                     />
                 </td>
@@ -87,6 +87,8 @@ export default {
         // 使用者選擇結果 { [index]: person }
         value: { type: Object, default: () => ({}) },
         errors: { type: Array, default: undefined },
+        // 文獻年份，新增作者時預填活躍年代（fl. 年份）
+        publishYear: { type: [String, Number], default: '' },
     },
     methods: {
         candidatesOf(key) {

@@ -29,13 +29,15 @@
                             <td class="no-wrap">作者</td>
                             <td>
                                 <!-- 作者比對：多筆相似人名時讓使用者確認（與 AI 匯入、DoiModal 共用） -->
+                                <!-- 提示放在表格上方，避免作者多時看不到 -->
+                                <p v-if="authorError" ref="authorErrorEl" class="help is-danger mb-2">{{ authorError }}</p>
                                 <author-match-table
                                     :authors="result.authors"
                                     :authors-possible="result.authorsPossible"
                                     :authors-candidates="result.authorsCandidates"
+                                    :publish-year="result.publishYear"
                                     v-model="selectedAuthors"
                                 />
-                                <p v-if="authorError" class="help is-danger mt-1">{{ authorError }}</p>
                             </td>
                         </tr>
                         <tr>
@@ -176,6 +178,8 @@ export default defineComponent({
             );
             if (unresolved.length) {
                 authorError.value = app.$t('aiImport.author.unresolved', { names: unresolved.join(app.$i18n.locale() === 'zh-tw' ? '、' : ', ') });
+                // 送出鈕在底部，捲回提示處讓使用者看到
+                app.$nextTick(() => context.refs.authorErrorEl?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
                 return;
             }
             authorError.value = '';

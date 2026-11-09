@@ -137,6 +137,14 @@ export default {
             if (this.authorData.family) {
                 presetData.lastName = this.authorData.family;
             }
+            // 母語全名預設「姓, 名」（西方人即為同字串，中文名再自行修改）
+            if (this.authorData.family || this.authorData.given) {
+                presetData.originalFullName = [this.authorData.family, this.authorData.given].filter(Boolean).join(', ');
+            }
+            // 活躍年代預設「fl. 文獻年份」
+            if (this.authorData.year) {
+                presetData.yearOfPublication = `fl. ${this.authorData.year}`;
+            }
 
 
             this.$store.commit('layer/ADD', {
