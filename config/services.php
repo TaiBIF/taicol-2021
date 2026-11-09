@@ -33,6 +33,8 @@ return [
     'gemini' => [
         'api_key' => env('GEMINI_API_KEY'),
         'daily_limit' => env('GEMINI_API_DAILY_LIMIT', 1000),
+        // AI 匯入功能開關：false 時前端隱藏入口、後端 API 回 403（緊急關閉用，改完 make prod-reload）
+        'enabled' => env('AI_IMPORT_ENABLED', true),
     ],
 
     // TaiCOL API（root 依環境設定，正式 / 測試站各自指向不同 API）

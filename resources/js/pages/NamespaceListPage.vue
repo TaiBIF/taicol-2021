@@ -5,7 +5,7 @@
                     v-on:click="isShowAddColumn = !isShowAddColumn">
                 <i class="fas fa-plus"></i>&nbsp;{{ $t('namespace.create') }}
             </button>
-            <button v-if="showStaging()" class="button items-end flex justify-center items-center"
+            <button v-if="aiImportEnabled()" class="button items-end flex justify-center items-center"
                     v-on:click="() => onFetchAIReference(true)">
                 <i class="fas fa-plus"></i>&nbsp;{{ $t('reference.aiImport') }}
             </button>
@@ -169,12 +169,9 @@ export default {
         this.$store.commit('breadcrumb/CLEAR_ITEMS');
     },
     methods: {
-        showStaging(){
-            if (!location.hostname.includes('nametool')){
-                return true
-            } else {
-                return false
-            }
+        // 由 .env 的 AI_IMPORT_ENABLED 控制（見 index.blade.php 的 window.APP_CONFIG）
+        aiImportEnabled() {
+            return !!(window.APP_CONFIG && window.APP_CONFIG.aiImportEnabled);
         },
         onFetchAIReference() {
             this.$store.commit('openModal', {
