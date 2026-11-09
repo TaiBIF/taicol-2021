@@ -303,7 +303,8 @@ class UsageAiImportService
                     $this->throwError($index, 'usage_references提供之文獻ID查無文獻');
                 }
 
-                $nowUsage = ['reference_id' => $usageReference[0]];
+                // str_getcsv 切出來都是字串，與介面一致存成 int
+                $nowUsage = ['reference_id' => (int) $usageReference[0]];
 
                 if ($usageReference[1] !== '') {
                     $nowUsage['show_page'] = $usageReference[1];

@@ -79,7 +79,7 @@
                                href="/example/usage-import.xlsx">{{ $t('namespace.exampleDownload') }}</a>
                         </li>
                         <li>支援檔案格式 xlsx, xls</li>
-                        <li>命名規約、階層、學名為必填
+                        <li>命名規約、階層、學名為必填；地位為 accepted 時，is_in_taiwan 也為必填
                             <ul class="description-list">
                                 <li>命名規約項目：ICZN、ICN、ICNP、ICVCN</li>
                             </ul>
@@ -91,7 +91,7 @@
                         </li>
                         <li>地位：accepted、not-accepted、misapplied、undetermined</li>
                         <li>外來屬性：native、naturalized、invasive、cultured</li>
-                        <li>標註：多個時以「,」分隔，並僅能匯入目前系統有的</li>
+                        <li>標註：多個時以「|」分隔，並僅能匯入目前系統有的</li>
                         <li>文獻格式：reference_id,show_page,figure,pro_parte|reference_id,show_page,figure,pro_parte
                             <ul class="description-list">
                                 <li>多筆時以「|」分隔</li>
@@ -114,7 +114,7 @@
                                 <li>範例：構樹(繁體中文,Taiwan)|鹿仔樹(繁體中文,)</li>
                             </ul>
                         </li>
-                        <li>是否選項：是 = 1, 否 = 0, 不選擇 = (留空值)</li>
+                        <li>是否選項：是 = 1, 否 = 0, 不知道 = (留空值)</li>
                     </ol>
                 </div>
             </div>
