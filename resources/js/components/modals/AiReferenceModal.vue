@@ -21,6 +21,10 @@
 
             <!-- 2. Guide 說明區域（移至上傳區域下方） -->
             <div v-if="!submitted" class="mt-6">
+                <!-- 測試階段提醒：Gemini 免費版可能忙碌或達上限 -->
+                <p class="notification is-warning is-light text-sm py-3 px-4 mb-4">
+                    {{ $t('aiImport.guide.betaNotice') }}
+                </p>
                 <ul class="guide-list">
                     <li>{{ $t('aiImport.guide.fileUpload') }}</li>
                     <li>{{ $t('aiImport.guide.redundancyCheck') }}</li>

@@ -1,6 +1,7 @@
 export default {
   guide: {
     title: "AI Import Tool - Guidelines & Workflow",
+    betaNotice: "This feature is currently in beta and uses the free tier of the Gemini API. If parsing fails because the model is busy or the usage limit has been reached, please try again later.",
     fileUpload: "File Upload: PDF max 20MB. For larger files, retain only the title and taxon treatment pages.",
     redundancyCheck: "Redundancy Check: System validates reference and name usage before parsing.",
     scenariosTitle: "Validation Scenarios:",
