@@ -930,6 +930,10 @@ class MyNamespaceUsageController extends Controller
 
     public function fetchUsageAi(Request $request)
     {
+        if (!config('services.gemini.enabled')) {
+            return response()->json(['message' => 'AI 匯入功能目前未開放'], 403);
+        }
+
         $referenceId = $request->input('reference_id');
         $userId = Auth::user()->id;
 

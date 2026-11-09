@@ -540,6 +540,10 @@ class ReferenceController extends Controller
 
     public function fetchReferenceAi(Request $request)
     {
+        if (!config('services.gemini.enabled')) {
+            return response()->json(['message' => 'AI 匯入功能目前未開放'], 403);
+        }
+
       
         // NOTE 這邊是測試用的
 

@@ -179,7 +179,7 @@ export default defineComponent({
             if (unresolved.length) {
                 authorError.value = app.$t('aiImport.author.unresolved', { names: unresolved.join(app.$i18n.locale() === 'zh-tw' ? '、' : ', ') });
                 // 送出鈕在底部，捲回提示處讓使用者看到
-                app.$nextTick(() => context.refs.authorErrorEl?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+                app.$nextTick(() => (context.refs.authorErrorEl as HTMLElement | undefined)?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
                 return;
             }
             authorError.value = '';

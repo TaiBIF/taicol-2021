@@ -19,6 +19,8 @@
             <layers></layers>
             <modal></modal>
         </div>
+        {{-- 執行期設定：前端只 build 一次、測試站與正式站共用，環境差異由後端帶入 --}}
+        <script>window.APP_CONFIG = @json(['aiImportEnabled' => (bool) config('services.gemini.enabled')]);</script>
         <script src="{{ mix('/js/app.js') }}"></script>
     </body>
     @include('ga')
