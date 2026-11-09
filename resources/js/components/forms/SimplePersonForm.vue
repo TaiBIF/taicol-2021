@@ -211,6 +211,12 @@ export default defineComponent({
             if (props.presetName.firstName) {
                 form.value.firstName = props.presetName.firstName;
             }
+            if (props.presetName.originalFullName) {
+                form.value.originalFullName = props.presetName.originalFullName;
+            }
+            if (props.presetName.yearOfPublication) {
+                form.value.yearOfPublication = props.presetName.yearOfPublication;
+            }
         }
 
         const isEdit = computed(() => !!form.value?.id);
