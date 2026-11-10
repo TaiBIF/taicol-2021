@@ -242,11 +242,7 @@
                                 <rank-select v-model="speciesLayer.rank"
                                              :disabled="isEdit"
                                              :errors="errors[`speciesLayers${index}RankAbbreviation`]"
-                                             :options="rankOptions
-                                                .filter(rank =>
-                                                    rank.order > speciesRank.order && rank.order >= targetRank.order
-                                                )
-                                "/>
+                                             :options="speciesLayerRankOptions"/>
                             </div>
                         </div>
 
@@ -641,7 +637,15 @@ export default {
             genusRank: 'rank/getGenusRank',
             speciesRank: 'rank/getSpeciesRank',
             kingdomRank: 'rank/getKingdomRank',
+            subspeciesRank: 'rank/getSubspeciesRank',
         }),
+        // 種下(下)階層選單：不論選擇哪個種下階層，都提供與「亞種」相同的清單（仍依法規的 rankOptions）
+        speciesLayerRankOptions() {
+            const minOrder = this.subspeciesRank?.order ?? this.speciesRank.order + 1;
+            return (this.rankOptions || []).filter(
+                (rank) => rank.order > this.speciesRank.order && rank.order >= minOrder,
+            );
+        },
         isEdit() {
             return !!this.id;
         },
