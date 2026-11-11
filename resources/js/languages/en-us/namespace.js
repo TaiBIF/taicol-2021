@@ -42,4 +42,12 @@ export default {
     usageExistsCannotImport: 'Import failed: Name usage already exists',
     continueToImportChecklist: 'Confirm the Binding and Continue to Import Checklist',
     addNameAndContinueToImportChecklist: 'Confirm Adding Names and Continue to Import Checklist',
+    continueToImportChecklist: 'Continue to Import Checklist',
+    noNameToAdd: 'No scientific names need to be added. You can continue to import.',
+    notCreatableTitle: 'The following names cannot be added here and will not be imported into \'My Checklist\'. If needed, please add them later when editing in \'My Checklist\':',
+    notCreatableReasonTitle: 'Reason',
+    notCreatableReason: {
+        hybrid_formula: 'Hybrid formula',
+        infra_infraspecies: 'Lower infraspecific name',
+    },
 };

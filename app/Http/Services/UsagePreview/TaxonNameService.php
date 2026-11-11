@@ -25,7 +25,12 @@ class TaxonNameService
         }
 
         // 處理 hybrid-formula
-        if (($taxonName['rank']['key'] ?? '') === 'hybrid-formula' && isset($taxonName['hybrid_parents'])) {
+        if (($taxonName['rank']['key'] ?? '') === 'hybrid-formula') {
+            // 缺雜交親本（例如舊的匯入資料）時直接顯示 name，避免匯出失敗
+            if (count($this->ensureArray($taxonName['hybrid_parents'] ?? [])) < 2) {
+                return htmlspecialchars($taxonName['name'] ?? '', ENT_NOQUOTES);
+            }
+
             $result = $this->renderTaxonNameLabel($taxonName['hybrid_parents'][0]);
             $result .= $this->renderAuthorName($taxonName['hybrid_parents'][0]);
             $result .= ' × ';

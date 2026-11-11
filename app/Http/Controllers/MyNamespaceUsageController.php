@@ -1057,6 +1057,7 @@ class MyNamespaceUsageController extends Controller
 
             return response([
                 'data' => $data,
+                'not_creatable' => $service->getNotCreatableScientificNames($processedData),
                 'nomenclatures' => Nomenclature::with('ranks','kingdoms')->get(),
             ]);
 

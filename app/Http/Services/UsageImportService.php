@@ -374,7 +374,10 @@ class UsageImportService
                 $taxonName = $taxonNames->first();
             } else {
                 $this->addError($row, self::UNMATCHED_MSG);
-                if (!$this->collectUnmatched($nomenclatureId, $rank, $name, $authorsString)) {
+                if ($rank === 'hybrid-formula') {
+                    // 雜交組合需要指定雜交親本，不提供批次新增 → 不收集，維持在錯誤檔
+                    $this->addError($row, '雜交組合無法使用批次新增學名');
+                } else if (!$this->collectUnmatched($nomenclatureId, $rank, $name, $authorsString)) {
                     $this->addError($row, '種下下無法使用批次新增學名');
                 }
             }

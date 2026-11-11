@@ -337,12 +337,19 @@ class TaxonNameService
         $taxonName = $this->taxonName;
 
         // 更新有關聯的 hybrid parent name
+        // 只有「雜交組合」的 name 是由親本組成；勾選雜交的屬、種有自己的學名，不能覆蓋
         $relatedTaxonNames = TaxonName::with(['hybridParents'])
+            ->whereHas('rank', function ($query) {
+                $query->where('key', 'hybrid-formula');
+            })
             ->whereHas('hybridParents', function ($query) use ($taxonName) {
                 $query->where('parent_taxon_name_id', $taxonName->id);
             })->get();
 
         foreach ($relatedTaxonNames as $name) {
+            if ($name->hybridParents->count() < 2) {
+                continue;
+            }
             $name->name = sprintf('%s × %s', $name->hybridParents[0]->name, $name->hybridParents[1]->name);
             $name->save();
         }

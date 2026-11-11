@@ -621,6 +621,12 @@ export default {
         async onExportUsages(){
 
             const response = await fetch(`/api/export/namespaces/${this.model.id}/usages`);
+            const contentType = response.headers.get('content-type') || '';
+            // 後端出錯時回傳的是 HTML / JSON 錯誤頁，不要存成 xlsx
+            if (!response.ok || contentType.includes('text/html') || contentType.includes('application/json')) {
+                openNotify('匯出失敗，請聯絡管理員', 'is-danger');
+                return;
+            }
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
 

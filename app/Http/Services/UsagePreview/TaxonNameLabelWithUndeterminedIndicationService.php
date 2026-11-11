@@ -18,7 +18,13 @@ class TaxonNameLabelWithUndeterminedIndicationService
         }
 
         // 處理 hybrid-formula
-        if (($taxonName['rank']['key'] ?? '') === 'hybrid-formula' && !empty($taxonName['hybrid_parents'])) {
+        if (($taxonName['rank']['key'] ?? '') === 'hybrid-formula') {
+            // 缺雜交親本（例如舊的匯入資料）時直接顯示 name，避免匯出失敗
+            // 註：空的 Collection 物件 empty() 會是 false，所以用 collect() 統一再算數量
+            if (count(collect($taxonName['hybrid_parents'] ?? [])) < 2) {
+                return htmlspecialchars($taxonName['name'] ?? '', ENT_NOQUOTES);
+            }
+
             $result = $this->render($taxonName['hybrid_parents'][0], $indication);
             // 這裡需要加入 AuthorName，但為了簡化先省略
             $result .= ' × ';

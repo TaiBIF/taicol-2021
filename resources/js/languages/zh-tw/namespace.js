@@ -41,4 +41,12 @@ export default {
     usageExistsCannotImport: '此文獻已有學名使用存在，不得匯入',
     continueToImportChecklist: '確認綁定並繼續匯入異名表',
     addNameAndContinueToImportChecklist: '確認新增學名並繼續匯入異名表',
+    continueToImportChecklist: '繼續匯入異名表',
+    noNameToAdd: '沒有需要新增的學名，可直接繼續匯入。',
+    notCreatableTitle: '以下學名無法在此批次新增，不會匯入「我的名錄」，如有需要請於我的名錄編輯時再新增：',
+    notCreatableReasonTitle: '原因',
+    notCreatableReason: {
+        hybrid_formula: '雜交組合',
+        infra_infraspecies: '種下下名',
+    },
 };

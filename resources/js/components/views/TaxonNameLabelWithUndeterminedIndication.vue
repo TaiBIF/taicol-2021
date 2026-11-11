@@ -1,6 +1,6 @@
 <template>
     <span>
-        <template v-if="taxonName.rank.key === 'hybrid-formula'">
+        <template v-if="taxonName.rank.key === 'hybrid-formula' && (taxonName.hybridParents || []).length >= 2">
             <taxon-name-label :indication="indication" :taxon-name="taxonName.hybridParents[0]"/>
             <author-name v-bind="{
                 authors: taxonName.hybridParents[0].authors,
@@ -18,6 +18,10 @@
                 originalTaxonName: taxonName.hybridParents[1].originalTaxonName,
                 publishYear: taxonName.hybridParents[1].publishYear,
             }"/>
+        </template>
+        <!-- 雜交組合缺雜交親本時直接顯示 name -->
+        <template v-else-if="taxonName.rank.key === 'hybrid-formula'">
+            <span>{{ taxonName.name }}</span>
         </template>
         <template v-else>
             <span v-html="name"></span>
