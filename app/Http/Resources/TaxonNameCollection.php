@@ -61,6 +61,7 @@ class TaxonNameCollection extends JsonResource
         // $spellingVariation = isset($this->properties['spelling_variation']) ? TaxonName::find($this->properties['spelling_variation']) : null;
 
         $genusTaxonName = isset($this->properties['genus_taxon_name_id']) ? TaxonName::find($this->properties['genus_taxon_name_id']) : null;
+        $cvTaxonName = isset($this->properties['cv_taxon_name_id']) ? TaxonName::find($this->properties['cv_taxon_name_id']) : null;
         $replacementName = isset($this->replacement_name) ? TaxonName::find($this->replacement_name) : null;
         $spellingVariation = isset($this->spelling_variation) ? TaxonName::find($this->spelling_variation) : null;
 
@@ -80,6 +81,7 @@ class TaxonNameCollection extends JsonResource
             ] : [],
             'original_taxon_name' => $this->originalTaxonName ? TaxonNameCollection::collection([$this->originalTaxonName])[0] : null,
             'genus_taxon_name' => $genusTaxonName ? new TaxonNameSimpleSubResource($genusTaxonName) : null,
+            'cv_taxon_name' => $cvTaxonName ? new TaxonNameSimpleSubResource($cvTaxonName) : null,
             'replacement_name' => $replacementName ? new TaxonNameSimpleSubResource($replacementName) : null,
             'spelling_variation' =>  $spellingVariation ? new TaxonNameSimpleSubResource($spellingVariation) : null,
             'rank' => $this->rank,

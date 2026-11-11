@@ -17,6 +17,24 @@ class TaxonNameLabelWithUndeterminedIndicationService
             return '';
         }
 
+        // 栽培植物（品種群 / 品種）：指示詞加在前綴分類群，後面接品種名（不斜體）
+        $rankKey = $taxonName['rank']['key'] ?? '';
+        if (in_array($rankKey, ['cultivar-group', 'cultivar'], true)) {
+            $cvTaxonName = $taxonName['cv_taxon_name'] ?? null;
+            if ($cvTaxonName instanceof \Illuminate\Http\Resources\Json\JsonResource) {
+                $cvTaxonName = $cvTaxonName->toArray(request());
+            }
+
+            $base = $cvTaxonName ? $this->render($cvTaxonName, $indication) : '';
+            $cvName = htmlspecialchars(trim($taxonName['properties']['cv_name'] ?? ''), ENT_NOQUOTES);
+            if ($cvName === '') {
+                return $base;
+            }
+
+            $suffix = $rankKey === 'cultivar-group' ? "({$cvName} Group)" : "'{$cvName}'";
+            return implode(' ', array_filter([$base, $suffix]));
+        }
+
         // 處理 hybrid-formula
         if (($taxonName['rank']['key'] ?? '') === 'hybrid-formula') {
             // 缺雜交親本（例如舊的匯入資料）時直接顯示 name，避免匯出失敗

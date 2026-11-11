@@ -210,6 +210,11 @@ class MyNamespaceUsageController extends Controller
 
                 if (!$taxonName) {
                     $fail('usage.wrongParent');
+                // 栽培植物（品種群 / 品種）
+                } else if (Rank::isCultivarKey($taxonName->rank->key)) {
+                    if (!$this->parentService->isValidCultivarParent($taxonName, $parentTaxonNameId)) {
+                        $fail('usage.wrongParent');
+                    }
                 } else if ($taxonName->rank->key === 'species' && !in_array($parentTaxonName->rank->key, $speciesParentKey)) {
                     $fail('usage.wrongParent');
                 // 種下

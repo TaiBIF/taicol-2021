@@ -47,6 +47,12 @@ class TaxonNameService
      */
     protected function buildTaxonName($taxonName)
     {
+        // 栽培植物（品種群 / 品種）：前綴分類群學名 + 品種名（不斜體、無命名者）
+        $rankKey = $taxonName['rank']['key'] ?? '';
+        if (in_array($rankKey, ['cultivar-group', 'cultivar'], true)) {
+            return $this->buildCultivarName($taxonName, $rankKey);
+        }
+
         $nomenclatureGroup = $taxonName['nomenclature']['group'] ?? '';
         
         if ($nomenclatureGroup === 'virus') {
@@ -126,6 +132,30 @@ class TaxonNameService
         }
 
         return implode(' ', array_filter([$prevName, $layers]));
+    }
+
+    /**
+     * 構建栽培植物學名
+     * 品種：[前綴分類群] '[cv_name]'
+     * 品種群：[前綴分類群] ([cv_name] Group)
+     */
+    protected function buildCultivarName($taxonName, $rankKey)
+    {
+        $cvTaxonName = $taxonName['cv_taxon_name'] ?? null;
+        if ($cvTaxonName instanceof \Illuminate\Http\Resources\Json\JsonResource) {
+            $cvTaxonName = $cvTaxonName->toArray(request());
+        }
+
+        $base = $cvTaxonName ? $this->buildTaxonName($cvTaxonName) : '';
+        $cvName = htmlspecialchars(trim($taxonName['properties']['cv_name'] ?? ''), ENT_NOQUOTES);
+
+        if ($cvName === '') {
+            return $base;
+        }
+
+        $suffix = $rankKey === 'cultivar-group' ? "({$cvName} Group)" : "'{$cvName}'";
+
+        return implode(' ', array_filter([$base, $suffix]));
     }
 
     /**

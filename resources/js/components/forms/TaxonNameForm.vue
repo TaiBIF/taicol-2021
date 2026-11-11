@@ -19,7 +19,8 @@
                     isHybrid,
                     authorsName: (!targetAuthors || !targetExAuthors || !targetOriginalTaxonName) ? authorsName : undefined,
                     initialYear,
-                    isApprovedList
+                    isApprovedList,
+                    cvName,
                 },
                 rank: targetRank,
                 hybridParents,
@@ -31,6 +32,7 @@
                 originalTaxonName: targetOriginalTaxonName,
                 publishYear: publishYear,
                 genusTaxonName: targetGenus,
+                cvTaxonName: targetCvTaxonName,
             }"/></p>
         <div class="hidden">
             <taxon-name-label v-if="targetRank && targetNomenclature" ref="preGenerateName" :taxon-name="{
@@ -39,6 +41,7 @@
                     latinGenus,
                     latinS1,
                     isHybrid,
+                    cvName,
                 },
                 rank: targetRank,
                 hybridParents,
@@ -49,6 +52,7 @@
                 speciesLayers,
                 originalTaxonName: targetOriginalTaxonName,
                 genusTaxonName: targetGenus,
+                cvTaxonName: targetCvTaxonName,
             }"/>
         </div>
         </div>
@@ -184,8 +188,34 @@
         </div>
         <div class="columns">
 
+            <!--  若為「品種群 / 品種」(ICNCP) -->
+            <div v-if="isCultivar" class="column is-8">
+                <div class="box">
+                    <div class="columns">
+                        <div class="column is-7">
+                            <div class="field">
+                                <label class="label is-marked" v-text="$t('taxonName.cvTaxon')"/>
+                                <cultivar-taxon-select v-model="targetCvTaxonName"
+                                                       :disabled="isEdit"
+                                                       :errors="errors.cvTaxonNameId"/>
+                            </div>
+                        </div>
+                        <div class="column is-5">
+                            <div class="field">
+                                <label class="label is-marked"
+                                       v-text="$t(isCultivarGroup ? 'taxonName.cvGroupName' : 'taxonName.cvName')"/>
+                                <general-input v-model="cvName"
+                                               :disabled="isEdit"
+                                               :errors="errors.cvName"
+                                               :placeholder="$t('taxonName.cvNamePlaceholder', {example: isCultivarGroup ? 'Botrytis' : 'Kaizuka'})"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!--  若為「種」以上 -->
-            <div v-if="isOverSpecies" class="column is-4">
+            <div v-else-if="isOverSpecies" class="column is-4">
                 <div class="field">
                     <label class="label is-marked">
                         {{ targetRank.display ? targetRank.display[$i18n.locale()] : '' }} {{ $t('taxonName.name') }}
@@ -541,6 +571,7 @@ import NomenclatureSelect from '../selects/NomenclatureSelect.vue';
 import GeneralInput from '../GeneralInput.vue';
 import KingdomSelect from '../selects/KingdomSelect.vue';
 import GenusSelect from '../selects/GenusSelect.vue';
+import CultivarTaxonSelect from '../selects/CultivarTaxonSelect.vue';
 import RankSelect from '../selects/RankSelect.vue';
 import TaxonNameSelect from '../selects/TaxonNameSelect.vue';
 import ReferenceSelect from '../selects/ReferenceSelect.vue';
@@ -594,6 +625,8 @@ export default {
             targetOriginalTaxonName: presetData?.originalTaxonName,
             targetKingdom: presetData?.kingdomTaxonName ?? null,
             targetGenus: presetData?.genusTaxonName ?? null,
+            targetCvTaxonName: presetData?.cvTaxonName ?? null,
+            cvName: presetData?.properties?.cvName || '',
 
             latinName: presetData?.properties?.latinName || '',
             latinGenus: presetData?.properties?.latinGenus || '',
@@ -676,8 +709,17 @@ export default {
             // 階層: (種以上)「屬」有勾選 Hybrid, (種)「種」有勾選 Hybrid, (雜交組合)
             return this.targetRank?.key === 'hybrid-formula' || this.isHybrid;
         },
+        isIcncp() {
+            return this.targetNomenclature?.name === 'ICNCP';
+        },
+        isCultivar() {
+            return ['cultivar-group', 'cultivar'].includes(this.targetRank?.key);
+        },
+        isCultivarGroup() {
+            return this.targetRank?.key === 'cultivar-group';
+        },
         isNeedOriginal() {
-            if (!this.targetRank) {
+            if (!this.targetRank || this.isIcncp) {
                 return false;
             }
 
@@ -694,12 +736,15 @@ export default {
             return this.targetNomenclature?.group === 'bacteria';
         },
         isNeedAuthors() {
+            if (this.isIcncp) return false;
             return this.targetNomenclature?.group !== 'virus';
         },
         isNeedExAuthors() {
+            if (this.isIcncp) return false;
             return this.targetNomenclature?.group === 'plant' || this.targetNomenclature?.group === 'bacteria';
         },
         isNeedReference() {
+            if (this.isIcncp) return false;
             return this.targetNomenclature?.group !== 'virus';
         },
         isNeedType() {
@@ -716,6 +761,7 @@ export default {
             return this.targetRank?.key === 'species';
         },
         isUnderSpecies() {
+            if (this.isCultivar) return false;
             return this.targetRank?.order > this.speciesRank.order;
         },
         isUnderKingdom() {
@@ -807,6 +853,8 @@ export default {
                 rankId: this.targetRank?.id || null,
                 kingdomTaxonNameId: this.targetKingdom?.id || null,
                 genusTaxonNameId: this.targetGenus?.id || null,
+                cvTaxonNameId: this.isCultivar ? (this.targetCvTaxonName?.id || null) : null,
+                cvName: this.isCultivar ? this.cvName.trim() : '',
                 authors: this.targetAuthors.map((a) => a.id),
                 exAuthors: this.targetExAuthors.map((a) => a.id),
                 isApprovedList: this.isApprovedList || false,
@@ -884,6 +932,11 @@ export default {
                 this.targetRank = null;
                 this.rankOptions = nomenclature?.ranks;
                 this.kingdomOptions = nomenclature?.kingdoms;
+
+                // ICNCP 新增時預選 Plantae
+                if (!this.isEdit && nomenclature?.name === 'ICNCP') {
+                    this.targetKingdom = (nomenclature?.kingdoms || []).find((k) => k.name === 'Plantae') ?? null;
+                }
             },
             deep: true,
         },
@@ -985,6 +1038,7 @@ export default {
         Tooltip,
         KingdomSelect,
         GenusSelect,
+        CultivarTaxonSelect,
     },
 };
 </script>
