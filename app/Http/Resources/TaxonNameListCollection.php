@@ -50,6 +50,7 @@ class TaxonNameListCollection extends JsonResource
 
         $species = $this->properties['species_id'] ? TaxonName::find($this->properties['species_id']) : null;
         $genusTaxonName = isset($this->properties['genus_taxon_name_id']) ? TaxonName::find($this->properties['genus_taxon_name_id']) : null;
+        $cvTaxonName = isset($this->properties['cv_taxon_name_id']) ? TaxonName::find($this->properties['cv_taxon_name_id']) : null;
 
         $commonNameUsage = $this->usages->first();
         $commonNameTw = collect($commonNameUsage->properties['common_names'] ?? [])->where('language', 'zh-tw')->first();
@@ -61,6 +62,7 @@ class TaxonNameListCollection extends JsonResource
             'reference' => ReferenceCollection::collection([$this->reference])->first(),
             'original_taxon_name' => $this->originalTaxonName ? TaxonNameCollection::collection([$this->originalTaxonName])[0] : null,
             'genus_taxon_name' => $genusTaxonName ? new TaxonNameSimpleSubResource($genusTaxonName) : null,
+            'cv_taxon_name' => $cvTaxonName ? new TaxonNameSimpleSubResource($cvTaxonName) : null,
             'rank' => $this->rank,
             'authors' => $this->authors->map(function ($author) {
                 return [

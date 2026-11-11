@@ -14,7 +14,9 @@
                     <i class="ml-3 fas fa-info-circle"></i>
                     <span v-html="$t('taxonName.bulkCreateNote3')"></span>
                 </div>
-                <table class="mt-1 table is-fullwidth is-hoverable has-text-left sticky-table">
+                <p v-if="presetData && presetData.length === 0" class="ml-3 my-4"
+                   v-text="$t('namespace.noNameToAdd')"/>
+                <table v-else class="mt-1 table is-fullwidth is-hoverable has-text-left sticky-table">
                     <thead>
                     <tr>
                         <th class="w-[60px]">
@@ -93,6 +95,30 @@
                     </tr>
                     </tbody>
                 </table>
+
+                <!-- 無法批次新增的學名（種下下、雜交組合）：不會新增，也不會匯入 -->
+                <div v-if="notCreatable.length" class="mt-6 ml-3">
+                    <p class="font-bold">
+                        <i class="fas fa-exclamation-triangle has-text-warning"></i>
+                        {{ $t('namespace.notCreatableTitle') }}
+                    </p>
+                    <table class="mt-2 table is-fullwidth has-text-left">
+                        <thead>
+                        <tr>
+                            <th>{{ $t('taxonName.name') }}</th>
+                            <th>{{ $t('taxonName.authors') }}</th>
+                            <th>{{ $t('namespace.notCreatableReasonTitle') }}</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr v-for="n in notCreatable" :key="n.latinName">
+                            <td>{{ n.latinName }}</td>
+                            <td>{{ n.formattedAuthors }}</td>
+                            <td>{{ $t('namespace.notCreatableReason.' + n.reason) }}</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
             <div class="form-footer">
                 <div class="buttons is-right">
@@ -103,7 +129,9 @@
                     <button class="button m-0"
                             :class="{ 'is-loading': isLoading }"
                             v-on:click="onSubmit(true)"
-                            v-text="$t('namespace.addNameAndContinueToImportChecklist')"/>
+                            v-text="presetData && presetData.length === 0
+                                ? $t('namespace.continueToImportChecklist')
+                                : $t('namespace.addNameAndContinueToImportChecklist')"/>
                 </div>
             </div>
         </div>
@@ -135,6 +163,7 @@ export default {
             headerKingdomOptions: [],
             formStatus: this.$c.PAGE_IS_LOADING,
             presetData: null,
+            notCreatable: [],
             isLoading: false,
             nomenclatures: null,
         };
@@ -241,8 +270,8 @@ export default {
             // 驗證必填欄位
             const invalidRows = [];
             submitData.forEach((row, index) => {
-                // 如果沒有 selectedName，就需要檢查必填欄位
-                if (!row.selected_name) {
+                // 略過的資料不檢查；沒有 selectedName，就需要檢查必填欄位
+                if (!row.skip && !row.selected_name) {
                     const missingFields = [];
                     
                     if (!row.latin_name) missingFields.push('學名');
@@ -305,7 +334,8 @@ export default {
                         + (importLogId ? `?import_log_id=${importLogId}` : '');
                         
                 // axios 回應已轉為 camelCase（log_id → logId）
-                const { data: { data, nomenclatures, finished, logId } } = await this.axios.get(url);
+                const { data: { data, nomenclatures, finished, logId, notCreatable } } = await this.axios.get(url);
+                this.notCreatable = notCreatable || [];
 
                 if (finished) {
                     // 用 replace：不在歷史紀錄留下補學名頁，按上一頁不會再回到這裡
@@ -322,7 +352,8 @@ export default {
 
                 this.presetData = data.map(p => {
                 const nomenclature = nomenclatures.find(n => n.id === p.nomenclature)
-                const rank = nomenclature.ranks.find(n => n.key === p.rank)
+                // 選單不提供雜交組合（id 47），預設值也不帶入
+                const rank = nomenclature.ranks.find(n => n.key === p.rank && n.id !== 47)
                 const kingdom = nomenclature.kingdoms.find(n => n.name === p.kingdom) ?? null;
 
                 // 設定表頭預設值為第一筆的 nomenclature

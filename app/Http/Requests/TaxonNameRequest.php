@@ -24,6 +24,9 @@ class TaxonNameRequest extends FormRequest
         $hybridParents = array_filter($this->get('hybrid_parents', []));
         $id = $this->get('id');
 
+        // 栽培植物（品種群 / 品種）
+        $isCultivar = $rank && Rank::isCultivarKey($rank->key);
+
         return [
             'nomenclature_id' => 'required|integer|exists:nomenclatures,id',
             'rank_id' => 'required|integer|exists:ranks,id',
@@ -43,6 +46,29 @@ class TaxonNameRequest extends FormRequest
                 Rule::requiredIf(
                     in_array($rank->id, [31, 32, 33]) && $nomenclature->group === 'plant'
                 ),
+            ],
+            'cv_taxon_name_id' => [
+                Rule::requiredIf($isCultivar),
+                'nullable',
+                function ($attribute, $value, $fail) use ($id, $isCultivar) {
+                    if (!$isCultivar || !$value) return;
+                    if ($id && (int) $id === (int) $value) {
+                        $fail('common.selfNotAllowed');
+                        return;
+                    }
+                    $cvTaxonName = \App\TaxonName::whereNull('deleted_at')->find($value);
+                    if (!$cvTaxonName
+                        || $cvTaxonName->nomenclature_id != 2
+                        || $cvTaxonName->rank_id < Rank::CV_TAXON_RANK_ID_MIN
+                        || $cvTaxonName->rank_id > Rank::CV_TAXON_RANK_ID_MAX) {
+                        $fail('taxonName.wrongCvTaxon');
+                    }
+                },
+            ],
+            'cv_name' => [
+                Rule::requiredIf($isCultivar),
+                'nullable',
+                'string',
             ],
             'replacement_name' => [
                 'nullable',
@@ -85,7 +111,8 @@ class TaxonNameRequest extends FormRequest
                 'exists:taxon_names,id'
             ],
             'latin_name' => [
-                Rule::requiredIf(function () use ($rank, $speciesRank) {
+                Rule::requiredIf(function () use ($rank, $speciesRank, $isCultivar) {
+                    if ($isCultivar) return false;
                     return $rank && $rank->order < $speciesRank->order;
                 }),
             ],
@@ -102,7 +129,8 @@ class TaxonNameRequest extends FormRequest
                 }),
             ],
             'species_id' => [
-                Rule::requiredIf(function () use ($rank, $speciesRank) {
+                Rule::requiredIf(function () use ($rank, $speciesRank, $isCultivar) {
+                    if ($isCultivar) return false;
                     return $rank && $rank->order > $speciesRank->order
                         && $rank->key != 'hybrid-formula';
                 }),

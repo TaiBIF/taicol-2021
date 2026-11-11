@@ -2,11 +2,42 @@
 
 namespace App\Http\Services;
 
+use App\Rank;
 use App\TaxonName;
 use Illuminate\Support\Facades\DB;
 
 class ParentTaxonService
 {
+    /**
+     * 栽培植物（品種群 / 品種）的上階層限制
+     * - 品種群：cv_taxon_name_id
+     * - 品種：cv_taxon_name_id，或相同 cv_taxon_name_id 的品種群
+     * 未填上階層則不檢查
+     */
+    public function isValidCultivarParent(TaxonName $taxonName, $parentTaxonNameId): bool
+    {
+        if (!$parentTaxonNameId) {
+            return true;
+        }
+
+        $cvTaxonNameId = (int) ($taxonName->properties['cv_taxon_name_id'] ?? 0);
+
+        if ((int) $parentTaxonNameId === $cvTaxonNameId) {
+            return true;
+        }
+
+        if ($taxonName->rank && $taxonName->rank->key === Rank::KEY_CULTIVAR) {
+            $parent = TaxonName::with('rank')->find($parentTaxonNameId);
+
+            return $parent
+                && $parent->rank
+                && $parent->rank->key === Rank::KEY_CULTIVAR_GROUP
+                && (int) ($parent->properties['cv_taxon_name_id'] ?? 0) === $cvTaxonNameId;
+        }
+
+        return false;
+    }
+
     /**
      * 解析單一 taxon_name 的 parent
      */
@@ -121,6 +152,11 @@ class ParentTaxonService
      */
     private function fallbackByProperties(TaxonName $nowName): ?int
     {
+        // 栽培植物（品種群 / 品種）：預設為前綴分類群
+        if (!empty($nowName->properties['cv_taxon_name_id'])) {
+            return (int) $nowName->properties['cv_taxon_name_id'];
+        }
+
         $nomenclatureId = $nowName->nomenclature_id;
         $speciesLayer = $nowName->properties['species_layers'] ?? [];
 
@@ -157,6 +193,12 @@ class ParentTaxonService
             $nowName = $names[$id] ?? null;
             if (!$nowName || $nowName->nomenclature_id == 4) {
                 $result[$id] = null;
+                continue;
+            }
+
+            // 栽培植物（品種群 / 品種）：預設為前綴分類群
+            if (!empty($nowName->properties['cv_taxon_name_id'])) {
+                $result[$id] = (int) $nowName->properties['cv_taxon_name_id'];
                 continue;
             }
 

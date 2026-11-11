@@ -15,6 +15,9 @@ export default {
         getGenusRank(state) {
             return state.items.find(rank => rank.key === 'genus');
         },
+        getSubspeciesRank(state) {
+            return state.items.find(rank => rank.key === 'subspecies');
+        },
     },
 
     mutations: {

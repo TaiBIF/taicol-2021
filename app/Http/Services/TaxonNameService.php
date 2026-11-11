@@ -142,8 +142,26 @@ class TaxonNameService
             $typeSpecimens = [];
         }
 
+        // 栽培植物（品種群 / 品種）
+        $isCultivar = Rank::isCultivarKey($rank->key);
+        if ($isCultivar) {
+            $cvTaxonName = TaxonName::find($data['cv_taxon_name_id'] ?? null);
+            $properties['cv_taxon_name_id'] = $cvTaxonName ? $cvTaxonName->id : null;
+            $properties['cv_name'] = trim($data['cv_name'] ?? '');
+
+            // latin_genus / latin_s1 沿用前綴分類群
+            $cvGenusTaxonName = isset($cvTaxonName->properties['genus_taxon_name_id'])
+                ? TaxonName::find($cvTaxonName->properties['genus_taxon_name_id'])
+                : null;
+            $properties['latin_genus'] = $cvTaxonName->properties['latin_genus']
+                ?? ($cvGenusTaxonName->properties['latin_name'] ?? ($cvTaxonName->properties['latin_name'] ?? ''));
+            $properties['latin_s1'] = $cvTaxonName->properties['latin_s1'] ?? '';
+        }
+
         // 種(包含)以下
-        if ($nomenclature->group === 'virus') {
+        if ($isCultivar) {
+            // 已於上方處理
+        } else if ($nomenclature->group === 'virus') {
             $properties['latin_name'] = $data['latin_name'];
             $properties['latin_s1'] = $data['latin_name'];
         } else if ($rank->order >= $rankSpecies->order) {
@@ -159,8 +177,8 @@ class TaxonNameService
         $properties['usage'] = $data['usage'];
         $properties['is_hybrid'] = $isHybrid;
 
-        $properties['species_id'] = $data['species_id'] ?? null;
-        $properties['species_layers'] = $data['species_layers'];
+        $properties['species_id'] = $isCultivar ? null : ($data['species_id'] ?? null);
+        $properties['species_layers'] = $isCultivar ? [] : ($data['species_layers'] ?? []);
 
         if ($data['from_import'] == true){
             if (isset($data['formatted_authors'])){
@@ -337,12 +355,19 @@ class TaxonNameService
         $taxonName = $this->taxonName;
 
         // 更新有關聯的 hybrid parent name
+        // 只有「雜交組合」的 name 是由親本組成；勾選雜交的屬、種有自己的學名，不能覆蓋
         $relatedTaxonNames = TaxonName::with(['hybridParents'])
+            ->whereHas('rank', function ($query) {
+                $query->where('key', 'hybrid-formula');
+            })
             ->whereHas('hybridParents', function ($query) use ($taxonName) {
                 $query->where('parent_taxon_name_id', $taxonName->id);
             })->get();
 
         foreach ($relatedTaxonNames as $name) {
+            if ($name->hybridParents->count() < 2) {
+                continue;
+            }
             $name->name = sprintf('%s × %s', $name->hybridParents[0]->name, $name->hybridParents[1]->name);
             $name->save();
         }

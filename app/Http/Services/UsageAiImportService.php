@@ -61,6 +61,9 @@ class UsageAiImportService
     {
 
         foreach ($scientificNamesData['scientific_names'] as &$scientificName) {
+            // 雜交種／雜交組合的階層修正（AI 可能把雜交種判斷成雜交組合）
+            $scientificName = $this->normalizeHybrid($scientificName);
+
             // 先取得需要的ID值
             $nomenclatureId = $this->nomenclatureMapping[$scientificName['nomenclature']];
             $rankId = $this->rankMapping[strtolower($scientificName['rank'])]->id;
@@ -79,6 +82,41 @@ class UsageAiImportService
         return $scientificNamesData;
     }
 
+    /**
+     * 雜交處理（依學名拆分原則：去除雜交符號，有雜交符號存 is_hybrid = true）
+     * - 「屬名 × 種小名」是雜交種，不是雜交組合 → 改為 species、is_hybrid = true
+     * - 其他非雜交組合的學名含 × → is_hybrid = true，並去除 latin_genus / latin_s1 裡的 ×
+     * - 真正的雜交組合（兩個學名的組合）維持 hybrid-formula
+     */
+    public function normalizeHybrid(array $scientificName): array
+    {
+        $name = trim($scientificName['latin_name'] ?? '');
+        if (mb_strpos($name, '×') === false) {
+            return $scientificName;
+        }
+
+        $rank = $scientificName['rank'] ?? '';
+
+        if ($rank === 'hybrid-formula') {
+            if (preg_match('/^([A-Z][a-z-]+)\s*×\s*([a-z][a-z-]+)$/u', $name, $m)) {
+                $scientificName['rank'] = 'species';
+                $scientificName['latin_genus'] = $m[1];
+                $scientificName['latin_s1'] = $m[2];
+                $scientificName['is_hybrid'] = true;
+            }
+            return $scientificName;
+        }
+
+        $scientificName['is_hybrid'] = true;
+        foreach (['latin_genus', 'latin_s1'] as $key) {
+            if (!empty($scientificName[$key])) {
+                $scientificName[$key] = trim(str_replace('×', '', $scientificName[$key]));
+            }
+        }
+
+        return $scientificName;
+    }
+
     private function findMatchingTaxonName(int $nomenclatureId, int $rankId, string $name): int|null
     {
         $taxonName = TaxonName::query()
@@ -90,10 +128,26 @@ class UsageAiImportService
         return $taxonName ? $taxonName->id : null;
     }
 
+    /**
+     * 是否可在補學名頁批次新增
+     * 種下下（名字含兩個以上「.」）、雜交組合不提供批次新增，與 Excel 匯入（UsageImportService）一致
+     */
+    private function isBulkCreatable(array $scientificName): bool
+    {
+        if (($scientificName['rank'] ?? '') === 'hybrid-formula') {
+            return false;
+        }
+        if (substr_count($scientificName['latin_name'] ?? '', '.') >= 2) {
+            return false;
+        }
+        return true;
+    }
+
     public function countUnmatchedScientificNames(array $scientificNamesData): int
     {
         $unmatchedCount = 0;
         
+        // 包含無法批次新增的（種下下、雜交組合），讓使用者在補學名頁看到哪些不會匯入
         foreach ($scientificNamesData['scientific_names'] as $scientificName) {
             if (empty($scientificName['taxon_name_id'])) {
                 $unmatchedCount++;
@@ -109,7 +163,7 @@ class UsageAiImportService
         $seen = []; 
         
         foreach ($scientificNamesData['scientific_names'] as $index => $scientificName) {
-            if (empty($scientificName['taxon_name_id'])) {
+            if (empty($scientificName['taxon_name_id']) && $this->isBulkCreatable($scientificName)) {
                 // 建立唯一值 (nomenclature + rank + latin_name)
                 $uniqueKey = ($this->nomenclatureMapping[$scientificName['nomenclature']] ?? '') . '|' . 
                             ($scientificName['rank'] ?? '') . '|' . 
@@ -126,6 +180,7 @@ class UsageAiImportService
                         'latin_s1' => $scientificName['latin_s1'] ?? null,
                         's2_rank' => $scientificName['s2_rank'] ?? null,
                         'latin_s2' => $scientificName['latin_s2'] ?? null,
+                        'is_hybrid' => (bool) ($scientificName['is_hybrid'] ?? false),
                         'formatted_authors' => $scientificName['formatted_authors'] ?? null,
                         // 'index' => $scientificName['index'],
                         'original_name' => $scientificName['latin_name'] ?? null,
@@ -137,6 +192,36 @@ class UsageAiImportService
         }
         
         return $unmatchedNames;
+    }
+
+    /**
+     * 未比對、且無法在補學名頁批次新增的學名（種下下、雜交組合）
+     * 這些學名不會新增，也不會匯入名錄
+     */
+    public function getNotCreatableScientificNames(array $scientificNamesData): array
+    {
+        $result = [];
+        $seen = [];
+
+        foreach ($scientificNamesData['scientific_names'] as $scientificName) {
+            if (!empty($scientificName['taxon_name_id']) || $this->isBulkCreatable($scientificName)) {
+                continue;
+            }
+
+            $latinName = $scientificName['latin_name'] ?? '';
+            if (isset($seen[$latinName])) {
+                continue;
+            }
+            $seen[$latinName] = true;
+
+            $result[] = [
+                'latin_name' => $latinName,
+                'formatted_authors' => $scientificName['formatted_authors'] ?? null,
+                'reason' => ($scientificName['rank'] ?? '') === 'hybrid-formula' ? 'hybrid_formula' : 'infra_infraspecies',
+            ];
+        }
+
+        return $result;
     }
 
     public function handle(array $scientificNamesData, int $namespaceId): int
@@ -303,7 +388,8 @@ class UsageAiImportService
                     $this->throwError($index, 'usage_references提供之文獻ID查無文獻');
                 }
 
-                $nowUsage = ['reference_id' => $usageReference[0]];
+                // str_getcsv 切出來都是字串，與介面一致存成 int
+                $nowUsage = ['reference_id' => (int) $usageReference[0]];
 
                 if ($usageReference[1] !== '') {
                     $nowUsage['show_page'] = $usageReference[1];

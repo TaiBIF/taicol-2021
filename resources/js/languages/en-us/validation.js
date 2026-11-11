@@ -24,6 +24,7 @@ export default {
     'taxonName.required': 'Required',
     'taxonName.required_if': 'Required',
     'taxonName.required_without': 'Required',
+    'taxonName.wrongCvTaxon': 'Must be an ICN name between genus and infraspecific rank',
 
     // person
     'person.required': 'Required',

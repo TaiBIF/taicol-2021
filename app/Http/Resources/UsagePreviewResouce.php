@@ -45,6 +45,7 @@ class UsagePreviewResource extends JsonResource
             'publish_year' => $data['publish_year'] ?? '',
             'original_taxon_name' => $this->convertTaxonName($data['original_taxon_name'] ?? null),
             'genus_taxon_name' => $this->convertTaxonName($data['genus_taxon_name'] ?? null),
+            'cv_taxon_name' => !empty($data['cv_taxon_name']) ? (new self($data['cv_taxon_name']))->toArray($request) : null,
             'species' => $this->convertTaxonName($data['species'] ?? null),
             'species_layers' => $this->convertSpeciesLayers($data['species_layers'] ?? []),
             'hybrid_parents' => $this->convertHybridParents($data['hybrid_parents'] ?? []),
@@ -55,7 +56,8 @@ class UsagePreviewResource extends JsonResource
                 'is_hybrid' => $data['properties']['is_hybrid'] ?? false,
                 'is_approved_list' => $data['properties']['is_approved_list'] ?? false,
                 'initial_year' => $data['properties']['initial_year'] ?? '',
-                'authors_name' => $data['properties']['authors_name'] ?? ''
+                'authors_name' => $data['properties']['authors_name'] ?? '',
+                'cv_name' => $data['properties']['cv_name'] ?? ''
             ]
         ];
     }

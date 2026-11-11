@@ -275,6 +275,10 @@ class TaxonNameImportService
         if ($rankString && $rankId === null) {
             $this->addError($row, 'rank 錯誤');
         }
+        // 雜交組合需要指定雜交親本，匯入無法建立
+        if ($rankString && strtolower($rankString) === 'hybrid-formula') {
+            $this->addError($row, '雜交組合無法透過匯入新增，請改選其他階層或於新增學名頁面建立');
+        }
 
         // 作者解析（內部會累積錯誤）
         $authors = $this->resolveAuthorsByField($row, 'name_author');

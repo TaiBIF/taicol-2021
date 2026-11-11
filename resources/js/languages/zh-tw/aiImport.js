@@ -1,6 +1,7 @@
 export default {
   guide: {
     title: "AI文獻解析工具 - 使用指引與流程",
+    betaNotice: "本功能目前仍在測試階段，使用 Gemini 免費版 API。若遇到模型忙碌或已達使用上限而解析失敗，請稍後再試。",
     fileUpload: "檔案上傳：限 PDF（20MB 內）。超量請移除圖片頁，保留「標題」與「分類處理」段落後重新上傳。",
     redundancyCheck: "重複性檢查：系統解析前會比對文獻與學名使用情形，確認綁定後才啟動解析。",
     scenariosTitle: "檢查情境說明：",

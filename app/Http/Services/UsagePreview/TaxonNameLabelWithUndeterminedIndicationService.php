@@ -17,8 +17,32 @@ class TaxonNameLabelWithUndeterminedIndicationService
             return '';
         }
 
+        // 栽培植物（品種群 / 品種）：指示詞加在前綴分類群，後面接品種名（不斜體）
+        $rankKey = $taxonName['rank']['key'] ?? '';
+        if (in_array($rankKey, ['cultivar-group', 'cultivar'], true)) {
+            $cvTaxonName = $taxonName['cv_taxon_name'] ?? null;
+            if ($cvTaxonName instanceof \Illuminate\Http\Resources\Json\JsonResource) {
+                $cvTaxonName = $cvTaxonName->toArray(request());
+            }
+
+            $base = $cvTaxonName ? $this->render($cvTaxonName, $indication) : '';
+            $cvName = htmlspecialchars(trim($taxonName['properties']['cv_name'] ?? ''), ENT_NOQUOTES);
+            if ($cvName === '') {
+                return $base;
+            }
+
+            $suffix = $rankKey === 'cultivar-group' ? "({$cvName} Group)" : "'{$cvName}'";
+            return implode(' ', array_filter([$base, $suffix]));
+        }
+
         // 處理 hybrid-formula
-        if (($taxonName['rank']['key'] ?? '') === 'hybrid-formula' && !empty($taxonName['hybrid_parents'])) {
+        if (($taxonName['rank']['key'] ?? '') === 'hybrid-formula') {
+            // 缺雜交親本（例如舊的匯入資料）時直接顯示 name，避免匯出失敗
+            // 註：空的 Collection 物件 empty() 會是 false，所以用 collect() 統一再算數量
+            if (count(collect($taxonName['hybrid_parents'] ?? [])) < 2) {
+                return htmlspecialchars($taxonName['name'] ?? '', ENT_NOQUOTES);
+            }
+
             $result = $this->render($taxonName['hybrid_parents'][0], $indication);
             // 這裡需要加入 AuthorName，但為了簡化先省略
             $result .= ' × ';

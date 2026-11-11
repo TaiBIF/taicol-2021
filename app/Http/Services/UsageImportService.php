@@ -36,6 +36,8 @@ class UsageImportService
     private int $groupCursor = 0;
     private int $orderCursor = 0;
 
+    private array $needDefaultParent = []; // 列號 => taxon_name_id（parant_taxon 留空、非標題列）
+
     private Collection $nomenclatures;    // key: name
     private Collection $rankMap;          // key: key
 
@@ -115,6 +117,23 @@ class UsageImportService
         return $this->sheet->getCellByColumnAndRow($index, $row)->getValue();
     }
 
+    /**
+     * 是否欄位：與介面一致存成 int 或 null；不在允許值內記錯誤
+     * 一般欄位 1 / 0 / 留空；is_in_taiwan 另有 2 = 未知（UsageAdditionalInfoForm）
+     */
+    private function parseFlag(int $row, string $field, $value, array $allowed = ['1', '0']): ?int
+    {
+        if (!isset($value) || trim((string) $value) === '') {
+            return null;
+        }
+        $v = trim((string) $value);
+        if (in_array($v, $allowed, true)) {
+            return (int) $v;
+        }
+        $this->addError($row, $field . ' 只能填 ' . implode('、', $allowed) . ' 或留空');
+        return null;
+    }
+
     // ---- 驗證階段（唯讀，逐列收集全部錯誤） ----
 
     public function validate(): int
@@ -146,7 +165,25 @@ class UsageImportService
         }
         $this->reportProgress('validating', $done);
 
+        $this->fillDefaultParents();
+
         return count($this->errorRows);
+    }
+
+    /**
+     * parant_taxon 留空的列，沿用介面的預設上階層邏輯（ParentTaxonService）一次批次帶入
+     */
+    private function fillDefaultParents(): void
+    {
+        if (empty($this->needDefaultParent)) {
+            return;
+        }
+        $parentMap = app(ParentTaxonService::class)->resolveMany(array_values($this->needDefaultParent));
+        foreach ($this->needDefaultParent as $row => $taxonNameId) {
+            if (isset($this->resolved[$row])) {
+                $this->resolved[$row]['parent_taxon_name_id'] = $parentMap[(int) $taxonNameId] ?? null;
+            }
+        }
     }
 
     private function validateRow(int $row): void
@@ -174,6 +211,21 @@ class UsageImportService
 
         $isIndent = (bool) $this->cell($row, 'is_indent');
         $isTitle = (bool) $this->cell($row, 'is_title');
+
+        // 是否欄位統一轉 int|null，非允許值記錯誤（is_in_taiwan 另允許 2 = 未知）
+        $isInTaiwan = $this->parseFlag($row, 'is_in_taiwan', $isInTaiwan, ['1', '0', '2']);
+        $isEndemic = $this->parseFlag($row, 'is_endemic', $isEndemic);
+        $isFossil = $this->parseFlag($row, 'is_fossil', $isFossil);
+        $isTerrestrial = $this->parseFlag($row, 'is_terrestrial', $isTerrestrial);
+        $isFreshwater = $this->parseFlag($row, 'is_freshwater', $isFreshwater);
+        $isBrackish = $this->parseFlag($row, 'is_brackish', $isBrackish);
+        $isMarine = $this->parseFlag($row, 'is_marine', $isMarine);
+        $isNewRecord = $this->parseFlag($row, 'is_new_record', $isNewRecord);
+
+        // 與介面一致：accepted 必填 is_in_taiwan（標題列不存 properties，不檢查）
+        if (!$isTitle && $status === 'accepted' && $isInTaiwan === null && !$this->hasFieldError($row, 'is_in_taiwan')) {
+            $this->addError($row, 'is_in_taiwan 未填寫（地位為 accepted 時必填）');
+        }
 
         // --- 基本欄位檢查 ---
         if (!$nomenclature) {
@@ -204,12 +256,13 @@ class UsageImportService
         $usageReferences = $this->cell($row, 'usage_references');
         if (isset($usageReferences)) {
             foreach (explode('|', $usageReferences) as $usageReference) {
-                $usageReference = str_getcsv($usageReference);
+                $usageReference = array_map('trim', str_getcsv($usageReference));
 
                 if (count($usageReference) == 4) {
-                    if (Reference::where('id', $usageReference[0])->exists()) {
+                    if (ctype_digit($usageReference[0]) && Reference::where('id', (int) $usageReference[0])->exists()) {
                         $now_usage = [];
-                        $now_usage['reference_id'] = $usageReference[0];
+                        // str_getcsv 切出來都是字串，與介面一致存成 int
+                        $now_usage['reference_id'] = (int) $usageReference[0];
 
                         if ($usageReference[1] !== '') {
                             $now_usage['show_page'] = $usageReference[1];
@@ -253,7 +306,7 @@ class UsageImportService
             if (isset($val)) {
                 $fieldName = $add === 'other_examined_material' ? 'otherExaminedMaterial' : $add;
                 $additionalFields[] = [
-                    'field_value' => $val,
+                    'field_value' => (string) $val,
                     'field_name' => $fieldName,
                 ];
             }
@@ -321,7 +374,10 @@ class UsageImportService
                 $taxonName = $taxonNames->first();
             } else {
                 $this->addError($row, self::UNMATCHED_MSG);
-                if (!$this->collectUnmatched($nomenclatureId, $rank, $name, $authorsString)) {
+                if ($rank === 'hybrid-formula') {
+                    // 雜交組合需要指定雜交親本，不提供批次新增 → 不收集，維持在錯誤檔
+                    $this->addError($row, '雜交組合無法使用批次新增學名');
+                } else if (!$this->collectUnmatched($nomenclatureId, $rank, $name, $authorsString)) {
                     $this->addError($row, '種下下無法使用批次新增學名');
                 }
             }
@@ -379,29 +435,32 @@ class UsageImportService
 
         // --- properties ---
         $properties = [
-            'is_fossil' => !isset($isFossil) || $isFossil === '' ? null : ($isFossil ? 1 : 0),
-            'is_marine' => !isset($isMarine) || $isMarine === '' ? null : ($isMarine ? 1 : 0),
-            'is_brackish' => !isset($isBrackish) || $isBrackish === '' ? null : ($isBrackish ? 1 : 0),
+            'is_fossil' => $isFossil,
+            'is_marine' => $isMarine,
+            'is_brackish' => $isBrackish,
             'common_names' => !isset($commonName) ? null : ($commonName),
             'note' => !isset($note) ? null : $note,
-            'is_in_taiwan' => !isset($isInTaiwan) || $isInTaiwan === '' ? null : (int) $isInTaiwan,
-            'is_freshwater' => !isset($isFreshwater) || $isFreshwater === '' ? null : ($isFreshwater ? 1 : 0),
-            'is_terrestrial' => !isset($isTerrestrial) || $isTerrestrial === '' ? null : ($isTerrestrial ? 1 : 0),
+            'is_in_taiwan' => $isInTaiwan,
+            'is_freshwater' => $isFreshwater,
+            'is_terrestrial' => $isTerrestrial,
             'additional_fields' => $additionalFields,
             'custom_fields' => $customFields,
             'indications' => $checkedIndications,
         ];
 
-        if ($isInTaiwan == 1) {
-            $properties['is_endemic'] = !isset($isEndemic) || $isEndemic === '' ? null : ($isEndemic ? 1 : 0);
-            $properties['distribution_in_tw'] = $distributionTw;
-            $properties['is_new_record'] = !isset($isNewRecord) || $isNewRecord === '' ? null : ($isNewRecord ? 1 : 0);
+        if ($isInTaiwan === 1) {
+            $properties['is_endemic'] = $isEndemic;
+            $properties['distribution_in_tw'] = isset($distributionTw) ? (string) $distributionTw : null;
+            $properties['is_new_record'] = $isNewRecord;
             $properties['alien_type'] = $alienType;
             $properties['alien_status_note'] = $alienStatusNote;
         }
 
         // --- 僅在該列無任何錯誤時才快取，save 階段重用 ---
         if (!$this->hasRowError($row)) {
+            if (!$parentTaxonNameString && !$isTitle) {
+                $this->needDefaultParent[$row] = $taxonName->id;
+            }
             $this->resolved[$row] = [
                 'taxon_name_id' => $taxonName->id,
                 'parent_taxon_name_id' => $parentTaxonName->id ?? null,
@@ -489,6 +548,16 @@ class UsageImportService
         $this->errorRows[$key]['messages'][] = $message;
         // 保留舊有 message 欄位（合併所有訊息），維持前端相容
         $this->errorRows[$key]['message'] = implode('；', $this->errorRows[$key]['messages']);
+    }
+
+    private function hasFieldError(int $row, string $field): bool
+    {
+        foreach ($this->errorRows[$row - 1]['messages'] ?? [] as $message) {
+            if (strpos($message, $field) === 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private function hasRowError(int $row): bool

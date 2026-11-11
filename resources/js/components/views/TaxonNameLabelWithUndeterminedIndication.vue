@@ -1,6 +1,6 @@
 <template>
     <span>
-        <template v-if="taxonName.rank.key === 'hybrid-formula'">
+        <template v-if="taxonName.rank.key === 'hybrid-formula' && (taxonName.hybridParents || []).length >= 2">
             <taxon-name-label :indication="indication" :taxon-name="taxonName.hybridParents[0]"/>
             <author-name v-bind="{
                 authors: taxonName.hybridParents[0].authors,
@@ -19,6 +19,10 @@
                 publishYear: taxonName.hybridParents[1].publishYear,
             }"/>
         </template>
+        <!-- 雜交組合缺雜交親本時直接顯示 name -->
+        <template v-else-if="taxonName.rank.key === 'hybrid-formula'">
+            <span>{{ taxonName.name }}</span>
+        </template>
         <template v-else>
             <span v-html="name"></span>
         </template>
@@ -27,6 +31,13 @@
 <script>
 import { mapGetters } from 'vuex';
 import AuthorName from '../AuthorName';
+
+const CULTIVAR_RANK_KEYS = ['cultivar-group', 'cultivar'];
+
+const escapeHtml = (str) => str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 
 export default {
     name: 'taxon-name-label',
@@ -48,6 +59,24 @@ export default {
         name() {
             const t = this.taxonName;
 
+            // 栽培植物（品種群 / 品種）：指示詞加在前綴分類群，後面接品種名（不斜體）
+            if (CULTIVAR_RANK_KEYS.includes(t.rank?.key)) {
+                const base = t.cvTaxonName ? this.buildName(t.cvTaxonName) : '';
+                const cvName = escapeHtml((t.properties?.cvName ?? '').trim());
+                if (!cvName) return base;
+
+                const suffix = t.rank.key === 'cultivar-group'
+                    ? `(${cvName} Group)`
+                    : `'${cvName}'`;
+
+                return [base, suffix].filter(Boolean).join(' ');
+            }
+
+            return this.buildName(t);
+        },
+    },
+    methods: {
+        buildName(t) {
             // 屬(包含)以下的學名斜體 (屬以上不斜題)
             const isItalic = t.rank.order >= this.genusRank.order;
 

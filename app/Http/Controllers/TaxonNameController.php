@@ -77,6 +77,12 @@ class TaxonNameController extends Controller
                 $queryA->where('rank_id', 30)->where('nomenclature_id', 2);
             }
 
+            // 栽培植物的前綴分類群：ICN 的屬 ~ 種下
+            if ($request->get('only_cv_taxon') == true){
+                $queryA->whereBetween('rank_id', [Rank::CV_TAXON_RANK_ID_MIN, Rank::CV_TAXON_RANK_ID_MAX])
+                    ->where('nomenclature_id', 2);
+            }
+
 
             
             $query = $queryA->orderByRaw("CASE WHEN LOWER(`title`) = '{$keyword}' OR LOWER(`search_title`) = '{$keyword_wo_rank}'  THEN 0 WHEN LOWER(`title`) LIKE '{$keyword}%' OR LOWER(`search_title`) LIKE '{$keyword_wo_rank}%' THEN 1 WHEN LOWER(`title`) LIKE '% {$keyword}' OR LOWER(`search_title`) LIKE '% {$keyword_wo_rank}' THEN 2 ELSE 3 END");
@@ -987,6 +993,8 @@ class TaxonNameController extends Controller
             'formatted_authors' => $request->get('formatted_authors'),
             'original_taxon_name_id' => $request->get('original_taxon_name_id'),
             'genus_taxon_name_id' => $request->get('genus_taxon_name_id'),
+            'cv_taxon_name_id' => $request->get('cv_taxon_name_id'),
+            'cv_name' => $request->get('cv_name'),
             'type_specimens' => $request->get('type_specimens'),
             'publish_year' => $request->get('publish_year'),
             'note' => $request->get('note'),
@@ -1099,6 +1107,8 @@ class TaxonNameController extends Controller
             'formatted_authors' => $request->get('formatted_authors'),
             'original_taxon_name_id' => $request->get('original_taxon_name_id'),
             'genus_taxon_name_id' => $request->get('genus_taxon_name_id'),
+            'cv_taxon_name_id' => $request->get('cv_taxon_name_id'),
+            'cv_name' => $request->get('cv_name'),
             'type_specimens' => $request->get('type_specimens'),
             'publish_year' => $request->get('publish_year'),
             'note' => $request->get('note'),

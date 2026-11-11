@@ -24,6 +24,7 @@ export default {
     'taxonName.required': '必填',
     'taxonName.required_if': '必填',
     'taxonName.required_without': '必填',
+    'taxonName.wrongCvTaxon': '須為 ICN 屬至種下階層的學名',
 
     // person
     'person.required': '必填',

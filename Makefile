@@ -18,13 +18,14 @@ PROD_WORKER := taicol-nametool-worker
 # 參數：$(1) app 容器
 # worker 用 queue:restart：做完目前的 job 才結束（restart: always 會自動再啟動、載入新程式碼），
 # 不會中斷正在跑的匯入；要放在 optimize:clear 之後（它會清掉 queue:restart 寫在快取裡的時間戳記）
+# kill -USR2 1 php-fpm（PID 1）平順重載以清掉 OPcache；否則 revalidate_freq=60 下最多 60 秒仍跑舊程式
 define reload
 	docker exec $(1) php artisan optimize:clear
 	docker exec $(1) php artisan route:cache
 	docker exec $(1) php artisan view:cache
+	docker exec $(1) kill -USR2 1
 	docker exec $(1) php artisan queue:restart
 endef
-
 # 開發環境只清快取、不重建（改 route 時才不用一直重跑 route:cache）
 dev-up:
 	docker compose up -d

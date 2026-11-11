@@ -109,6 +109,11 @@ class TaxonNameAiImportService
                 $this->throwError($arrayIndex, 'rank 錯誤');
             }
 
+            // 雜交組合需要指定雜交親本，匯入無法建立
+            if ($rankString === 'hybrid-formula') {
+                $this->throwError($arrayIndex, '雜交組合無法透過匯入新增，請改選其他階層或於新增學名頁面建立');
+            }
+
             $authors = $this->findPersonsByString($arrayIndex, $authorsString);
             if ($service->hasTaxonNameExist($nomenclature, $this->ranks[$rankString]->id, $name, $referenceId, $authors->pluck('id')->toArray(), true)) {
                 $this->throwError($arrayIndex, '學名重複');
