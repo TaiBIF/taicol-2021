@@ -640,10 +640,14 @@ export default {
             subspeciesRank: 'rank/getSubspeciesRank',
         }),
         // 種下(下)階層選單：不論選擇哪個種下階層，都提供與「亞種」相同的清單（仍依法規的 rankOptions）
+        // 動物、植物法規不提供「雜交組合」
         speciesLayerRankOptions() {
             const minOrder = this.subspeciesRank?.order ?? this.speciesRank.order + 1;
+            const excludeHybridFormula = ['animal', 'plant'].includes(this.targetNomenclature?.group);
             return (this.rankOptions || []).filter(
-                (rank) => rank.order > this.speciesRank.order && rank.order >= minOrder,
+                (rank) => rank.order > this.speciesRank.order
+                    && rank.order >= minOrder
+                    && !(excludeHybridFormula && rank.key === 'hybrid-formula'),
             );
         },
         isEdit() {
