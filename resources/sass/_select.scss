@@ -17,16 +17,49 @@ $vs-component-line-height: 1.7;
         }
     }
 }
+// 單選：已選值可換行，框框高度跟著內容長高
 .vs--single .vs__selected {
-    height: 2rem;
+    display: block;
+    position: static;
+    height: auto;
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+// 單選且已有值時，搜尋框不要撐出一行空白
+.vs--single:not(.vs--open) .vs__selected ~ .vs__search {
     position: absolute;
+    width: 0;
+    padding: 0;
+}
+
+// 單選展開搜尋時，維持原本單行半透明疊在輸入框上的行為
+.vs--single.vs--open .vs__selected {
+    position: absolute;
+    height: 2rem;
     white-space: nowrap;
+    overflow: hidden;
+}
+
+// 多選：標籤過長時換行，不超出框框
+.vs--multiple .vs__selected {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .vs__selected-options {
-    width: 75%;
+    min-width: 0;
     overflow: hidden;
     gap: 4px;
+}
+
+// 下拉選項：長內容自動換行，不再被截斷
+.vs__dropdown-option {
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .vs__open-indicator {
@@ -65,6 +98,9 @@ $vs-component-line-height: 1.7;
         padding: .3rem 0rem;
 
         .vs__selected-options {
+            // 保留右側搜尋 icon 的空間
+            width: 75%;
+
             ::placeholder {
                 color: $grey;
             }
