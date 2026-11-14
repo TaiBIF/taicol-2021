@@ -106,6 +106,7 @@
                             <reference-select
                                 class="grow"
                                 hide-create
+                                allow-no-usage
                                 :value="manualReference"
                                 @input="(v) => { manualReference = v; conflict = null; bindError = ''; }"
                             />
