@@ -1,6 +1,6 @@
 <template>
-    <div class="flex flex-col">
-        <div class="w-full mb-2 sticky top-0 z-10">
+    <div class="usage-list-page flex flex-col">
+        <div class="w-full mb-2 sticky top-0 z-10 shrink-0">
             <div class="text-xl font-bold pl-5 inline-block">
                 <template v-if="$route.meta.type === 'reference'">
                     {{ $t('reference.editNameArea') }}
@@ -906,8 +906,14 @@ export default {
 }
 
 
+// 整頁固定高度，上方按鈕列換成多行時，下方名錄區自動縮小，不會被擠出畫面
+.usage-list-page {
+    height: calc(100vh - #{$navbar-height} - #{$breadcrumb-height});
+}
+
 #usage-container {
-    height: calc(100vh - #{$navbar-height} - #{$breadcrumb-height} - 2.5rem);
+    flex: 1 1 0;
+    min-height: 0;
 }
 
 .taxon-name-column {

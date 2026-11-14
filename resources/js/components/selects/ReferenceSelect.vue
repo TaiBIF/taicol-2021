@@ -44,6 +44,11 @@ export default {
         hideCreate: {
             type: Boolean,
             default: false
+        },
+        // 搭配 hideCreate 使用：只隱藏「新增文獻」按鈕，不限制只搜尋有 usage 的文獻
+        allowNoUsage: {
+            type: Boolean,
+            default: false
         }
     },
     data() {
@@ -67,7 +72,8 @@ export default {
                 return;
             }
 
-            let hideCreate = this.hideCreate;
+            // 後端以 hideCreate=true 限制只回傳有 usage 的文獻
+            let hideCreate = this.hideCreate && !this.allowNoUsage;
 
             this.axios.get('/references', {
                 params: { keyword, hideCreate },
