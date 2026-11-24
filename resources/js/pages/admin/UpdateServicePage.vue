@@ -431,7 +431,7 @@ export default defineComponent({
         };
 
         // 換分頁：執行紀錄改列該分頁的任務（從學名使用檢查切回原本的分頁時不用重抓）
-        watch(tab, (t, old) => {
+        watch(() => tab.value as string, (t: string, old: string) => {
             if (t === 'usage-check') return;
             if (old === 'usage-check' && jobGroup === t) return;
             jobFilter.value = '';

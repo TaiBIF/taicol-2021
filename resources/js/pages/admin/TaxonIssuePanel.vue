@@ -8,7 +8,8 @@
         <div v-if="isLoading && !issues.length" class="border">
             <loading-section></loading-section>
         </div>
-        <div v-else class="overflow-auto shadow-sm border">
+        <!-- 不加 overflow：表頭的提示框會被裁掉 -->
+        <div v-else class="shadow-sm border">
             <table class="table text-[13px] w-full">
                 <thead class="font-bold bg-white">
                 <tr>
@@ -17,11 +18,21 @@
                     <th>下載</th>
                     <th>
                         解決名單
-                        <i class="fas fa-info-circle text-gray-400 cursor-help" :title="idHint"></i>
+                        <tooltip class="relative font-normal">
+                            <i class="fas fa-info-circle text-gray-400"></i>
+                            <template v-slot:body>
+                                <div class="w-[260px]">{{ idHint }}</div>
+                            </template>
+                        </tooltip>
                     </th>
                     <th>
                         忽略名單
-                        <i class="fas fa-info-circle text-gray-400 cursor-help" :title="idHint"></i>
+                        <tooltip class="relative font-normal">
+                            <i class="fas fa-info-circle text-gray-400"></i>
+                            <template v-slot:body>
+                                <div class="w-[260px]">{{ idHint }}</div>
+                            </template>
+                        </tooltip>
                     </th>
                     <th></th>
                 </tr>
@@ -67,6 +78,7 @@
 import Cookies from 'js-cookie';
 import { openNotify } from '../../utils';
 import LoadingSection from '../../components/LoadingSection.vue';
+import Tooltip from '../../components/Tooltip.vue';
 
 const SEVERITY_CLASS = {
     high: 'bg-red-100 border-red-400 text-red-700',
@@ -75,7 +87,7 @@ const SEVERITY_CLASS = {
 };
 
 export default {
-    components: { LoadingSection },
+    components: { LoadingSection, Tooltip },
     data() {
         return {
             issues: [],
