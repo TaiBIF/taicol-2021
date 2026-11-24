@@ -104,8 +104,8 @@
                         <p class="font-bold">執行紀錄</p>
                         <div class="flex items-center gap-2">
                             <select v-model="jobFilter" class="border rounded px-2 py-1 text-sm" v-on:change="onFilter">
-                                <option value="">全部任務</option>
-                                <option v-for="j in labels.jobs" :key="j.key" :value="j.key">{{ j.label }}</option>
+                                <option value="">{{ tab === 'release' ? '全部版本名錄任務' : '全部名錄更新任務' }}</option>
+                                <option v-for="j in tabJobs" :key="j.key" :value="j.key">{{ j.label }}</option>
                             </select>
                             <button :disabled="isLoading" class="button is-small" v-on:click="loadJobs">重新整理</button>
                         </div>
@@ -387,6 +387,7 @@ export default defineComponent({
         const find = (list, key) => (list || []).find((x) => x.key === key);
 
         let timer: any = null;
+        let jobGroup = '';   // 目前執行紀錄是哪個分頁的任務（從學名使用檢查切回同一個分頁時不用重抓）
         const clearTimer = () => { if (timer) { clearInterval(timer); timer = null; } };
 
         const loadLog = (id) => axios.get(`/update-service/jobs/${id}/log`, { params: { tail: 300 } })
@@ -395,8 +396,11 @@ export default defineComponent({
 
         const loadJobs = () => {
             isLoading.value = true;
+            jobGroup = tab.value === 'release' ? 'release' : 'update';
             return axios.get('/update-service/jobs', {
-                params: { page: currentPage.value, per_page: perPage, job: jobFilter.value || undefined },
+                params: {
+                    page: currentPage.value, per_page: perPage, job: jobFilter.value || undefined, group: jobGroup,
+                },
             })
                 .then(({ data }) => {
                     const wasBusy = isBusy.value;
@@ -425,6 +429,14 @@ export default defineComponent({
             openLogId.value = null;
             loadJobs();
         };
+
+        // 換分頁：執行紀錄改列該分頁的任務（從學名使用檢查切回原本的分頁時不用重抓）
+        watch(tab, (t, old) => {
+            if (t === 'usage-check') return;
+            if (old === 'usage-check' && jobGroup === t) return;
+            jobFilter.value = '';
+            onFilter();
+        });
 
         const onChangePage = (p) => {
             if (p === currentPage.value) return;

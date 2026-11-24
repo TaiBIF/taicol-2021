@@ -22,6 +22,9 @@ class UpdateServiceController extends Controller
     /** 後台可以觸發的 job；usage_check 在學名使用檢查分頁（ReferenceUsageController）；publish 要帶 release_job_id */
     const TRIGGERABLE = ['taxon', 'audit', 'release', 'publish', 'nomenmatch', 'solr_resync', 'links', 'web_stats', 'taieol'];
 
+    /** 名錄更新頁「版本名錄」分頁的任務；其餘任務都屬於「名錄更新」分頁（前端 UpdateServicePage.vue 的 RELEASE_JOBS 要一致） */
+    const RELEASE_JOBS = ['audit', 'release', 'publish'];
+
     private function unavailable()
     {
         return response()->json(['message' => '尚未設定更新服務（UPDATE_SERVICE_ROOT）'], 503);
@@ -43,6 +46,14 @@ class UpdateServiceController extends Controller
         $job = $request->get('job');
         if ($job !== null && $job !== '' && !array_key_exists($job, UpdateJobNotifier::JOB_LABELS)) {
             return response()->json(['message' => 'invalid job'], 422);
+        }
+        // 分頁：沒選特定任務時，依分頁列出該分頁的所有任務（更新服務的 job 參數接受逗號分隔）
+        $group = $request->get('group');
+        if (!$job && in_array($group, ['update', 'release'], true)) {
+            $jobs = $group === 'release'
+                ? self::RELEASE_JOBS
+                : array_values(array_diff(array_keys(UpdateJobNotifier::JOB_LABELS), self::RELEASE_JOBS));
+            $job = implode(',', $jobs);
         }
 
         try {
