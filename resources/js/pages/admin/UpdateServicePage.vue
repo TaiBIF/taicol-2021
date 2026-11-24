@@ -6,7 +6,7 @@
                     <p class="ml-4 font-bold text-3xl inline">{{ $t('header.adminMenu.updateService') }}</p>
                 </div>
 
-                <!-- 分頁：名錄更新／學名使用檢查 -->
+                <!-- 分頁：名錄更新／版本名錄／學名使用檢查 -->
                 <div class="px-4 mb-4 flex border-b">
                     <button v-for="t in TABS" :key="t.key" v-on:click="setTab(t.key)"
                             :class="tab === t.key ? 'border-blue-600 text-blue-700 font-bold' : 'border-transparent text-gray-500'"
@@ -19,16 +19,16 @@
                 <usage-check-tab v-if="tab === 'usage-check'" v-on:changed="loadStatus"/>
 
                 <template v-else>
-                <!-- 目前狀態 -->
+                <!-- 目前狀態：名錄更新分頁顯示增量更新、學名使用檢查；版本名錄分頁顯示上一次檢核 -->
                 <div class="px-4 mb-4">
-                    <div class="grid md:grid-cols-3 gap-3 text-sm">
-                        <div class="border rounded-md p-3">
+                    <div class="grid md:grid-cols-2 gap-3 text-sm">
+                        <div v-if="tab === 'update'" class="border rounded-md p-3">
                             <p class="text-gray-500 mb-1">最後一次增量更新成功</p>
                             <p v-if="status.incremental" class="font-bold">{{ status.incremental.at }}
                                 <span class="font-normal text-gray-500">（{{ jobLabel(status.incremental.job) }} #{{ status.incremental.jobId }}）</span></p>
                             <p v-else class="text-gray-400">沒有紀錄</p>
                         </div>
-                        <div class="border rounded-md p-3">
+                        <div v-if="tab === 'release'" class="border rounded-md p-3">
                             <p class="text-gray-500 mb-1">上一次版本名錄檢核</p>
                             <template v-if="status.audit">
                                 <p><span class="font-bold">{{ status.audit.finishedAt }}</span>
@@ -38,7 +38,7 @@
                             </template>
                             <p v-else class="text-gray-400">還沒有檢核紀錄</p>
                         </div>
-                        <div class="border rounded-md p-3">
+                        <div v-if="tab === 'update'" class="border rounded-md p-3">
                             <p class="text-gray-500 mb-1">學名使用檢查未確認</p>
                             <p v-if="status.usageCheck">
                                 <a href="#" v-on:click.prevent="setTab('usage-check')"
@@ -54,17 +54,22 @@
                 </div>
 
                 <!-- 觸發 -->
-                <div class="px-4 mb-2 flex flex-wrap items-center gap-3">
+                <div v-if="tab === 'update'" class="px-4 mb-2 flex flex-wrap items-center gap-3">
                     <button :disabled="isBusy || submitting" class="button" v-on:click="onStart('taxon')">增量更新</button>
+                    <button :disabled="isBusy || submitting" class="button" v-on:click="onStart('taieol')">更新生命大百科</button>
+                </div>
+                <div v-else class="px-4 mb-2 flex flex-wrap items-center gap-3">
                     <button :disabled="isBusy || submitting" class="button" v-on:click="onStart('audit')">版本名錄檢核</button>
                     <button :disabled="isBusy || submitting" class="button" v-on:click="onStart('release')">產生版本名錄</button>
-                    <button :disabled="isBusy || submitting" class="button" v-on:click="onStart('taieol')">更新生命大百科</button>
                 </div>
                 <div class="px-4 mb-4 text-sm text-gray-500 min-h-[1.25rem]">
                     <span v-if="activeJob">
                         執行中：{{ jobLabel(activeJob.job) }} #{{ activeJob.id }}（{{ activeJob.currentStep ? stepLabel(activeJob.currentStep) : '排隊中' }}）
                     </span>
                 </div>
+
+                <!-- 版本名錄檢核結果管理 -->
+                <taxon-issue-panel v-if="tab === 'release'" ref="issuePanel"/>
 
                 <!-- job 與步驟說明 -->
                 <div class="px-4 mb-4">
@@ -74,7 +79,7 @@
                             <div>
                                 <p class="font-bold text-gray-700 mb-1">任務</p>
                                 <dl>
-                                    <div v-for="j in labels.jobs" :key="j.key" class="flex gap-3 py-1.5 border-b last:border-b-0">
+                                    <div v-for="j in tabJobs" :key="j.key" class="flex gap-3 py-1.5 border-b last:border-b-0">
                                         <dt class="w-36 shrink-0 font-bold">{{ j.label }}</dt>
                                         <dd class="flex-1 min-w-0">{{ j.description }}</dd>
                                     </div>
@@ -275,8 +280,12 @@ import LoadingSection from '../../components/LoadingSection.vue';
 import Pagination from '../../components/Pagination.vue';
 import { openNotify } from '../../utils';
 import UsageCheckTab from './UsageCheckTab.vue';
+import TaxonIssuePanel from './TaxonIssuePanel.vue';
 
-const TABS = [{ key: 'update', label: '名錄更新' }, { key: 'usage-check', label: '' }];
+// 版本名錄分頁的任務；其餘任務（增量更新、補救、生命大百科…）屬於名錄更新分頁
+const RELEASE_JOBS = ['audit', 'release', 'publish'];
+
+const TABS = [{ key: 'update', label: '名錄更新' }, { key: 'release', label: '版本名錄' }, { key: 'usage-check', label: '' }];
 
 const STATUS = {
     queued: ['排隊中', 'bg-gray-200 text-gray-700'],
@@ -297,14 +306,14 @@ const WARNING_ACTIONS = {
 };
 
 export default defineComponent({
-    components: { LoadingSection, Pagination, UsageCheckTab },
-    setup(props, { root }) {
+    components: { LoadingSection, Pagination, UsageCheckTab, TaxonIssuePanel },
+    setup(props, { root, refs }) {
         const axios: any = inject('axios');
 
-        // 分頁：網址 ?tab=usage-check（舊的 /admin/usage-check 也轉到這裡）
+        // 分頁：網址 ?tab=release／?tab=usage-check（舊的 /admin/usage-check 也轉到這裡）
         // root 的型別沒有 vue-router 的 $route／$router，轉成 any 使用
         const vm: any = root;
-        const tabOf = (q) => (q === 'usage-check' ? 'usage-check' : 'update');
+        const tabOf = (q) => (['usage-check', 'release'].includes(q) ? q : 'update');
         const tab = ref(tabOf(vm.$route.query.tab));
         const setTab = (t) => {
             if (t === tab.value) return;
@@ -335,6 +344,9 @@ export default defineComponent({
         const activeJob = ref<any>(null);
         // 任務與步驟的名稱、說明由後端提供（與通知信同一份）
         const labels = ref<any>({ jobs: [], steps: [] });
+        // 任務說明只列目前分頁的任務；執行紀錄維持全部任務（發佈、補救按鈕都在紀錄裡）
+        const tabJobs = computed(() => (labels.value.jobs || []).filter((j) => (tab.value === 'release'
+            ? RELEASE_JOBS.includes(j.key) : !RELEASE_JOBS.includes(j.key))));
         const isLoading = ref(false);
         const loadError = ref('');
         const submitting = ref(false);
@@ -391,7 +403,11 @@ export default defineComponent({
                     jobs.value = data.jobs || [];
                     total.value = data.total || 0;
                     activeJob.value = data.active || null;
-                    if (wasBusy && !isBusy.value) loadStatus(); // 任務剛結束：更新目前狀態
+                    if (wasBusy && !isBusy.value) { // 任務剛結束：更新目前狀態與檢核項目
+                        loadStatus();
+                        const panel: any = refs.issuePanel;
+                        if (panel) panel.load();
+                    }
                     if (data.labels) labels.value = data.labels;
                     loadError.value = '';
                     // 有任務在跑：每 10 秒更新；展開中的 log 一起更新
@@ -526,7 +542,7 @@ export default defineComponent({
 
         return {
             TABS, tab, setTab, status, uncheckedCount, loadStatus, auditText, releaseHint, exportLabel, publishFor,
-            jobs, activeJob, labels, isLoading, loadError, submitting, openLogId, logText, downloadingId,
+            jobs, activeJob, labels, tabJobs, isLoading, loadError, submitting, openLogId, logText, downloadingId,
             jobFilter, currentPage, perPage, total, pageKey, isBusy,
             loadJobs, onFilter, onChangePage, onStart, toggleLog, onDownload,
             publishModal, preview, statRows, openPublish, closePublish, onPublish, formatNumber, formatBytes, formatSizes,

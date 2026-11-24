@@ -143,6 +143,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/update-service/jobs/{id}/log', 'UpdateServiceController@log')->whereNumber('id');
         Route::get('/update-service/jobs/{id}/export', 'UpdateServiceController@export')->whereNumber('id');
         Route::get('/update-service/jobs/{id}/publish-preview', 'UpdateServiceController@publishPreview')->whereNumber('id');
+
+        // 版本名錄檢核結果（api_taxon_issue）管理
+        Route::get('/taxon-issues', 'TaxonIssueController@index');
+        Route::get('/taxon-issues/export', 'TaxonIssueController@export');
+        Route::post('/taxon-issues/update', 'TaxonIssueController@update');
     });
 
     Route::resource('/favorite-folders', 'FavoriteFolderController');
