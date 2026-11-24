@@ -1186,9 +1186,9 @@ class MyNamespaceUsageController extends Controller
 
             $submitData = json_decode($request->getContent(), true) ?? [];
 
-            // 只建立未跳過的學名；跳過者會在重跑後出現在錯誤檔
+            // 只建立未跳過、也沒有選擇其他學名的學名；跳過者會在重跑後出現在錯誤檔
             $toCreate = collect($submitData)
-                ->filter(fn($item) => empty($item['skip']))
+                ->filter(fn($item) => empty($item['skip']) && empty($item['selected_name']))
                 ->map(function ($item) {
                     // 服務讀的是 kingdom_name，前端送的是 kingdom
                     $item['kingdom_name'] = $item['kingdom'] ?? null;
@@ -1199,6 +1199,17 @@ class MyNamespaceUsageController extends Controller
             // 建名移到背景 Job：把待建學名塞進 context，狀態進 creating_names，立即返回
             $context = $log->context ?? [];
             $context['names_to_create'] = $toCreate->toArray();
+
+            // 選擇其他學名：重跑匯入時直接對應到選定的學名，不新建
+            $context['selected_names'] = collect($submitData)
+                ->filter(fn($item) => empty($item['skip']) && !empty($item['selected_name']))
+                ->map(fn($item) => [
+                    'key'           => $item['original_key'] ?? null,
+                    'name'          => $item['original_name'] ?? null,
+                    'taxon_name_id' => (int) $item['selected_name'],
+                ])
+                ->values()
+                ->toArray();
 
             $log->update([
                 'status'          => 'processing',

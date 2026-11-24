@@ -87,6 +87,7 @@ class ImportNamespaceUsageJob implements ShouldQueue
             $sheet = $spreadsheet->getAllSheets()[0];
 
             $service = new UsageImportService($sheet, $namespaceId);
+            $service->setSelectedNames($log->context['selected_names'] ?? []);
 
             $log->update([
                 'status' => 'processing',

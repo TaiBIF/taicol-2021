@@ -51,7 +51,7 @@
                                 {s: $t('taxonName.s').repeat(1)},1)}}</th>
                         <th>{{ $t('taxonName.authors') }}</th>
                         <th class="w-[80px] text-center">{{ $t('taxonName.hybrid') }}</th>
-                        <th class="w-[200px]" v-if="!isExcelSource">{{ $t('taxonName.selectAnotherScientificName') }}</th>
+                        <th class="w-[200px]">{{ $t('taxonName.selectAnotherScientificName') }}</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -91,7 +91,7 @@
                         <td><general-input v-model="p.latinS2"/></td>
                         <td><general-input v-model="p.formattedAuthors"/></td>
                         <td class="text-center"><input type="checkbox" v-model="p.isHybrid" /></td>
-                        <td v-if="!isExcelSource"><taxon-name-select v-model="p._selectedName"/></td>
+                        <td><taxon-name-select v-model="p._selectedName"/></td>
                     </tr>
                     </tbody>
                 </table>
@@ -253,6 +253,7 @@ export default {
                 // index: row.index,
                 skip: row._skip || false, 
                 original_name: row.originalName,
+                original_key: row.key || null, // Excel 來源：對回 Excel 列用
                 nomenclature: row._nomenclature?.id,
                 kingdom: row._kingdom?.name || null,
                 rank: row._rank?.key || null,
@@ -421,7 +422,7 @@ export default {
         min-width: 200px; // 學名欄位
     }
     
-    th:nth-child(11), td:nth-child(11) {
+    th:nth-child(12), td:nth-child(12) {
         min-width: 200px; // 選擇其他學名欄位
     }
 

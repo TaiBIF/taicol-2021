@@ -80,6 +80,11 @@
                     <div v-if="choice === 'similar'" class="mb-6 p-4 border rounded">
                         <p class="font-bold mb-1">{{ $t('aiImport.similar.title', { count: result.similarReferences.length }) }}</p>
                         <p class="help mb-3">{{ $t('aiImport.similar.hint') }}</p>
+                        <div class="flex gap-2 mt-2 mb-3">
+                            <button class="button" :disabled="!selectedSimilar" v-on:click="selectedSimilar = null">{{ $t('aiImport.action.clearSelection') }}</button>
+                            <button class="button is-primary" :class="{ 'is-loading': isBinding }" :disabled="!selectedSimilar || isBinding"
+                                    v-on:click="onBindReference(selectedSimilar)">{{ $t('aiImport.action.bind') }}</button>
+                        </div>
                         <label v-for="item in result.similarReferences" :key="item.id"
                                class="flex items-start gap-2 mb-2"
                                :class="isSelectable(item) ? 'cursor-pointer' : 'opacity-60'">
@@ -93,11 +98,6 @@
                                 <span v-if="item.subtitle" class="help has-text-grey-light">{{ item.subtitle }}</span>
                             </span>
                         </label>
-                        <div class="flex gap-2 mt-2">
-                            <button class="button" :disabled="!selectedSimilar" v-on:click="selectedSimilar = null">{{ $t('aiImport.action.clearSelection') }}</button>
-                            <button class="button is-primary" :class="{ 'is-loading': isBinding }" :disabled="!selectedSimilar || isBinding"
-                                    v-on:click="onBindReference(selectedSimilar)">{{ $t('aiImport.action.bind') }}</button>
-                        </div>
                     </div>
 
                     <!-- B. 手動搜尋 -->

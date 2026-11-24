@@ -74,7 +74,7 @@
         </tr>
         <tr>
             <td colspan="8">
-                <span class="caption"></span>
+                <span ref="caption" class="caption"></span>
                 <loading v-if="isLoading"></loading>
             </td>
         </tr>
@@ -109,7 +109,10 @@ export default {
                 app.fetchData();
             }
         });
-        app.intersectionObserver.observe(document.querySelector('.caption'));
+        app.intersectionObserver.observe(app.$refs.caption);
+    },
+    beforeDestroy() {
+        this.intersectionObserver?.disconnect();
     },
     methods: {
         onSortBy(column, newDirection) {
@@ -129,7 +132,7 @@ export default {
             ].filter(Boolean).join(': ');
         },
         async fetchData() {
-            if ((this.lastPage !== 0 && this.lastPage <= this.currentPage) || this.isLoading) {
+            if ((this.lastPage !== 0 && this.currentPage >= this.lastPage) || this.isLoading) {
                 return;
             }
 
@@ -148,7 +151,7 @@ export default {
                 });
 
                 this.total = total;
-                this.lastPage = lastPage;
+                this.lastPage = lastPage || page; // 後端未分頁（無 last_page）時視為只有一頁
                 this.currentPage = page;
                 this.taxonNames = this.taxonNames.concat(data);
                 if (this.taxonNames.length === 0) this.$emit('hide', 'taxon-name');

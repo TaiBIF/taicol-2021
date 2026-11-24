@@ -468,6 +468,17 @@ export default {
             this.axios.get(`/taxon-names/${this.taxonName?.id}/per_usages`, {
             }).then(({ data: { data } }) => {
 
+                // 已匯入異名表：排除本身文獻、年份大於本身文獻的文獻（我的名錄不排除）
+                const selfRef = this.$route.meta.type === 'reference' ? this.presetData.reference : null;
+                if (selfRef) {
+                    const selfYear = parseInt(selfRef.publishYear, 10);
+                    data = data.filter((element) => {
+                        if (element.id === selfRef.id) return false;
+                        const year = parseInt(element.publishYear, 10);
+                        return isNaN(selfYear) || isNaN(year) || year <= selfYear;
+                    });
+                }
+
                 data.forEach(element => {
 
                     // 已經被建立在文獻卡片的文獻

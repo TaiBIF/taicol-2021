@@ -27,6 +27,11 @@ class UsageImportService
     const UNMATCHED_MSG = '查無此 Taxon';
     private array $unmatchedNames = [];
 
+    // 批次新增學名頁「選擇其他學名」的對應（見 setSelectedNames）
+    private array $selectedByKey = [];        // unmatched key => taxon_name_id
+    private array $selectedByNameLegacy = []; // 舊資料沒有 key 時：name => taxon_name_id
+    private array $selectedByName = [];       // name => taxon_name_id（供 parent 對應；同名對到不同學名時為 null）
+
     private Worksheet $sheet;
     private int $namespaceId;
 
@@ -91,6 +96,28 @@ class UsageImportService
     {
         $this->sheet = $sheet;
         $this->namespaceId = $namespaceId;
+    }
+
+    /**
+     * 設定批次新增學名頁「選擇其他學名」的結果
+     * @param array $selectedNames [['key' => ?string, 'name' => string, 'taxon_name_id' => int], ...]
+     */
+    public function setSelectedNames(array $selectedNames): void
+    {
+        foreach ($selectedNames as $item) {
+            $id = (int) ($item['taxon_name_id'] ?? 0);
+            $name = $item['name'] ?? null;
+            if (!$id || !$name) {
+                continue;
+            }
+            if (!empty($item['key'])) {
+                $this->selectedByKey[$item['key']] = $id;
+            } else {
+                $this->selectedByNameLegacy[$name] = $id;
+            }
+            $this->selectedByName[$name] = (array_key_exists($name, $this->selectedByName)
+                && $this->selectedByName[$name] !== $id) ? null : $id;
+        }
     }
 
     // ---- 讀取工具：一律用欄名 ----
@@ -352,7 +379,18 @@ class UsageImportService
 
         // --- 解析 taxon name ---
         $taxonName = null;
-        if ($name) {
+        $selectedKey = ($nomenclatureId ?? '') . '.' . ($rank ?? '') . '.' . $name;
+        $selectedId = $name
+            ? ($this->selectedByKey[$selectedKey] ?? $this->selectedByNameLegacy[$name] ?? null)
+            : null;
+
+        if ($selectedId) {
+            // 使用者在批次新增學名頁選擇了其他學名
+            $taxonName = TaxonName::find($selectedId);
+            if (!$taxonName) {
+                $this->addError($row, '選擇的其他學名不存在');
+            }
+        } else if ($name) {
             $taxonNames = TaxonName::query()->where('name', $name)->get();
 
             if ($taxonNames->count() > 1 && $nomenclatureId !== null && $rankId !== null) {
@@ -406,6 +444,12 @@ class UsageImportService
                 // nomenclatureId 為 null 時無法消歧義，parentTaxonName 維持 null
             } else if ($parentTaxonNames->count() === 1) {
                 $parentTaxonName = $parentTaxonNames->first();
+            } else if (!empty($this->selectedByName[$parentTaxonNameString])) {
+                // parent 是批次新增學名頁中改選其他學名的名字
+                $parentTaxonName = TaxonName::find($this->selectedByName[$parentTaxonNameString]);
+                if (!$parentTaxonName) {
+                    $this->addError($row, '查無此 Parent Taxon');
+                }
             } else {
                 $this->addError($row, '查無此 Parent Taxon');
             }
@@ -580,6 +624,7 @@ class UsageImportService
         $parsed = $this->parseScientificName($name, $rankKey);
 
         $this->unmatchedNames[$key] = [
+            'key'              => $key,            // 「選擇其他學名」回傳時用來對回 Excel 列
             'nomenclature'     => $nomenclatureId, // 頁面用 id 對照
             'kingdom'          => null,
             'rank'             => $rankKey,        // 頁面用 key 對照

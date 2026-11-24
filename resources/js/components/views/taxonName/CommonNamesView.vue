@@ -36,10 +36,10 @@
             </tr>
             <tr>
                 <td colspan="8">
-                    <p v-if="lastPage < currentPage" class="text-gray-300 text-center">
-                        {{ $t('common.bottomOfResults', total) }}
+                    <p v-if="currentPage > 0 && currentPage >= lastPage" class="text-gray-300 text-center">
+                        {{ $t('common.bottomOfResults', {total}) }}
                     </p>
-                    <span class="caption"></span>
+                    <span ref="caption" class="caption"></span>
                     <loading v-if="isLoading"></loading>
                 </td>
             </tr>
@@ -77,11 +77,14 @@ export default {
                 app.fetchData();
             }
         }), { rootMargin: '0px 0px 500px 0px' });
-        app.intersectionObserver.observe(document.querySelector('.caption'));
+        app.intersectionObserver.observe(app.$refs.caption);
+    },
+    beforeDestroy() {
+        this.intersectionObserver?.disconnect();
     },
     methods: {
         async fetchData() {
-            if ((this.lastPage !== 0 && this.lastPage < this.currentPage) || this.isLoading) {
+            if ((this.lastPage !== 0 && this.currentPage >= this.lastPage) || this.isLoading) {
                 return;
             }
 
@@ -100,8 +103,8 @@ export default {
                     },
                 });
 
-                this.total = total;
-                this.lastPage = lastPage;
+                this.total = total ?? (this.commonNames.length + data.length);
+                this.lastPage = lastPage || page; // 後端未分頁（無 last_page）時視為只有一頁
                 this.currentPage = page;
                 this.commonNames = this.commonNames.concat(data);
 
@@ -118,7 +121,8 @@ export default {
             this.sortby = column;
             this.direction = direction;
             this.commonNames = [];
-            this.currentPage = 1;
+            this.currentPage = 0;
+            this.lastPage = 0;
             this.fetchData();
         },
     },

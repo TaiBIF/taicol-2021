@@ -15,7 +15,7 @@
                     <loading></loading>
                 </div>
                 <div v-else-if="!!result" class="py-4">
-                    <table class="table">
+                    <table class="table doi-result-table w-full">
                         <tr>
                             <td class="no-wrap">{{ $t('reference.type') }}</td>
                             <td>{{ typeDisplay(result.type) }}</td>
@@ -245,3 +245,14 @@ export default defineComponent({
     components: { Loading, GeneralInput, AuthorMatchTable },
 });
 </script>
+<style scoped>
+/* 英文欄位名較長，允許換行並固定寬度，避免內容撐出視窗 */
+.doi-result-table td.no-wrap {
+    white-space: normal;
+    width: 11rem;
+    vertical-align: top;
+}
+.doi-result-table td {
+    overflow-wrap: anywhere;
+}
+</style>

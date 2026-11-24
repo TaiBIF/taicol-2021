@@ -68,10 +68,10 @@
             </tr>
             <tr>
                 <td colspan="6">
-                    <p v-if="lastPage < currentPage" class="text-gray-300 text-center">
+                    <p v-if="currentPage > 0 && currentPage >= lastPage" class="text-gray-300 text-center">
                         {{ $t('common.bottomOfResults', {total}) }}
                     </p>
-                    <span class="caption"></span>
+                    <span ref="caption" class="caption"></span>
                     <loading v-if="isLoading"></loading>
                 </td>
             </tr>
@@ -115,11 +115,14 @@ export default {
                 app.fetchData();
             }
         }), { rootMargin: '0px 0px 500px 0px' });
-        app.intersectionObserver.observe(document.querySelector('.caption'));
+        app.intersectionObserver.observe(app.$refs.caption);
+    },
+    beforeDestroy() {
+        this.intersectionObserver?.disconnect();
     },
     methods: {
         async fetchData() {
-            if ((this.lastPage !== 0 && this.lastPage < this.currentPage) || this.isLoading) {
+            if ((this.lastPage !== 0 && this.currentPage >= this.lastPage) || this.isLoading) {
                 return;
             }
 
@@ -147,7 +150,7 @@ export default {
                 this.usages = [...this.usages, ...data];
 
                 this.total = total;
-                this.lastPage = lastPage;
+                this.lastPage = lastPage || page; // 後端未分頁（無 last_page）時視為只有一頁
                 this.currentPage = page;
             } catch (e) {
                 this.$emit('toggle', 'synonym', false);
@@ -159,6 +162,7 @@ export default {
             this.direction = direction;
             this.usages = [];
             this.currentPage = 0;
+            this.lastPage = 0;
             this.fetchData();
         },
         showReference(v) {
