@@ -527,7 +527,13 @@ export default defineComponent({
                     headers: { Authorization: `Bearer ${Cookies.get('taicol_tk')}`, 'X-Requested-With': 'XMLHttpRequest' },
                 });
                 if (!res.ok) {
-                    openNotify(res.status === 404 ? '此 job 沒有匯出檔' : '下載失敗', 'is-danger');
+                    // 404：沒有匯出檔；410：已超過保留天數被清除（訊息由更新服務提供）
+                    let message = '下載失敗';
+                    if (res.status === 404 || res.status === 410) {
+                        const body = await res.json().catch(() => ({}));
+                        message = body.message || '此 job 沒有匯出檔';
+                    }
+                    openNotify(message, 'is-danger');
                     return;
                 }
                 const match = /filename="?([^";]+)"?/.exec(res.headers.get('Content-Disposition') || '');

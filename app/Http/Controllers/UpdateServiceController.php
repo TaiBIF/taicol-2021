@@ -154,8 +154,8 @@ class UpdateServiceController extends Controller
         } catch (\Throwable $e) {
             return $this->serviceError($e, "GET /jobs/{$id}/export");
         }
-        if ($file === null) {
-            return response()->json(['message' => '此 job 沒有匯出檔'], 404);
+        if (isset($file['status'])) {
+            return response()->json(['message' => $file['message']], $file['status']);
         }
         [$path, $filename] = $file;
         return response()->download($path, $filename, ['Content-Type' => 'application/zip'])

@@ -77,13 +77,18 @@ class UpdateServiceClient
      * 下載 /jobs/{id}/export 到暫存檔（release 的下載檔約 20 MB，不放進記憶體）
      * 回傳 [暫存檔路徑, 檔名]；沒有匯出檔（404）回傳 null
      */
-    public static function downloadExport(int $id): ?array
+    /**
+     * 下載匯出檔：成功回 [暫存檔路徑, 檔名]；沒有匯出檔回 ['status' => 404|410, 'message' => 更新服務的說明]
+     * 410 = 匯出檔已超過保留天數被定期清除
+     */
+    public static function downloadExport(int $id): array
     {
         $tmp = tempnam(sys_get_temp_dir(), 'update_export_');
         $res = self::client(300)->sink($tmp)->get(self::url("/jobs/{$id}/export"));
-        if ($res->status() === 404) {
+        if (in_array($res->status(), [404, 410], true)) {
+            $detail = json_decode((string) @file_get_contents($tmp), true)['detail'] ?? null;
             @unlink($tmp);
-            return null;
+            return ['status' => $res->status(), 'message' => is_string($detail) ? $detail : '此 job 沒有匯出檔'];
         }
         if (!$res->successful()) {
             @unlink($tmp);
