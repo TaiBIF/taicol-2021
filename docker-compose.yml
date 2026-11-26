@@ -2,7 +2,8 @@ services:
   # 開發核心：直接跑 Artisan Serve
   app:
     # 開發用 cli 版本即可，更輕量；image / container / port 可由 .env 覆寫，讓升級用 worktree 與原本的開發環境並存
-    image: ${DEV_IMAGE:-php:8.2-cli-alpine}
+    # 注意：image 名稱不可用 php:8.2-cli-alpine 這類官方名稱，否則 build 完會蓋掉本機的官方 image，下次 build 時 FROM 會拿到自己 build 過的版本
+    image: ${DEV_IMAGE:-taicol-nametool-dev:latest}
     build:
       context: ./docker/php
       dockerfile: Dockerfile
@@ -29,7 +30,7 @@ services:
     networks:
       - internal
   worker:
-      image: ${DEV_IMAGE:-php:8.2-cli-alpine}
+      image: ${DEV_IMAGE:-taicol-nametool-dev:latest}
       build:
         context: ./docker/php
         dockerfile: Dockerfile

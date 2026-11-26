@@ -39,7 +39,7 @@ dev-down:
 	docker compose down
 
 dev-build:
-	docker compose build
+	docker compose build --pull
 
 stag-build:
 	docker compose -f staging.yml build
