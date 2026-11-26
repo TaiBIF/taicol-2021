@@ -613,7 +613,7 @@ class ReferenceController extends Controller
         try {
             // 呼叫 Python API
             try {
-                $response = Http::timeout(600)->post(env('TAICOL_AI_API_ROOT') . '/process-reference', [
+                $response = Http::timeout(600)->post(config('services.taicol_ai.root') . '/process-reference', [
                     'file_path' => $filePath
                 ]);
             } catch (ConnectionException $e) {

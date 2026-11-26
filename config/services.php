@@ -37,6 +37,22 @@ return [
         'enabled' => env('AI_IMPORT_ENABLED', true),
     ],
 
+    // TaiCOL 主站與通知信箱（程式內勿直接用 env()，config:cache 後 env() 會回 null）
+    'taicol' => [
+        'email' => env('TAICOL_EMAIL', 'catalogueoflife.taiwan@gmail.com'),
+        'root' => env('TAICOL_ROOT'),
+    ],
+
+    // TaiCOL AI 服務（文獻 / usage AI 擷取）
+    'taicol_ai' => [
+        'root' => env('TAICOL_AI_API_ROOT'),
+    ],
+
+    // 生物誌 API token
+    'biota' => [
+        'token' => env('BIOTA_TOKEN'),
+    ],
+
     // TaiCOL API（root 依環境設定，正式 / 測試站各自指向不同 API）
     'taicol_api' => [
         'root' => env('TAICOL_API_ROOT', 'https://api.taicol.tw'),

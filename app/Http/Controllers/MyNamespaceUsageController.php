@@ -710,7 +710,9 @@ class MyNamespaceUsageController extends Controller
     {
         // 給生物誌的API
 
-        if ($request->get('token')!=env('BIOTA_TOKEN')){
+        // token 未設定時一律拒絕；hash_equals 避免時序攻擊
+        $token = (string) config('services.biota.token');
+        if ($token === '' || !hash_equals($token, (string) $request->get('token'))) {
             return response([
                 'message' => 'Incorrect token'
             ])->setStatusCode(403);

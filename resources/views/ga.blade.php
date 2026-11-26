@@ -1,4 +1,4 @@
-@if('production' == env('APP_ENV'))
+@if(app()->environment('production'))
     <!-- Global site tag (gtag.js) - Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCMBVCNLC5"></script>
     <script>

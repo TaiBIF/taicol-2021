@@ -125,7 +125,7 @@ class UpdateJobNotifier
 
         if (!$emails) {
             Log::warning('[Update Service] 沒有啟用中的管理員 email，改寄 TAICOL_EMAIL');
-            $emails = [env('TAICOL_EMAIL', 'catalogueoflife.taiwan@gmail.com')];
+            $emails = [config('services.taicol.email')];
         }
         return $emails;
     }

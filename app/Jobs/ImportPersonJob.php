@@ -226,7 +226,7 @@ class ImportPersonJob implements ShouldQueue
             }
         }
 
-        Mail::to(env('TAICOL_EMAIL', 'catalogueoflife.taiwan@gmail.com'))
+        Mail::to(config('services.taicol.email'))
             ->send(new Email(
                 '人名 Excel 匯入任務最終失敗：<br>' . nl2br($e->getMessage()),
                 'TaiCOL - 人名匯入失敗',

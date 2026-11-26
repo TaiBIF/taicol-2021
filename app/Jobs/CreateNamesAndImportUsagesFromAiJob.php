@@ -233,7 +233,7 @@ class CreateNamesAndImportUsagesFromAiJob implements ShouldQueue
 
         // 寄信失敗只記 log，不再往外拋
         try {
-            Mail::to(env('TAICOL_EMAIL', 'catalogueoflife.taiwan@gmail.com'))
+            Mail::to(config('services.taicol.email'))
                 ->send(new Email(
                     'AI 匯入批次建名／匯入任務最終失敗：<br>' . nl2br(e($e->getMessage())),
                     'TaiCOL - AI 匯入失敗',
