@@ -30,4 +30,7 @@ RUN pecl install redis \
 RUN docker-php-ext-configure gd --with-jpeg --with-webp \
     && docker-php-ext-install gd
 
+# 從官方 composer image 取得 composer 執行檔（容器內跑 composer）
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
 WORKDIR /var/www/html
