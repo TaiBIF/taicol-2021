@@ -1,0 +1,88 @@
+# 升級版測試站（staging-upgrade.taicol.tw），與舊版測試站（staging.yml）並存
+# - container / router 名稱全部加 upg，避免與舊版衝突
+# - redis 只掛在自己的 upg-internal 網路：舊版 redis 在 traefik-nametool 上叫 "redis"，
+#   兩邊若都掛同一網路會互相解析到對方、共用 queue。app 以 REDIS_HOST=taicol-nametool-upg-redis 連線
+name: nametool-upg
+
+networks:
+  gateway:
+    external: true
+  traefik-nametool:
+    external: true
+  upg-internal: {}
+
+services:
+  nametool_app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile-stag
+    container_name: taicol-nametool-upg-app
+    restart: always
+    volumes:
+      - .:/var/www/html
+      - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+    depends_on:
+      - redis
+    networks:
+      - gateway
+      - traefik-nametool
+      - upg-internal
+    deploy:
+      resources:
+        limits:
+          memory: 400M
+        reservations:
+          memory: 128M
+
+  nametool_web:
+    image: nginx:alpine
+    container_name: taicol-nametool-upg-web
+    restart: always
+    volumes:
+      - ./docker/nginx/upgrade.conf:/etc/nginx/conf.d/default.conf
+      - .:/var/www/html
+    networks:
+      - traefik-nametool
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nametool-upg.rule=Host(`staging-upgrade.taicol.tw`)"
+      - "traefik.http.routers.nametool-upg.entrypoints=websecure"
+      - "traefik.http.routers.nametool-upg.tls.certresolver=myresolver"
+      - "traefik.http.services.nametool-upg.loadbalancer.server.port=80"
+      - "traefik.docker.network=traefik-nametool"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  redis:
+    image: redis:alpine
+    container_name: taicol-nametool-upg-redis
+    restart: always
+    networks:
+      - upg-internal
+    command: redis-server --maxmemory 100mb --maxmemory-policy allkeys-lru
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile-stag
+    container_name: taicol-nametool-upg-worker
+    restart: always
+    command: php /var/www/html/artisan queue:work --tries=1 --timeout=3700 --max-time=3600
+    volumes:
+      - .:/var/www/html
+      - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+    networks:
+      - gateway
+      - upg-internal
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        limits:
+          memory: 200M

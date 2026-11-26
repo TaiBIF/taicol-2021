@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # 前端 build + rsync 部署
-# 用法：./deploy.sh stag | prod | all
+# 用法：./deploy.sh stag | upg | prod | all（upg = 升級版測試站）
 set -euo pipefail
 
 TARGET="${1:-}"
 case "$TARGET" in
-  stag|prod|all) ;;
-  *) echo "用法：$0 stag | prod | all"; exit 1 ;;
+  stag|upg|prod|all) ;;
+  *) echo "用法：$0 stag | upg | prod | all"; exit 1 ;;
 esac
 
 cd "$(dirname "$0")"
@@ -18,9 +18,11 @@ env_get() {
 }
 STAG_DEST="$(env_get DEPLOY_STAG_DEST)"
 PROD_DEST="$(env_get DEPLOY_PROD_DEST)"
+UPG_DEST="$(env_get DEPLOY_UPG_DEST)"
 
-if [[ "$TARGET" != prod && -z "$STAG_DEST" ]]; then echo ".env 缺少 DEPLOY_STAG_DEST"; exit 1; fi
-if [[ "$TARGET" != stag && -z "$PROD_DEST" ]]; then echo ".env 缺少 DEPLOY_PROD_DEST"; exit 1; fi
+if [[ ( "$TARGET" == stag || "$TARGET" == all ) && -z "$STAG_DEST" ]]; then echo ".env 缺少 DEPLOY_STAG_DEST"; exit 1; fi
+if [[ ( "$TARGET" == prod || "$TARGET" == all ) && -z "$PROD_DEST" ]]; then echo ".env 缺少 DEPLOY_PROD_DEST"; exit 1; fi
+if [[ "$TARGET" == upg && -z "$UPG_DEST" ]]; then echo ".env 缺少 DEPLOY_UPG_DEST"; exit 1; fi
 
 # ---- build ----
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
@@ -47,6 +49,7 @@ confirm_prod() {
 
 case "$TARGET" in
   stag) sync_assets "$STAG_DEST" ;;
+  upg)  sync_assets "$UPG_DEST" ;;
   prod) confirm_prod && sync_assets "$PROD_DEST" ;;
   all)  sync_assets "$STAG_DEST"; confirm_prod && sync_assets "$PROD_DEST" ;;
 esac

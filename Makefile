@@ -5,14 +5,17 @@
 #MAKEFLAGS += --warn-undefined-variables
 #MAKEFLAGS += --no-builtin-rules
 
-DEV_APP     := taicol-nametool-dev-app
-DEV_WORKER  := taicol-nametool-dev-worker
+# 開發容器前綴可由 .env 的 DEV_PREFIX 覆寫（升級用 worktree 與原本開發環境並存）
+DEV_PREFIX  := $(or $(shell grep -E '^DEV_PREFIX=' .env 2>/dev/null | cut -d= -f2 | tr -d '"'),taicol-nametool-dev)
+DEV_APP     := $(DEV_PREFIX)-app
+DEV_WORKER  := $(DEV_PREFIX)-worker
 STAG_APP    := taicol-nametool-stag-app
 STAG_WORKER := taicol-nametool-stag-worker
+UPG_APP     := taicol-nametool-upg-app
 PROD_APP    := taicol-nametool-app
 PROD_WORKER := taicol-nametool-worker
 
-.PHONY: dev-up dev-down dev-build stag-build stag-up stag-down stag-reload prod-build prod-up prod-down prod-reload
+.PHONY: dev-up dev-down dev-build stag-build stag-up stag-down stag-reload upg-build upg-up upg-down upg-reload prod-build prod-up prod-down prod-reload
 
 # 換了 PHP／Blade／routes 或跑完 ./deploy.sh 之後，讓變更生效（不重建、不重啟 app）
 # 參數：$(1) app 容器
@@ -36,7 +39,7 @@ dev-down:
 	docker compose down
 
 dev-build:
-	docker compose build
+	docker compose build --pull
 
 stag-build:
 	docker compose -f staging.yml build
@@ -50,6 +53,20 @@ stag-reload:
 
 stag-down:
 	docker compose -f staging.yml down
+
+# 升級版測試站（staging-upgrade.yml，與舊版測試站並存）
+upg-build:
+	docker compose -f staging-upgrade.yml build
+
+upg-up:
+	docker compose -f staging-upgrade.yml up -d
+	$(call reload,$(UPG_APP))
+
+upg-reload:
+	$(call reload,$(UPG_APP))
+
+upg-down:
+	docker compose -f staging-upgrade.yml down
 
 prod-build:
 	docker compose -f production.yml build

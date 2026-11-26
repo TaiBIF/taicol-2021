@@ -118,7 +118,7 @@ class CreateNamesForNamespaceUsageJob implements ShouldQueue
             // 上傳檔保留供修正後重傳，不刪
         }
 
-        Mail::to(env('TAICOL_EMAIL', 'catalogueoflife.taiwan@gmail.com'))
+        Mail::to(config('services.taicol.email'))
             ->send(new Email(
                 '名錄 Usage 批次建名任務最終失敗：<br>' . nl2br($e->getMessage()),
                 'TaiCOL - 批次建名失敗',

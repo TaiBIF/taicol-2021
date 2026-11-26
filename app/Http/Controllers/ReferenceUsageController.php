@@ -819,7 +819,7 @@ class ReferenceUsageController extends Controller
         $keyword = $request->get('keyword');
 
         // 預設包含栽培豢養 & 不僅限台灣物種
-        $url = env('TAICOL_ROOT') . "/get_autocomplete_taxon_by_solr?from=nametool&with_cultured=on&keyword=" . urlencode($keyword);
+        $url = config('services.taicol.root') . "/get_autocomplete_taxon_by_solr?from=nametool&with_cultured=on&keyword=" . urlencode($keyword);
         $curl = curl_init();
         curl_setopt($curl, CURLOPT_URL, $url);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);

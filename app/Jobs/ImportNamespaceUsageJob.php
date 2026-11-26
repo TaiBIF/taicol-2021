@@ -246,7 +246,7 @@ class ImportNamespaceUsageJob implements ShouldQueue
             }
         }
 
-        Mail::to(env('TAICOL_EMAIL', 'catalogueoflife.taiwan@gmail.com'))
+        Mail::to(config('services.taicol.email'))
             ->send(new Email(
                 '名錄 Usage Excel 匯入任務最終失敗：<br>' . nl2br($e->getMessage()),
                 'TaiCOL - 名錄匯入失敗',

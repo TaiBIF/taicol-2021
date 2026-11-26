@@ -93,7 +93,7 @@ class ProcessAiUsageRequest implements ShouldQueue
         try {
             // 呼叫 Python API
             try {
-                $response = Http::timeout(3600)->post(env('TAICOL_AI_API_ROOT') . '/process-usage', [
+                $response = Http::timeout(3600)->post(config('services.taicol_ai.root') . '/process-usage', [
                     'file_path' => $filePath
                 ]);
             } catch (ConnectionException $e) {
@@ -202,7 +202,7 @@ class ProcessAiUsageRequest implements ShouldQueue
 
             // 使用者與管理員通知統一在 failed() 處理
 
-            // Mail::to(env('TAICOL_EMAIL', 'catalogueoflife.taiwan@gmail.com'))
+            // Mail::to(config('services.taicol.email'))
             //     ->send(new Email(
             //         '使用者在物種學名管理工具匯入的學名使用有錯誤，錯誤訊息如下：<br>' . nl2br($e->getMessage()),
             //         'TaiCOL物種學名管理工具 - 文獻匯入失敗',
@@ -251,7 +251,7 @@ class ProcessAiUsageRequest implements ShouldQueue
 
         // 通知管理員（寄信失敗只記 log，不再往外拋）
         try {
-            Mail::to(env('TAICOL_EMAIL', 'catalogueoflife.taiwan@gmail.com'))
+            Mail::to(config('services.taicol.email'))
                 ->send(new Email(
                     $this->adminDetail($exception, $log, $reference, $user),
                     'TaiCOL物種學名管理工具 - AI 學名使用匯入失敗',
