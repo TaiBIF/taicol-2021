@@ -41,6 +41,9 @@ return [
 
     'debug' => (bool) env('APP_DEBUG', false),
 
+    // API 每分鐘請求上限（每個帳號或 IP）；正式站維持 60，測試站跑 E2E 時調高
+    'api_rate_limit' => (int) env('API_RATE_LIMIT', 60),
+
     /*
     |--------------------------------------------------------------------------
     | Application URL
