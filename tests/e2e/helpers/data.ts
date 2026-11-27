@@ -8,7 +8,7 @@ import { userState } from './env';
  * - 人名：last_name 以 E2E- 開頭
  * - 文獻：作者為 E2E- 人名；書名以 E2E- 開頭
  * - 學名：屬名固定 E2etest（學名不能有連字號）
- * - 名錄、收藏資料夾：標題以 E2E- 開頭
+ * - 收藏夾：標題以 E2E- 開頭（名錄之後加入）
  */
 export const PREFIX = 'E2E-';
 export const GENUS = 'E2etest';

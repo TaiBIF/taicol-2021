@@ -13,8 +13,11 @@ $app = require 'bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
 use App\Book;
+use App\FavoriteFolder;
 use App\FavoriteItem;
 use App\FavoriteMineItem;
+use App\MyNamespace;
+use App\MyNamespaceUsage;
 use App\Person;
 use App\Reference;
 use App\ReferenceUsage;
@@ -31,29 +34,43 @@ $usages = ReferenceUsage::where(function ($q) use ($referenceIds, $taxonNameIds)
     $q->whereIn('reference_id', $referenceIds)->orWhereIn('taxon_name_id', $taxonNameIds);
 });
 
-$favoriteFilter = function ($q) use ($referenceIds, $taxonNameIds) {
-    $q->where(function ($q) use ($referenceIds) {
-        $q->where('collectable_type', FavoriteMineItem::TYPE_REFERENCE)->whereIn('collectable_id', $referenceIds);
-    })->orWhere(function ($q) use ($taxonNameIds) {
-        $q->where('collectable_type', FavoriteMineItem::TYPE_TAXON_NAME)->whereIn('collectable_id', $taxonNameIds);
-    });
+$favoriteFilter = function (string $model) use ($referenceIds, $taxonNameIds) {
+    return function ($q) use ($model, $referenceIds, $taxonNameIds) {
+        $q->where(function ($q) use ($model, $referenceIds) {
+            $q->where('collectable_type', $model::TYPE_REFERENCE)->whereIn('collectable_id', $referenceIds);
+        })->orWhere(function ($q) use ($model, $taxonNameIds) {
+            $q->where('collectable_type', $model::TYPE_TAXON_NAME)->whereIn('collectable_id', $taxonNameIds);
+        });
+    };
 };
+$folderIds = FavoriteFolder::where('title', 'like', 'E2E-%')->pluck('id');
+$namespaceIds = MyNamespace::where('title', 'like', 'E2E-%')->pluck('id');
+$namespaceUsages = MyNamespaceUsage::whereIn('namespace_id', $namespaceIds)->orWhereIn('taxon_name_id', $taxonNameIds);
 
 $summary = [
     'persons' => $personIds->count(),
     'references' => $referenceIds->count(),
     'taxon_names' => $taxonNameIds->count(),
     'reference_usages' => (clone $usages)->count(),
-    'favorite_mine_items' => FavoriteMineItem::where($favoriteFilter)->count(),
-    'favorite_items' => FavoriteItem::where($favoriteFilter)->count(),
+    'favorite_mine_items' => FavoriteMineItem::where($favoriteFilter(FavoriteMineItem::class))->count(),
+    'favorite_items' => FavoriteItem::where($favoriteFilter(FavoriteItem::class))->count(),
+    'favorite_folders' => $folderIds->count(),
+    'namespaces' => $namespaceIds->count(),
+    'namespace_usages' => (clone $namespaceUsages)->count(),
     'books' => Book::where('title', 'like', 'E2E-%')->count(),
 ];
 
 if (!$dryRun) {
-    DB::transaction(function () use ($usages, $favoriteFilter, $referenceIds, $taxonNameIds, $personIds) {
+    DB::transaction(function () use ($usages, $namespaceUsages, $namespaceIds, $favoriteFilter, $folderIds, $referenceIds, $taxonNameIds, $personIds) {
         $usages->delete();
-        FavoriteMineItem::where($favoriteFilter)->delete();
-        FavoriteItem::where($favoriteFilter)->delete();
+        // namespace usages 沒有軟刪除
+        $namespaceUsages->delete();
+        MyNamespace::whereIn('id', $namespaceIds)->delete();
+        FavoriteMineItem::where($favoriteFilter(FavoriteMineItem::class))->delete();
+        FavoriteItem::where($favoriteFilter(FavoriteItem::class))->delete();
+        // 收藏夾沒有軟刪除：先硬刪其中的項目（含已軟刪除的），再刪收藏夾
+        FavoriteItem::withTrashed()->whereIn('favorite_folder_id', $folderIds)->forceDelete();
+        FavoriteFolder::whereIn('id', $folderIds)->delete();
         Reference::whereIn('id', $referenceIds)->delete();
         TaxonName::whereIn('id', $taxonNameIds)->delete();
         Person::whereIn('id', $personIds)->delete();
