@@ -231,10 +231,14 @@ class UserController extends Controller
     {
         $usersQuery = User::query();
 
-        if ($request->get('sortby')) {
-            $usersQuery->orderBy($request->get('sortby'), $request->get('direction', 'asc'));
-        }
+        // 前端排序欄位對應到 users 的欄位（users 沒有 last_name；也避免任意欄位名稱進 orderBy）
+        $sortable = ['last_name' => 'name', 'name' => 'name', 'status' => 'status', 'id' => 'id'];
+        $sortby = $sortable[$request->get('sortby')] ?? null;
 
+        if ($sortby) {
+            $usersQuery->orderBy($sortby, $request->get('direction') === 'desc' ? 'desc' : 'asc');
+        }
+    
         $users = $usersQuery->paginate(20);
 
         return response([
