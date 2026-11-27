@@ -42,7 +42,8 @@ class Kernel extends HttpKernel
 
         'api' => [
             EnsureFrontendRequestsAreStateful::class,
-            'throttle:60,1',
+            // 每分鐘上限由 config('app.api_rate_limit') 決定（RouteServiceProvider 定義）
+            'throttle:api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
     ];

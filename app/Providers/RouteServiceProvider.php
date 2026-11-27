@@ -2,7 +2,10 @@
 
 namespace App\Providers;
 
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 
 class RouteServiceProvider extends ServiceProvider
@@ -30,7 +33,11 @@ class RouteServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        // API 限流：登入者依帳號、未登入依 IP；測試站跑 E2E 時以 API_RATE_LIMIT 放寬
+        RateLimiter::for('api', function (Request $request) {
+            return Limit::perMinute((int) config('app.api_rate_limit'))
+                ->by($request->user()?->id ?: $request->ip());
+        });
 
         parent::boot();
     }
